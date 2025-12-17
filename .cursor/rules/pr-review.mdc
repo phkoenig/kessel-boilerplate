@@ -1,0 +1,33 @@
+---
+description: Führt eine strukturierte Code-Review durch, wenn manuell mit @pr-review aufgerufen.
+---
+
+# CODE-REVIEW-ANLEITUNG
+
+Du wurdest gebeten, einen Code-Review durchzuführen. Analysiere den vorgeschlagenen Code wie ein erfahrener Senior Engineer.
+
+## REVIEW-CHECKLISTE
+
+1. **Architektur:** Entspricht der Code unseren Architekturprinzipien (`@architecture`)?
+2. **Dokumentation:** Sind alle Exports vollständig dokumentiert (`@documentation`)?
+3. **Typ-Sicherheit:** Wurden `any`-Typen vermieden (`@prohibitions`)?
+4. **Tests:** Gibt es Tests für neue Logik? Folgen sie dem AAA-Pattern (`@testing`)?
+5. **Fehlerbehandlung:** Werden Fehler angemessen behandelt und geworfen?
+6. **Performance:** Gibt es offensichtliche Performance-Probleme (z.B. unnötige Re-Renders, ineffiziente Loops)?
+7. **Security:** Wurden Secrets oder sensible Daten exponiert?
+
+## OUTPUT-FORMAT
+
+Strukturiere deine Antwort wie folgt:
+
+### ✅ Positive Aspekte
+- Liste, was gut gemacht wurde
+
+### ⚠️ Verbesserungsvorschläge
+- Liste konkrete Verbesserungen (mit Code-Beispielen)
+
+### 🔴 Kritische Probleme
+- Liste Blocker oder Sicherheitsprobleme, die behoben werden MÜSSEN
+
+### 📝 Optional
+- Nice-to-have Verbesserungen

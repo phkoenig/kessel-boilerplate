@@ -1,0 +1,342 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ========================================
+ * FALLBACK THEME VALUES (FOUC Prevention)
+ * 
+ * Diese Werte werden SOFORT angewendet, bevor das dynamische
+ * Theme-CSS aus Supabase geladen wird. Das verhindert FOUC.
+ * 
+ * Die dynamischen Themes aus Supabase überschreiben diese Werte
+ * mit höherer Spezifität via [data-theme="..."] Selektoren.
+ * ======================================== */
+:root {
+  /* Core Theme Colors - Light Mode Fallback */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.2 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+  --primary: oklch(0.2 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.2 0 0);
+  --destructive: oklch(0.5 0.2 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Status-Farben für Feedback */
+  --success: oklch(0.55 0.15 145);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.7 0.15 85);
+  --warning-foreground: oklch(0.2 0 0);
+  --info: oklch(0.55 0.15 250);
+  --info-foreground: oklch(1 0 0);
+
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.2 0 0);
+  --chart-1: oklch(0.3 0 0);
+  --chart-2: oklch(0.4 0 0);
+  --chart-3: oklch(0.5 0 0);
+  --chart-4: oklch(0.6 0 0);
+  --chart-5: oklch(0.7 0 0);
+
+  /* Sidebar Colors - Light Mode Fallback */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.2 0 0);
+  --sidebar-primary: oklch(0.2 0 0);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: oklch(0.2 0 0);
+
+  /* Layout & Typography Fallbacks */
+  --radius: 0.5rem;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --font-serif: ui-serif, serif;
+  --spacing: 0.25rem;
+
+  /* Shadow Fallbacks (Tailwind Standard) */
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Panel Shadow - Vertikale Trennung zwischen Spalten (Theme-customizable)
+     Inset shadow auf der linken Seite, da overflow:hidden den normalen Schatten abschneidet */
+  --shadow-panel: inset 8px 0 12px -8px rgb(0 0 0 / 0.06);
+
+  /* Composer Shadow - Floating Effekt für Chat-Eingabefeld */
+  --shadow-composer: 4px 4px 12px 4px rgb(0 0 0 / 0.25);
+}
+
+.dark {
+  /* Core Theme Colors - Dark Mode Fallback */
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.2 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.2 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --accent: oklch(0.3 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.5 0.2 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Status-Farben für Feedback - Dark Mode */
+  --success: oklch(0.6 0.15 145);
+  --success-foreground: oklch(0.15 0 0);
+  --warning: oklch(0.75 0.15 85);
+  --warning-foreground: oklch(0.15 0 0);
+  --info: oklch(0.6 0.15 250);
+  --info-foreground: oklch(0.15 0 0);
+
+  --border: oklch(0.35 0 0);
+  --input: oklch(0.35 0 0);
+  --ring: oklch(0.95 0 0);
+  --chart-1: oklch(0.7 0 0);
+  --chart-2: oklch(0.6 0 0);
+  --chart-3: oklch(0.5 0 0);
+  --chart-4: oklch(0.4 0 0);
+  --chart-5: oklch(0.3 0 0);
+
+  /* Sidebar Colors - Dark Mode Fallback */
+  --sidebar: oklch(0.18 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.95 0 0);
+  --sidebar-primary-foreground: oklch(0.15 0 0);
+  --sidebar-accent: oklch(0.3 0 0);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.35 0 0);
+  --sidebar-ring: oklch(0.95 0 0);
+
+  /* Dark Mode Shadow Fallbacks */
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.1);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.2), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+
+  /* Panel Shadow - Dark Mode (stärker für bessere Sichtbarkeit) */
+  --shadow-panel: inset 8px 0 16px -8px rgb(0 0 0 / 0.2);
+
+  /* Composer Shadow - Dark Mode */
+  --shadow-composer: 4px 4px 12px 4px rgb(0 0 0 / 0.4);
+}
+
+@theme inline {
+  /* ========================================
+   * DESIGN TOKEN GOVERNANCE
+   * Strikte Token-Architektur für Theme-Switching
+   * 
+   * Theme-Variablen werden dynamisch aus Supabase geladen.
+   * Hier nur die Tailwind-Registrierungen für Utility-Klassen.
+   * ======================================== */
+
+  /* 1. Semantische Farb-Tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Status-Farben für Tailwind Utilities */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Chart-Farben */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar-Farben */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* 2. Radius-Tokens MIT UNDERFLOW-SCHUTZ */
+  /* max(0px, ...) verhindert negative Werte bei --radius: 0 */
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* 3. Spacing - Tailwind nutzt diese Variable als Basis */
+  --spacing: var(--spacing);
+
+  /* 4. Font-Tokens */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  /* 5. Shadow-Tokens (TweakCN) */
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+
+  /* Panel Shadow - für vertikale Spalten-Trennung (Theme-customizable) */
+  --shadow-panel: var(--shadow-panel);
+
+  /* Composer Shadow - Floating Effekt für Chat-Eingabefeld */
+  --shadow-composer: var(--shadow-composer);
+
+  /* 6. Animationen (ShadCN Standard) */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* ========================================
+ * GLOBAL BASE STYLES
+ * 
+ * font-family referenziert CSS-Variablen, die via
+ * data-theme aus Supabase-Themes geladen werden.
+ * ======================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    overflow: hidden;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Sidebar Scrollbar: Komplett versteckt */
+  [data-sidebar="content"] {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE und Edge */
+  }
+
+  [data-sidebar="content"]::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* ========================================
+   * CHAT SCROLLBAR (assistant-ui Thread)
+   *
+   * Konsistente Scrollbar für das Chat-Fenster,
+   * passend zum Design-System (bg-border Farbe).
+   * ======================================== */
+
+  .aui-thread-viewport {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .aui-thread-viewport::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .aui-thread-viewport::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .aui-thread-viewport::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .aui-thread-viewport::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+
+  /* ========================================
+   * RESIZABLE PANEL TRANSITIONS (KONTROLLIERT)
+   *
+   * Sanfte Animation NUR bei Navbar Collapse/Expand.
+   * NICHT bei Assist-Panel Toggle - das würde Zucken verursachen.
+   * 
+   * Die Klasse `.enable-panel-transition` wird per JS gesteuert
+   * und nur während expliziter Collapse/Expand Aktionen aktiviert.
+   * ======================================== */
+
+  .enable-panel-transition [data-panel] {
+    transition:
+      flex-basis 200ms ease-out,
+      flex-grow 200ms ease-out,
+      flex-shrink 200ms ease-out !important;
+  }
+}

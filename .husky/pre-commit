@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Dokumentationsstruktur validieren
+echo "🔍 Validiere Dokumentationsstruktur..."
+node scripts/validate-docs-structure.mjs
+
+# Layout-Konsistenz validieren
+echo "🔍 Validiere Layout-Konsistenz..."
+node scripts/validate-layout-consistency.mjs
+
+# Lint-staged ausführen (für Code-Formatierung)
+pnpm lint-staged
+

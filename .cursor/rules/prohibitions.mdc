@@ -1,0 +1,34 @@
+---
+description: Nicht verhandelbare, projektweite Verbote. Diese Regeln haben immer Vorrang und gelten bei JEDER Interaktion.
+alwaysApply: true
+---
+
+# STRIKTE VERBOTE
+
+Du bist ein KI-Assistent, der strikten, nicht verhandelbaren Regeln unterliegt. Ein Verstoß gegen diese Regeln ist ein kritischer Fehler.
+
+## SICHERHEIT UND DATEN
+
+- **VERBOTEN:** Schreibe NIEMALS API-Schlüssel, Passwörter, Secrets oder sensible Daten (auch keine Beispieldaten) in den Code oder in Chat-Antworten.
+- **VERBOTEN:** Verwende NIEMALS unsichere Protokolle (z.B. `http://` für APIs). Erzwinge `https://`.
+- **VERBOTEN:** Deaktiviere NIEMALS SSL/TLS-Validierungen oder Sicherheitsfunktionen.
+
+## TYPESCRIPT UND CODE-QUALITÄT
+
+- **VERBOTEN:** Verwende NIEMALS den Typ `any`. Finde den korrekten Typ, definiere ein `interface`, oder verwende `unknown`, wenn der Typ wirklich unbekannt ist und validiert werden muss.
+- **VERBOTEN:** Verwende NIEMALS `ts-ignore` oder `ts-expect-error` ohne einen nachfolgenden Kommentar, der das "Warum" (z.B. ein Link zu einem Library-Bug) präzise erklärt.
+- **VERBOTEN:** Führe NIEMALS "Zombie-Code" (auskommentierten Code) in neuen Code-Blöcken ein. Code wird über Git verwaltet, nicht im Quelltext auskommentiert.
+- **VERBOTEN:** Verwende NIEMALS Default-Exporte (`export default`). Verwende ausschließlich benannte Exporte (`export const...`, `export interface...`).
+
+## PROJEKT-SPEZIFIKA
+
+- **VERBOTEN:** Importiere NIEMALS aus veralteten Modulen (z.B. `@supabase/auth-helpers`, `tailwindcss-animate`). Verwende stattdessen `@supabase/ssr` und `tw-animate-css`.
+- **VERBOTEN:** Führe NIEMALS `npm` oder `yarn` Befehle aus. Dieses Projekt verwendet ausschließlich `pnpm`.
+- **VERBOTEN:** Committe NIEMALS ohne explizite Aufforderung des Users. Code-Änderungen sind Vorschläge, keine automatischen Commits.
+
+## SUPABASE-SPEZIFIKA
+
+- **VERBOTEN:** Verwende NIEMALS `SERVICE_ROLE_KEY` im Client-Code. Nur serverseitig (API-Routes, Scripts).
+- **VERBOTEN:** Erstelle NIEMALS Vault-Funktionen ohne anschließende REVOKE-Statements.
+- **VERBOTEN:** Deaktiviere NIEMALS Row Level Security (RLS) komplett.
+- **VERBOTEN:** Speichere NIEMALS Secrets außerhalb des Supabase Vault (kein Doppler, kein .env commit).

@@ -1,0 +1,81 @@
+---
+description: Erzwingt unsere TSDoc/JSDoc-Dokumentationsstandards, wenn Code generiert oder bearbeitet wird.
+applyIntelligently: true
+---
+
+# DOKUMENTATIONS-RICHTLINIE (TSDoc/JSDoc)
+
+Du bist ein KI-Assistent mit der Hauptaufgabe, "Aktive Dokumentation" zu erstellen und zu pflegen. Dein Ziel ist es, Code zu produzieren, der selbsterklärend und für zukünftige Entwickler (und KI) maximal verständlich ist.
+
+## KERNANFORDERUNGEN
+
+1. **PFLICHT:** JEDE `export`-Anweisung (Funktion, Klasse, Typ, Interface, Konstante) MUSS einen vollständigen TSDoc-Block haben.
+2. **PFLICHT:** Jede Funktion MUSS `@param` für jeden Parameter und `@returns` für den Rückgabewert enthalten.
+3. **PFLICHT:** Jedes `type` oder `interface` MUSS einen TSDoc-Kommentar für das Interface selbst UND für jedes Property haben.
+4. **KEINE LÖSCHUNG:** Bewahre bestehende, korrekte TSDoc-Kommentare. Lösche sie NIEMALS, wenn du Code refaktorierst.
+
+## STIL UND INHALT
+
+- **Fokus auf das "Warum":** Dokumentiere nicht, *was* der Code tut (das sieht man am Code), sondern *warum* er es tut, welchen Zweck er erfüllt und welche Nebeneffekte er hat.
+- **Präzision:** Sei präzise und vermeide vage Formulierungen.
+- **Verknüpfungen:** Verwende `@link TypeName` oder `@link FunctionName`, um auf andere Typen oder Funktionen in der Codebase zu verweisen. Dies ist entscheidend für die Navigation.
+- **Fehler:** Wenn eine Funktion einen Fehler werfen kann, dokumentiere dies mit `@throws {ErrorType} Beschreibung`.
+
+## BEISPIEL FÜR EXZELLENTE DOKUMENTATION (MUSS BEFOLGT WERDEN)
+
+Hier sind Beispiele, denen du exakt folgen MUSST, wenn du Typen oder Funktionen generierst:
+
+### Beispiel 1: Interface-Dokumentation
+
+```typescript
+/**
+ * Definiert die primären Eigenschaften für einen Benutzer-Account.
+ * Dient als zentrales Datenmodell für die Benutzerauthentifizierung und
+ * wird von {@link fetchUserProfile} zurückgegeben.
+ */
+export interface UserProfile {
+  /**
+   * Die eindeutige, unveränderliche ID des Benutzers (UUID v4).
+   */
+  id: string;
+
+  /**
+   * Die E-Mail-Adresse des Benutzers, wird für den Login verwendet.
+   * Muss ein gültiges E-Mail-Format aufweisen.
+   */
+  email: string;
+
+  /**
+   * Der optionale Anzeigename des Benutzers.
+   * @default "Anonym"
+   */
+  displayName?: string;
+}
+```
+
+### Beispiel 2: Funktions-Dokumentation
+
+```typescript
+/**
+ * Ruft das {@link UserProfile} für eine gegebene Benutzer-ID ab.
+ * Diese Funktion implementiert eine Cache-First-Strategie (Stale-While-Revalidate).
+ *
+ * @param userId - Die eindeutige ID (UUID) des Benutzers, der abgerufen werden soll.
+ * @returns Ein Promise, das mit dem {@link UserProfile} aufgelöst wird.
+ * @throws {UserNotFoundError} Wirft einen spezifischen Fehler, wenn kein Benutzer mit dieser ID gefunden wird.
+ * @throws {Error} Wirft einen generischen Fehler bei Netzwerkproblemen.
+ */
+export const fetchUserProfile = async (userId: string): Promise<UserProfile> => {
+  // ... Implementierung
+};
+```
+
+## VERBOTEN
+
+- **Keine offensichtlichen Kommentare:** Kommentare, die nur wiederholen, was der Code tut.
+  - ❌ SCHLECHT: `/** Zählt i um eins hoch */ i++;`
+  - ✅ GUT: Kein Kommentar nötig, Code ist selbsterklärend.
+  
+- **Keine paraphrasierten Kommentare:**
+  - ❌ SCHLECHT: `/** Holt den Benutzer anhand der ID */`
+  - ✅ GUT: `/** Ruft den Benutzerdatensatz aus dem Cache oder über die API ab. Behandelt Caching-Logik und wirft einen 'UserNotFoundError', wenn die ID ungültig ist. */`

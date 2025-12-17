@@ -1,0 +1,40 @@
+---
+description: Stellt sicher, dass der generierte Code unseren Architekturprinzipien (SOLID, CLARITY) und dem Code-Stil entspricht.
+applyIntelligently: true
+---
+
+# ARCHITEKTUR- UND STIL-LEITFADEN
+
+Dein Ziel ist es, Code im Stil eines erfahrenen Principal Engineers zu schreiben, der Wert auf langfristige Wartbarkeit legt.
+
+## KERNPRINZIPIEN
+
+- **CLARITY (Klarheit):** Dies ist unser wichtigstes Prinzip. Code muss auf den ersten Blick verständlich sein. Bevorzuge Klarheit vor "cleveren" Einzeilern.
+- **SOLID, ABER SIMPEL:** Wende SOLID-Prinzipien (insbesondere das Single Responsibility Principle) an, aber vermeide Over-Engineering. Erstelle keine komplexen Abstraktionen, bevor sie eindeutig benötigt werden.
+- **Funktionaler Stil:** Bevorzuge reine Funktionen und Unveränderlichkeit (Immutability), wo immer es möglich ist. Vermeide direkte Mutationen von Objekten oder Zuständen.
+- **Fehlerbehandlung:** Erwarte Fehler. Verwende `try...catch` Blöcke für asynchrone Operationen und wirf aussagekräftige, spezifische Fehler (z.B. `class UserNotFoundError extends Error {}`).
+
+## CODE-STIL
+
+- **Stil-Konsistenz:** Schreibe Code in demselben Stil, der bereits im Projekt verwendet wird. Analysiere benachbarte Dateien, um Import-Reihenfolgen und Namenskonventionen zu übernehmen.
+- **Moderne Syntax:** Verwende moderne ES-Syntax wie "Nullish Coalescing" (`??`) und "Optional Chaining" (`?.`).
+- **Typisierung:** Immer explizite Rückgabetypen für Funktionen. Leite Typen nicht implizit her, wenn es die Lesbarkeit beeinträchtigt.
+- **Keine Default-Exporte:** (Wiederholung aus `prohibitions.mdc` zur Verstärkung) Verwende immer benannte Exporte (`export const...`).
+
+## DOKUMENTATIONSARCHITEKTUR
+
+- **7-Ebenen-System:** Dieses Projekt folgt einer strukturierten Dokumentationsarchitektur in `docs/`.
+- **Architektur-Doku:** Bei architektonischen Änderungen verweise auf `docs/02_architecture/`.
+- **Feature-Doku:** Neue Features sollten in `docs/03_features/backlog.md` dokumentiert werden.
+
+## DESIGN-PATTERNS
+
+- **Composition over Inheritance:** Bevorzuge durchgehend die Komposition von Funktionen und Komponenten gegenüber komplexen Vererbungshierarchien.
+- **Service-Repository-Pattern:** Die Geschäftslogik (`/src/services`) und Datenabstraktion (`/src/lib/repository`) sind klar getrennt.
+- **State-Management:** Globale Zustände werden minimal gehalten. Priorisiere lokalen Komponenten-Status und React Context (oder Zustand/Jotai) für bereichsbezogene Zustände.
+
+## NEXT.JS / REACT SPEZIFIKA
+
+- **Server Components First:** Nutze Server Components als Standard. Verwende `'use client'` nur wenn explizit notwendig (interaktive Komponenten, Hooks).
+- **Data Fetching:** Bevorzuge Server-seitiges Fetching in Server Components gegenüber Client-seitigem Fetching.
+- **File-based Routing:** Nutze die App Router Konventionen (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`).
