@@ -38,75 +38,57 @@ SERVICE_ROLE_KEY=eyJ...
 ### Fallback
 
 Falls die `.env` Datei nicht gefunden wird oder der Key nicht extrahiert werden kann:
+
 - Das Tool zeigt eine normale Eingabeaufforderung
 - Manuelle Eingabe ist weiterhin möglich
 
-## 2. Supabase-Projekt-Auswahl und -Erstellung
+## 2. Supabase-Projekt-Erstellung
 
 ### Was passiert?
 
-Beim Erstellen eines neuen Projekts kannst du wählen:
+Beim Erstellen eines neuen Projekts wird **immer ein neues Supabase-Projekt** in der **Kessel-Organisation** angelegt. Dies stellt sicher, dass jedes Projekt eine saubere, isolierte Datenbank hat.
 
-1. **Bestehendes Projekt verwenden**
-   - Liste aller Supabase-Projekte (außer dem Secret-Projekt)
-   - Auswahl aus der Liste
+**Optionen:**
+
+1. **Neues Projekt erstellen (empfohlen)**
+   - Automatische Erstellung in der Kessel-Organisation
    - Automatische URL-Generierung
+   - Anon Key wird automatisch abgerufen
 
-2. **Neues Projekt erstellen**
-   - Automatische Erstellung via Supabase CLI
-   - Automatische URL-Generierung
-   - Fallback zu manueller Eingabe bei Fehlern
-
-3. **Manuell URL eingeben**
+2. **Manuell URL eingeben (für Spezialfälle)**
+   - Für bereits existierende Projekte
    - Direkte Eingabe der Supabase URL
    - Manuelle Eingabe des Publishable Keys
 
+> **⚠️ Wichtig:** Die Option "Bestehendes Projekt verwenden" wurde entfernt, um Datenbank-Konflikte zu vermeiden. Jedes neue Kessel-Projekt sollte ein eigenes Supabase-Projekt haben.
+
 ### Wie funktioniert es?
 
-#### Option 1: Bestehendes Projekt verwenden
+#### Option 1: Neues Projekt erstellen (Standard)
 
 ```bash
 kessel mein-projekt
 
 # Eingabe:
 "Wie möchtest du das Supabase-Projekt für die App verwenden?"
-→ Bestehendes Projekt verwenden
-
-# Das Tool:
-1. Führt aus: supabase projects list --json
-2. Filtert das Secret-Projekt raus (zedhieyjlfhygsfxzbze)
-3. Zeigt Liste: "Projekt 1 (abc123)", "Projekt 2 (def456)", ...
-4. Nach Auswahl: Automatische URL-Generierung
-   → https://abc123.supabase.co
-5. Fragt nach: Publishable Key
-```
-
-#### Option 2: Neues Projekt erstellen
-
-```bash
-kessel mein-projekt
-
-# Eingabe:
-"Wie möchtest du das Supabase-Projekt für die App verwenden?"
-→ Neues Projekt erstellen
+→ Neues Projekt erstellen (empfohlen)
 
 # Das Tool:
 1. Fragt nach: Projektname (Default: Projektname)
-2. Fragt nach: Organization ID (optional)
-3. Führt aus: supabase projects create <name> --json
-4. Erstellt Projekt automatisch
-5. Generiert URL: https://<project_ref>.supabase.co
-6. Fragt nach: Publishable Key
+2. Erstellt automatisch in Kessel-Organisation (adzokxroqheoiqgwslfc)
+3. Führt aus: supabase projects create <name> --org-id adzokxroqheoiqgwslfc --json
+4. Generiert URL: https://<project_ref>.supabase.co
+5. Ruft Anon Key automatisch ab
 ```
 
-#### Option 3: Manuell URL eingeben
+#### Option 2: Manuell URL eingeben (für Spezialfälle)
 
 ```bash
 kessel mein-projekt
 
 # Eingabe:
 "Wie möchtest du das Supabase-Projekt für die App verwenden?"
-→ Manuell URL eingeben
+→ Manuell URL eingeben (für bestehende Projekte)
 
 # Das Tool:
 1. Fragt nach: Supabase URL
@@ -115,34 +97,47 @@ kessel mein-projekt
 
 ### Voraussetzungen
 
-**Für Option 1 & 2 (CLI-Integration):**
+**Für automatische Projekt-Erstellung:**
 
 1. **Supabase CLI installiert:**
+
    ```bash
    npm install -g supabase
    ```
 
 2. **Supabase CLI authentifiziert:**
+
    ```bash
    supabase login
    ```
 
+3. **Zugriff auf Kessel-Organisation:**
+   - Du musst Mitglied der Kessel-Organisation in Supabase sein
+   - Org-ID: `adzokxroqheoiqgwslfc`
+
 **Falls CLI nicht verfügbar oder nicht authentifiziert:**
+
 - Das Tool zeigt eine Warnung
 - Fallback zu manueller Eingabe
-- Funktioniert weiterhin, nur ohne automatische Projekt-Liste/Erstellung
+- Funktioniert weiterhin, nur ohne automatische Projekt-Erstellung
 
-### Filter: Secret-Projekt wird ausgeblendet
+### Kessel-Organisation
 
-Das Secret-Projekt (`zedhieyjlfhygsfxzbze`) wird automatisch aus der Liste gefiltert, da es nur für Secrets verwendet wird.
+Alle neuen Projekte werden automatisch in der **Kessel-Organisation** erstellt:
 
 ```javascript
-// Filter-Logik:
-projects.filter(
-  (p) => !p.project_ref?.includes("zedhieyjlfhygsfxzbze") && 
-         !p.id?.includes("zedhieyjlfhygsfxzbze")
-)
+// Kessel Organization ID (hardcoded für Konsistenz)
+const KESSEL_ORG_ID = "adzokxroqheoiqgwslfc"
+
+// Projekt-Erstellung:
+supabase projects create <name> --org-id adzokxroqheoiqgwslfc --json
 ```
+
+**Vorteile:**
+
+- Alle Projekte unter einem Dach
+- Konsistente Abrechnungsstruktur
+- Einfache Übersicht im Supabase Dashboard
 
 ## 🔄 Kompletter Workflow
 
@@ -161,10 +156,11 @@ kessel mein-projekt
 # 4. SERVICE_ROLE_KEY
 → [Enter = Automatisch geladen] ✅
 
-# 5. Supabase-Projekt-Auswahl
-→ Bestehendes Projekt verwenden
-  → Wähle aus Liste: "Mein Projekt (abc123)"
-  → Publishable Key: [Key]
+# 5. Supabase-Projekt
+→ Neues Projekt erstellen (empfohlen)
+  → Projektname: mein-projekt
+  → Organisation: Kessel (adzokxroqheoiqgwslfc)
+  → Anon Key: [Automatisch abgerufen] ✅
 
 # 6. Dependencies installieren?
 → Ja
@@ -175,9 +171,10 @@ kessel mein-projekt
 ## ⚠️ Wichtig
 
 - **SERVICE_ROLE_KEY:** Wird automatisch geladen, kann aber überschrieben werden
-- **Supabase CLI:** Optional, aber empfohlen für besseren Workflow
-- **Secret-Projekt:** Wird automatisch aus Listen gefiltert
+- **Supabase CLI:** Erforderlich für automatische Projekt-Erstellung
+- **Kessel-Organisation:** Alle neuen Projekte werden dort erstellt
 - **Fallback:** Bei Fehlern funktioniert manuelle Eingabe weiterhin
+- **Kein "Bestehendes Projekt":** Diese Option wurde entfernt, um Datenbank-Konflikte zu vermeiden
 
 ## 🐛 Troubleshooting
 
@@ -186,31 +183,34 @@ kessel mein-projekt
 **Problem:** `.env` Datei nicht gefunden
 
 **Lösung:**
+
 - Prüfe, ob `boiler_plate_A/.env` existiert
 - Prüfe relativen Pfad: `../boiler_plate_A/.env` von `kessel/`
 - Manuelle Eingabe funktioniert weiterhin
 
-### Supabase-Projekte werden nicht aufgelistet
-
-**Problem:** Supabase CLI nicht authentifiziert
-
-**Lösung:**
-```bash
-supabase login
-```
-
-**Alternative:**
-- Verwende "Manuell URL eingeben"
-- Funktioniert genauso gut
-
-### Neues Projekt kann nicht erstellt werden
+### Neues Supabase-Projekt kann nicht erstellt werden
 
 **Problem:** Supabase CLI-Fehler oder fehlende Berechtigung
 
+**Mögliche Ursachen:**
+
+- Supabase CLI nicht authentifiziert
+- Kein Zugriff auf Kessel-Organisation
+- Quota überschritten
+
 **Lösung:**
-- Prüfe: `supabase login`
-- Prüfe: Organization ID korrekt?
-- Fallback: "Manuell URL eingeben" verwenden
+
+```bash
+# 1. Prüfe Login
+supabase login
+
+# 2. Prüfe Organisations-Zugriff
+supabase orgs list
+# Sollte "Kessel (adzokxroqheoiqgwslfc)" zeigen
+
+# 3. Fallback: Manuell URL eingeben
+# Erstelle Projekt im Supabase Dashboard und gib URL manuell ein
+```
 
 ## 3. Vercel-Integration
 
@@ -238,6 +238,7 @@ kessel mein-projekt
 **Für automatische Vercel-Verknüpfung:**
 
 1. **Vercel CLI installiert:**
+
    ```bash
    npm install -g vercel
    ```
@@ -249,6 +250,7 @@ kessel mein-projekt
    Oder besuche: https://vercel.com/login
 
 **Falls CLI nicht verfügbar oder nicht authentifiziert:**
+
 - Das Tool zeigt eine Warnung mit Installations-/Login-Anweisungen
 - Fallback: Manuelle Verknüpfung später möglich
 - Projekt funktioniert trotzdem vollständig
@@ -272,4 +274,3 @@ kessel mein-projekt
 - **Optional:** Vercel-Integration ist nicht kritisch für das Projekt
 - **Fehler sind nicht kritisch:** Projekt funktioniert auch ohne Vercel-Link
 - **Später möglich:** Verknüpfung kann jederzeit manuell nachgeholt werden
-

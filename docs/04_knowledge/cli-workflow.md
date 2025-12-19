@@ -56,12 +56,14 @@ kessel
 ## ⚠️ Wichtig: Nicht im boiler_plate_A Projekt!
 
 **Vermeide:**
+
 ```bash
 cd boiler_plate_A
 mkdir neues-projekt  # ❌ Nicht hier!
 ```
 
 **Besser:**
+
 ```bash
 cd ..  # Aus boiler_plate_A raus
 mkdir neues-projekt  # ✅ Hier!
@@ -82,10 +84,9 @@ kessel meine-app
 #    - GitHub Token
 #    - Zentrale Supabase URL (Standardwert vorhanden)
 #    - SERVICE_ROLE_KEY (✅ automatisch geladen - Enter drücken!)
-#    - Supabase-Projekt-Auswahl:
-#      → Bestehendes Projekt verwenden (mit Liste)
-#      → Neues Projekt erstellen (via CLI)
-#      → Manuell URL eingeben
+#    - Supabase-Projekt:
+#      → Neues Projekt erstellen (empfohlen) - wird in Kessel-Organisation angelegt
+#      → Manuell URL eingeben (für Spezialfälle)
 #    - Dependencies installieren? (Ja)
 
 # 4. Nach erfolgreicher Erstellung:
@@ -111,4 +112,3 @@ Nachdem das Projekt erstellt wurde:
 - ✅ **Erstelle Projekt wo du willst** - typischerweise neben anderen Projekten
 - ✅ **Öffne Cursor im neuen Projekt** - nicht im boiler_plate_A Projekt
 - ✅ **Kein Hin- und Herwechseln nötig** - alles in einem Schritt
-
