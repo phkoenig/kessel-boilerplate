@@ -194,15 +194,29 @@ async function main() {
     writeFileSync(tempMigrationFile, combinedSQL)
     console.log(`   📄 Temporäre Migration erstellt: ${tempMigrationFile}`)
 
+    // Führe Migration direkt über Supabase REST API aus
+    // (supabase db push benötigt ein verlinktes Projekt, was hier nicht vorhanden ist)
+    console.log(`   🔄 Führe Migration über Supabase REST API aus...`)
+
     try {
-      // Versuche Migration über Supabase CLI db push
-      console.log(`   🔄 Führe Migration über Supabase CLI aus...`)
-      execSync(`supabase db push --project-ref ${PROJECT_REF}`, {
-        cwd: join(__dirname, ".."),
-        stdio: "inherit",
+      // Führe gesamtes SQL über REST API aus
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ sql: combinedSQL }),
       })
 
-      console.log(`\n✅ Migration erfolgreich über Supabase CLI angewendet!`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`REST API Fehler: ${errorText}`)
+      }
+
+      console.log(`\n✅ Migration erfolgreich über Supabase REST API angewendet!`)
 
       // Lösche temporäre Migration-Datei nach erfolgreicher Ausführung
       try {
@@ -211,8 +225,8 @@ async function main() {
       } catch {
         // Ignoriere Cleanup-Fehler
       }
-    } catch (cliError) {
-      console.log(`\n⚠️  Supabase CLI Migration fehlgeschlagen: ${cliError.message}`)
+    } catch (apiError) {
+      console.log(`\n⚠️  Supabase REST API Migration fehlgeschlagen: ${apiError.message}`)
       console.log(`\n📋 Alternative: Führe diese SQL im Supabase Dashboard aus:`)
       console.log(`   → SQL Editor: https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`)
       console.log(`\n${"=".repeat(60)}`)
