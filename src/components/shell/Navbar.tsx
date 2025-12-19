@@ -130,6 +130,7 @@ export function Navbar(): React.ReactElement {
                     pathname={pathname}
                     isVisible={isVisible}
                     onLogout={handleLogout}
+                    user={user}
                   />
                 )
               })}
@@ -157,6 +158,7 @@ export function Navbar(): React.ReactElement {
                     pathname={pathname}
                     isVisible={isVisible}
                     onLogout={handleLogout}
+                    user={user}
                   />
                 </nav>
               )
@@ -184,6 +186,7 @@ export function Navbar(): React.ReactElement {
                     pathname={pathname}
                     isVisible={isVisible}
                     onLogout={handleLogout}
+                    user={user}
                   />
                 </nav>
               )
@@ -207,12 +210,14 @@ function NavSectionComponent({
   pathname,
   isVisible,
   onLogout,
+  user,
 }: {
   section: NavSection
   collapsed: boolean
   pathname: string
   isVisible: IsVisibleFn
   onLogout: () => Promise<void>
+  user: { name?: string; email?: string } | null
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-1">
@@ -237,6 +242,7 @@ function NavSectionComponent({
             level={0}
             isVisible={isVisible}
             onLogout={onLogout}
+            user={user}
           />
         )
       })}
@@ -259,6 +265,7 @@ function NavItemComponent({
   level,
   isVisible,
   onLogout,
+  user,
 }: {
   item: NavItem
   collapsed: boolean
@@ -266,6 +273,7 @@ function NavItemComponent({
   level: number
   isVisible: IsVisibleFn
   onLogout: () => Promise<void>
+  user: { name?: string; email?: string } | null
 }): React.ReactElement {
   // Filter children based on roles
   const visibleChildren = item.children?.filter((child) => isVisible(child))
@@ -436,6 +444,7 @@ function NavItemComponent({
               level={level + 1}
               isVisible={isVisible}
               onLogout={onLogout}
+              user={user}
             />
           ))}
         </CollapsibleContent>
@@ -445,6 +454,12 @@ function NavItemComponent({
 
   // Leaf Item (kein Accordion)
   if (item.href) {
+    // Für "User Details" (account-profile): Zeige den Namen des angemeldeten Users
+    const displayLabel =
+      item.id === "account-profile" && user
+        ? user.name || user.email?.split("@")[0] || "User"
+        : item.label
+
     return (
       <Link href={item.href}>
         <Button
@@ -456,7 +471,7 @@ function NavItemComponent({
           )}
         >
           <Icon className="size-4 shrink-0 transition-transform duration-200" />
-          <span className="truncate text-sm transition-opacity duration-200">{item.label}</span>
+          <span className="truncate text-sm transition-opacity duration-200">{displayLabel}</span>
         </Button>
       </Link>
     )
