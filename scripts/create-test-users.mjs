@@ -6,10 +6,9 @@
  * WICHTIG: Dieses Script wird automatisch bei der Boilerplate-Einrichtung ausgeführt.
  * Die erstellten Test-User müssen in Production geändert oder gelöscht werden!
  *
- * Legt drei Test-User an:
- * - admin@kessel.local (Admin-Rolle) - Passwort: Admin123!
- * - user@kessel.local (User-Rolle) - Passwort: User123!
- * - test@kessel.local (User-Rolle) - Passwort: Test123!
+ * Legt zwei Test-User an:
+ * - admin@local (Admin-Rolle) - Passwort: admin
+ * - user@local (User-Rolle) - Passwort: user
  *
  * Das Script ist idempotent: Es kann mehrfach ausgeführt werden ohne Duplikate zu erstellen.
  * Bestehende User werden aktualisiert (Passwort und Rolle).
@@ -65,24 +64,20 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 })
 
 // Test-User Definitionen
+// WICHTIG: Diese einfachen Credentials sind nur für Entwicklung gedacht!
+// In Production müssen diese User gelöscht oder die Passwörter geändert werden.
 const testUsers = [
   {
-    email: "admin@kessel.local",
-    password: "Admin123!",
+    email: "admin@local",
+    password: "admin",
     role: "admin",
-    displayName: "Admin User",
+    displayName: "Administrator",
   },
   {
-    email: "user@kessel.local",
-    password: "User123!",
+    email: "user@local",
+    password: "user",
     role: "user",
-    displayName: "Test User",
-  },
-  {
-    email: "test@kessel.local",
-    password: "Test123!",
-    role: "user",
-    displayName: "Test Account",
+    displayName: "Standard User",
   },
 ]
 

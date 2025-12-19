@@ -89,11 +89,22 @@ kessel meine-app
 #      → Manuell URL eingeben (für Spezialfälle)
 #    - Dependencies installieren? (Ja)
 
-# 4. Nach erfolgreicher Erstellung:
+# 4. Das Tool richtet automatisch ein:
+#    - Neues Supabase-Projekt in der Kessel-Organisation
+#    - Alle Datenbank-Tabellen (Migrationen)
+#    - Standard-User für sofortigen Zugriff:
+#      → admin@local / admin (Admin-Rolle)
+#      → user@local / user (User-Rolle)
+
+# 5. Nach erfolgreicher Erstellung:
 cd meine-app
 
-# 5. Entwickeln starten
+# 6. Entwickeln starten
 pnpm dev
+
+# 7. Einloggen mit Standard-Credentials:
+#    → admin@local / admin (für Admin-Zugriff)
+#    → user@local / user (für normalen User)
 ```
 
 ## 💡 Tipp: Cursor direkt im neuen Projekt öffnen
@@ -106,9 +117,23 @@ Nachdem das Projekt erstellt wurde:
    - Wähle das neu erstellte Projekt-Verzeichnis
 3. **Terminal öffnen** - du bist jetzt im Projekt-Root
 
+## 🔐 Standard-User (WICHTIG)
+
+Das CLI erstellt automatisch zwei Standard-User für die Entwicklung:
+
+| E-Mail        | Passwort | Rolle |
+| ------------- | -------- | ----- |
+| `admin@local` | `admin`  | Admin |
+| `user@local`  | `user`   | User  |
+
+**⚠️ SICHERHEITSHINWEIS:**  
+Diese Credentials sind nur für die Entwicklung gedacht!  
+**In Production müssen diese User gelöscht oder die Passwörter geändert werden!**
+
 ## 🎯 Zusammenfassung
 
 - ✅ **Tool funktioniert von überall** - nicht nur aus boiler_plate_A
 - ✅ **Erstelle Projekt wo du willst** - typischerweise neben anderen Projekten
 - ✅ **Öffne Cursor im neuen Projekt** - nicht im boiler_plate_A Projekt
 - ✅ **Kein Hin- und Herwechseln nötig** - alles in einem Schritt
+- ✅ **Standard-User automatisch angelegt** - sofort einsatzbereit

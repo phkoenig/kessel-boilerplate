@@ -94,17 +94,18 @@ pnpm setup
 
 Detaillierte Anleitung: [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
 
-### 4. Standard Test-User
+### 4. Standard-User (automatisch erstellt)
 
-Bei der Einrichtung werden automatisch drei Test-User angelegt:
+Bei der Einrichtung mit `kessel-cli` werden automatisch zwei Standard-User angelegt:
 
-| Rolle     | E-Mail-Adresse       | Passwort    | Beschreibung                              |
-| --------- | -------------------- | ----------- | ----------------------------------------- |
-| **Admin** | `admin@kessel.local` | `Admin123!` | Vollzugriff auf alle Bereiche             |
-| **User**  | `user@kessel.local`  | `User123!`  | Standard-User mit eingeschränkten Rechten |
-| **Test**  | `test@kessel.local`  | `Test123!`  | Zusätzlicher Test-Account                 |
+| Rolle     | E-Mail-Adresse | Passwort | Beschreibung                              |
+| --------- | -------------- | -------- | ----------------------------------------- |
+| **Admin** | `admin@local`  | `admin`  | Vollzugriff auf alle Bereiche             |
+| **User**  | `user@local`   | `user`   | Standard-User mit eingeschränkten Rechten |
 
-**⚠️ WICHTIG:** Diese Test-User sind nur für die Entwicklung gedacht und müssen in Production geändert oder gelöscht werden!
+**⚠️ SICHERHEITSHINWEIS:**  
+Diese Credentials sind nur für die **Entwicklung** gedacht!  
+**In Production müssen diese User gelöscht oder die Passwörter geändert werden!**
 
 Siehe auch: [App Wiki - Authentifizierung](src/content/wiki.md#kapitel-7-authentifizierung-und-test-user)
 
