@@ -7,8 +7,8 @@
  * Die erstellten Test-User müssen in Production geändert oder gelöscht werden!
  *
  * Legt zwei Test-User an:
- * - admin@local (Admin-Rolle) - Passwort: admin
- * - user@local (User-Rolle) - Passwort: user
+ * - admin@local (Admin-Rolle) - Passwort: admin123
+ * - user@local (User-Rolle) - Passwort: user123
  *
  * Das Script ist idempotent: Es kann mehrfach ausgeführt werden ohne Duplikate zu erstellen.
  * Bestehende User werden aktualisiert (Passwort und Rolle).

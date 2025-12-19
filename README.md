@@ -116,10 +116,10 @@ Detaillierte Anleitung: [Multi-Tenant Architektur](docs/04_knowledge/multi-tenan
 
 Bei der Einrichtung mit `kessel-cli` werden automatisch zwei Standard-User angelegt:
 
-| Rolle     | E-Mail-Adresse | Passwort | Beschreibung                              |
-| --------- | -------------- | -------- | ----------------------------------------- |
-| **Admin** | `admin@local`  | `admin`  | Vollzugriff auf alle Bereiche             |
-| **User**  | `user@local`   | `user`   | Standard-User mit eingeschränkten Rechten |
+| Rolle     | E-Mail-Adresse | Passwort   | Beschreibung                              |
+| --------- | -------------- | ---------- | ----------------------------------------- |
+| **Admin** | `admin@local`  | `admin123` | Vollzugriff auf alle Bereiche             |
+| **User**  | `user@local`   | `user123`  | Standard-User mit eingeschränkten Rechten |
 
 **⚠️ SICHERHEITSHINWEIS:**  
 Diese Credentials sind nur für die **Entwicklung** gedacht!  

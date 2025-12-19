@@ -90,8 +90,8 @@ kessel meine-app
 #    - Schema im Shared Supabase-Projekt (z.B. "galaxy")
 #    - Alle Datenbank-Tabellen im Schema (Migrationen)
 #    - Standard-User für sofortigen Zugriff (Shared Auth):
-#      → admin@local / admin (Admin-Rolle) - existiert für ALLE Projekte
-#      → user@local / user (User-Rolle) - existiert für ALLE Projekte
+#      → admin@local / admin123 (Admin-Rolle) - existiert für ALLE Projekte
+#      → user@local / user123 (User-Rolle) - existiert für ALLE Projekte
 
 # 5. Nach erfolgreicher Erstellung:
 cd meine-app
@@ -100,8 +100,8 @@ cd meine-app
 pnpm dev
 
 # 7. Einloggen mit Standard-Credentials:
-#    → admin@local / admin (für Admin-Zugriff)
-#    → user@local / user (für normalen User)
+#    → admin@local / admin123 (für Admin-Zugriff)
+#    → user@local / user123 (für normalen User)
 ```
 
 ## 💡 Tipp: Cursor direkt im neuen Projekt öffnen
@@ -118,10 +118,10 @@ Nachdem das Projekt erstellt wurde:
 
 Das CLI erstellt automatisch zwei Standard-User für die Entwicklung:
 
-| E-Mail        | Passwort | Rolle |
-| ------------- | -------- | ----- |
-| `admin@local` | `admin`  | Admin |
-| `user@local`  | `user`   | User  |
+| E-Mail        | Passwort   | Rolle |
+| ------------- | ---------- | ----- |
+| `admin@local` | `admin123` | Admin |
+| `user@local`  | `user123`  | User  |
 
 **⚠️ SICHERHEITSHINWEIS:**  
 Diese Credentials sind nur für die Entwicklung gedacht!  
