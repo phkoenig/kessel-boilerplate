@@ -7,6 +7,7 @@ import { Loader2, User, Shield, AlertCircle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useAuth } from "@/components/auth/auth-context"
 
 interface DevUser {
   id: string
@@ -27,6 +28,7 @@ export function DevUserSelector(): React.ReactElement {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/"
+  const { refreshUser } = useAuth()
 
   const [users, setUsers] = useState<DevUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,6 +81,13 @@ export function DevUserSelector(): React.ReactElement {
         const errorData = await response.json()
         throw new Error(errorData.error || "Fehler beim Anmelden")
       }
+
+      // WICHTIG: Explizit den Auth-State aktualisieren, damit die Navbar sofort aktualisiert wird
+      // refreshUser() lädt den neuen User und aktualisiert den Auth-Context
+      await refreshUser()
+
+      // Kurze Verzögerung, damit der Auth-State sich propagieren kann
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       // Erfolgreich eingeloggt - Redirect
       router.push(redirectTo)
