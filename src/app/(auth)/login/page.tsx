@@ -45,7 +45,8 @@ function AuthUI(): React.ReactElement {
       </CardHeader>
       <CardContent>
         <Auth
-          supabaseClient={supabase}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Multi-Tenant Schema-Typ ist nicht mit Auth-UI kompatibel
+          supabaseClient={supabase as any}
           appearance={{
             theme: ThemeSupa,
             variables: {

@@ -59,11 +59,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Extrahiere Token-Hash (direkt aus Properties oder aus Magic Link URL)
-    let tokenHash = linkData.properties.token_hash
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase Typen sind nicht vollständig
+    const properties = linkData.properties as any
+    let tokenHash = properties.token_hash
 
     // Fallback: Extrahiere Token aus Magic Link URL falls token_hash nicht verfügbar
     if (!tokenHash) {
-      const magicLink = linkData.properties.action_link
+      const magicLink = properties.action_link
       const tokenMatch = magicLink?.match(/token=([^&]+)/)
       tokenHash = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null
     }
