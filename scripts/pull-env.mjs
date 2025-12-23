@@ -46,21 +46,52 @@ async function fetchSecretsFromSupabase() {
   return data
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// LOCAL DEVELOPMENT DEFAULTS
+// Diese Variablen werden automatisch hinzugefügt und sind NICHT im Vault gespeichert.
+// Sie gelten nur für lokale Entwicklung.
+// ═══════════════════════════════════════════════════════════════════════════
+const LOCAL_DEV_DEFAULTS = {
+  // Auth-Bypass aktiviert den DevUserSelector auf der Login-Seite
+  NEXT_PUBLIC_AUTH_BYPASS: "true",
+}
+
 async function run() {
   try {
     // 1. Primäre Validierung (Konnektivität & SERVICE_ROLE_KEY)
     log(chalk.blue("🔐 Rufe Secrets aus dem Supabase Vault ab...\n"))
     const secrets = await fetchSecretsFromSupabase()
 
-    const envFileContent = Object.entries(secrets)
-      .map(([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`)
-      .join("\n")
+    // 2. Vault-Secrets formatieren
+    const vaultEnvLines = Object.entries(secrets).map(
+      ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
+    )
+
+    // 3. Local Dev Defaults hinzufügen
+    const devDefaultsLines = Object.entries(LOCAL_DEV_DEFAULTS).map(
+      ([key, value]) => `${key}=${value}`
+    )
+
+    // 4. Alles zusammenfügen mit Kommentar-Sektion
+    const envFileContent = [
+      "# ════════════════════════════════════════════════════════════════════",
+      "# Secrets aus Supabase Vault (via pnpm pull-env)",
+      "# ════════════════════════════════════════════════════════════════════",
+      ...vaultEnvLines,
+      "",
+      "# ════════════════════════════════════════════════════════════════════",
+      "# Local Development Defaults (automatisch hinzugefügt)",
+      "# ════════════════════════════════════════════════════════════════════",
+      ...devDefaultsLines,
+      "", // Trailing newline
+    ].join("\n")
 
     const envPath = path.resolve(process.cwd(), ".env.local")
 
-    // 2. Secrets in .env.local schreiben
+    // 5. Secrets in .env.local schreiben
     fs.writeFileSync(envPath, envFileContent)
     log(chalk.yellow("📝 .env.local erfolgreich geschrieben.\n"))
+    log(chalk.magenta("🔧 Local Dev Defaults aktiviert: NEXT_PUBLIC_AUTH_BYPASS=true\n"))
 
     // --- BEGINN DER FAIL-FAST VALIDIERUNG ---
 

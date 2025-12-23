@@ -63,19 +63,26 @@ SERVICE_ROLE_KEY=eyJ...  # KESSEL Service Role Key
 ### `.env.local` (Runtime - Generiert)
 
 ```bash
-# Generiert von: pnpm pull-env
-# Enthält alle Secrets aus dem KESSEL-Vault
+# ════════════════════════════════════════════════════════════════════
+# Secrets aus Supabase Vault (via pnpm pull-env)
+# ════════════════════════════════════════════════════════════════════
 NEXT_PUBLIC_SUPABASE_URL=https://ufqlocxqizmiaozkashi.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...  # Public Key für Client
 GOOGLE_GENERATIVE_AI_API_KEY=...
 OPENAI_API_KEY=...
 # ... weitere Secrets
+
+# ════════════════════════════════════════════════════════════════════
+# Local Development Defaults (automatisch hinzugefügt)
+# ════════════════════════════════════════════════════════════════════
+NEXT_PUBLIC_AUTH_BYPASS=true
 ```
 
 **Wichtig:**
 
 - Wird **automatisch generiert** von `pnpm pull-env`
 - Enthält alle Secrets aus dem KESSEL-Vault
+- **Local Dev Bypass** ist standardmäßig aktiviert (DevUserSelector statt Login-Form)
 - In `.gitignore` → wird niemals committed
 
 ---
