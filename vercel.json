@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install -g pnpm@10 && pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm build"
+  "buildCommand": "pnpm build",
+  "build": {
+    "env": {
+      "SKIP_ENV_VALIDATION": "true"
+    }
+  }
 }
