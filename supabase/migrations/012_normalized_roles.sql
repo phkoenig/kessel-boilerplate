@@ -86,12 +86,14 @@ ALTER TABLE module_role_access ENABLE ROW LEVEL SECURITY;
 -- ============================================
 
 -- Alle können Rollen lesen
+DROP POLICY IF EXISTS "Alle können Rollen lesen" ON roles;
 CREATE POLICY "Alle können Rollen lesen"
   ON roles
   FOR SELECT
   USING (true);
 
 -- Nur Admins können Rollen erstellen
+DROP POLICY IF EXISTS "Nur Admins können Rollen erstellen" ON roles;
 CREATE POLICY "Nur Admins können Rollen erstellen"
   ON roles
   FOR INSERT
@@ -104,6 +106,7 @@ CREATE POLICY "Nur Admins können Rollen erstellen"
   );
 
 -- Nur Admins können Rollen aktualisieren
+DROP POLICY IF EXISTS "Nur Admins können Rollen aktualisieren" ON roles;
 CREATE POLICY "Nur Admins können Rollen aktualisieren"
   ON roles
   FOR UPDATE
@@ -116,6 +119,7 @@ CREATE POLICY "Nur Admins können Rollen aktualisieren"
   );
 
 -- Nur Admins können nicht-System-Rollen löschen
+DROP POLICY IF EXISTS "Nur Admins können nicht-System-Rollen löschen" ON roles;
 CREATE POLICY "Nur Admins können nicht-System-Rollen löschen"
   ON roles
   FOR DELETE
@@ -133,12 +137,14 @@ CREATE POLICY "Nur Admins können nicht-System-Rollen löschen"
 -- ============================================
 
 -- Alle können Berechtigungen lesen
+DROP POLICY IF EXISTS "Alle können Berechtigungen lesen" ON module_role_access;
 CREATE POLICY "Alle können Berechtigungen lesen"
   ON module_role_access
   FOR SELECT
   USING (true);
 
 -- Nur Admins können Berechtigungen erstellen
+DROP POLICY IF EXISTS "Nur Admins können Berechtigungen erstellen" ON module_role_access;
 CREATE POLICY "Nur Admins können Berechtigungen erstellen"
   ON module_role_access
   FOR INSERT
@@ -151,6 +157,7 @@ CREATE POLICY "Nur Admins können Berechtigungen erstellen"
   );
 
 -- Nur Admins können Berechtigungen aktualisieren
+DROP POLICY IF EXISTS "Nur Admins können Berechtigungen aktualisieren" ON module_role_access;
 CREATE POLICY "Nur Admins können Berechtigungen aktualisieren"
   ON module_role_access
   FOR UPDATE
@@ -163,6 +170,7 @@ CREATE POLICY "Nur Admins können Berechtigungen aktualisieren"
   );
 
 -- Nur Admins können Berechtigungen löschen
+DROP POLICY IF EXISTS "Nur Admins können Berechtigungen löschen" ON module_role_access;
 CREATE POLICY "Nur Admins können Berechtigungen löschen"
   ON module_role_access
   FOR DELETE

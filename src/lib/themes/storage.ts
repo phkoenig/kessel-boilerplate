@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "@/utils/supabase/client"
+import { getTenantStoragePath } from "@/lib/utils/tenant"
 
 /**
  * Theme-Metadaten aus der Datenbank.
@@ -76,12 +77,12 @@ export async function fetchTheme(themeId: string): Promise<ThemeRecord | null> {
  * Lädt das CSS für ein Theme aus dem Storage.
  * Gibt null zurück, wenn das Theme nicht existiert (Fallback auf lokale Datei).
  *
- * Multi-Tenant: Themes werden in projekt-spezifischen Ordnern gespeichert.
+ * Multi-Tenant: Themes liegen im tenant-spezifischen Ordner.
+ * Bei Tenant-Erstellung wird automatisch ein Default-Theme kopiert.
  */
 export async function fetchThemeCSS(themeId: string): Promise<string | null> {
   const supabase = createClient()
-  const schemaName = process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public"
-  const storagePath = schemaName === "public" ? `${themeId}.css` : `${schemaName}/${themeId}.css`
+  const storagePath = getTenantStoragePath(`${themeId}.css`)
 
   const { data, error } = await supabase.storage.from("themes").download(storagePath)
 
@@ -99,9 +100,8 @@ export async function fetchThemeCSS(themeId: string): Promise<string | null> {
 export async function saveTheme(theme: ThemeData): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
 
-  // 1. CSS in Storage speichern (Multi-Tenant: projekt-spezifischer Ordner)
-  const schemaName = process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public"
-  const storagePath = schemaName === "public" ? `${theme.id}.css` : `${schemaName}/${theme.id}.css`
+  // 1. CSS in Storage speichern (Multi-Tenant: tenant-spezifischer Ordner)
+  const storagePath = getTenantStoragePath(`${theme.id}.css`)
   const cssContent = `/* Theme: ${theme.name} */\n\n/* Light Mode */\n${theme.lightCSS}\n\n/* Dark Mode */\n${theme.darkCSS}`
 
   const { error: storageError } = await supabase.storage
@@ -175,9 +175,8 @@ export async function deleteTheme(themeId: string): Promise<{ success: boolean; 
     return { success: false, error: "Builtin-Themes können nicht gelöscht werden" }
   }
 
-  // 1. CSS aus Storage löschen (Multi-Tenant: projekt-spezifischer Ordner)
-  const schemaName = process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public"
-  const storagePath = schemaName === "public" ? `${themeId}.css` : `${schemaName}/${themeId}.css`
+  // 1. CSS aus Storage löschen (Multi-Tenant: tenant-spezifischer Ordner)
+  const storagePath = getTenantStoragePath(`${themeId}.css`)
   const { error: storageError } = await supabase.storage.from("themes").remove([storagePath])
 
   if (storageError) {
@@ -222,12 +221,11 @@ export async function themeExists(themeId: string): Promise<boolean> {
 /**
  * Generiert die URL für das Theme-CSS im Storage.
  *
- * Multi-Tenant: Themes werden in projekt-spezifischen Ordnern gespeichert.
+ * Multi-Tenant: Themes liegen im tenant-spezifischen Ordner.
  */
 export function getThemeCSSUrl(themeId: string): string {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const schemaName = process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public"
-  const storagePath = schemaName === "public" ? `${themeId}.css` : `${schemaName}/${themeId}.css`
+  const storagePath = getTenantStoragePath(`${themeId}.css`)
   return `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}`
 }
 

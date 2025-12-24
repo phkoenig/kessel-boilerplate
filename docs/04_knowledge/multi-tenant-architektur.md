@@ -1,123 +1,63 @@
-# Multi-Tenant Architektur
+# Multi-Tenant Architektur (RLS-basiert)
 
-## Übersicht
+## Konzept
 
-Die Kessel-Boilerplate verwendet eine **Multi-Tenant-Architektur**, um mehrere Projekte kosteneffizient in einem einzigen Supabase-Projekt zu betreiben.
+Alle Kessel-Projekte teilen sich **ein Supabase-Projekt** mit Tenant-Isolation via Row Level Security (RLS).
 
-## Architektur-Prinzipien
+**Projekt**: `ufqlocxqizmiaozkashi` (Kessel)
 
-### 1. Shared Supabase-Projekt
+## Datenstruktur
 
-Alle Kessel-Projekte teilen sich **ein** Supabase-Projekt:
+```
+app.tenants          → Tenant-Metadaten (id, slug, name)
+app.user_tenants     → User-Tenant-Zuordnung (N:M, mit role)
+public.* Tabellen    → Alle haben tenant_id Spalte
+```
 
-- **Projekt-Ref**: `ufqlocxqizmiaozkashi` (Name: "Kessel")
-- **URL**: `https://ufqlocxqizmiaozkashi.supabase.co`
-- **Vorteil**: Nur ein kostenloses Supabase-Projekt nötig (Free Tier Limit: 2 Projekte)
-- **Enthält**: Datenbank, Auth, Storage und **Vault (Secrets)**
+## Funktionsweise
 
-### 2. Schema-Isolation
+1. **Auth Hook** injiziert `tenant_id` in JWT beim Login
+2. **RLS Policies** erzwingen `tenant_id = app.current_tenant_id()`
+3. **Automatische Filterung** - keine explizite tenant_id Angabe in Queries nötig
 
-Jedes Kessel-Projekt hat ein **eigenes Postgres-Schema**:
-
-- Projekt "galaxy" → Schema `galaxy`
-- Projekt "nova" → Schema `nova`
-- Projekt "moon" → Schema `moon`
-
-**Isolation:**
-
-- Tabellen sind vollständig isoliert
-- RLS Policies funktionieren pro Schema
-- Keine Datenvermischung zwischen Projekten
-
-### 3. Shared Auth
-
-**Auth ist shared** - alle Projekte teilen sich dieselben User:
-
-- Standard-User (`admin@local`, `user@local`) existieren **einmal** für alle Projekte
-- Neue User werden im Shared Auth erstellt
-- Profile werden **pro Schema** erstellt (Isolation)
-
-## Environment-Variablen
-
-Jedes Projekt benötigt in `.env.local`:
+## Environment
 
 ```env
-# Shared Supabase-Projekt
 NEXT_PUBLIC_SUPABASE_URL=https://ufqlocxqizmiaozkashi.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-
-# Projekt-spezifisches Schema
-NEXT_PUBLIC_PROJECT_SCHEMA=galaxy
+NEXT_PUBLIC_TENANT_SLUG=galaxy
 ```
 
-## Supabase-Client Konfiguration
+> `NEXT_PUBLIC_PROJECT_SCHEMA` ist veraltet → `NEXT_PUBLIC_TENANT_SLUG` verwenden
 
-Der Supabase-Client wird automatisch mit Schema-Support konfiguriert:
+## Supabase Client
 
 ```typescript
-// src/utils/supabase/client.ts
-const client = createBrowserClient(url, key, {
-  db: {
-    schema: process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public",
-  },
-})
+// Kein db.schema Override - RLS übernimmt Isolation
+const client = createBrowserClient(url, key)
 ```
 
-**Alle Queries** verwenden automatisch das richtige Schema - keine explizite Schema-Angabe nötig!
-
-## Storage-Isolation
-
-Themes werden in projekt-spezifischen Ordnern gespeichert:
-
-- `themes/galaxy/theme-name.css`
-- `themes/nova/theme-name.css`
-
-Der Storage-Pfad wird automatisch basierend auf `NEXT_PUBLIC_PROJECT_SCHEMA` generiert.
-
-## Migrationen
-
-Migrationen werden **pro Schema** ausgeführt:
+## Neues Projekt
 
 ```bash
-# Automatisch bei CLI-Installation
-node scripts/apply-migrations-to-schema.mjs galaxy
-
-# Manuell
-CREATE SCHEMA IF NOT EXISTS "galaxy";
-SET search_path TO "galaxy";
--- Migrationen ausführen...
+npx kessel init
 ```
 
-## Vorteile
+## Setup
 
-✅ **Kostenlos**: Nur ein Supabase-Projekt nötig  
-✅ **Isolation**: Vollständige Daten-Trennung zwischen Projekten  
-✅ **Einfach**: Keine explizite Schema-Angabe in Queries nötig  
-✅ **Skalierbar**: Beliebige Anzahl Projekte möglich
-
-## Nachteile
-
-⚠️ **Shared Auth**: User existieren für alle Projekte  
-⚠️ **Storage-Limits**: Ein Bucket für alle Projekte (aber Ordner-Isolation)  
-⚠️ **Komplexität**: Schema-Management erfordert Disziplin
-
-## Best Practices
-
-1. **Schema-Namen**: Verwende nur Kleinbuchstaben und Unterstriche (Postgres-Limit)
-2. **Migrationen**: Immer Schema-aware ausführen
-3. **Storage**: Verwende projekt-spezifische Ordner-Prefixe
-4. **Testing**: Teste Isolation zwischen Projekten
+1. **Auth Hook aktivieren**: Dashboard → Authentication → Hooks → Custom Access Token
+   - Type: `Postgres Function`, Schema: `app`, Function: `custom_access_token_hook`
 
 ## Troubleshooting
 
-### Problem: Daten von Projekt A sind in Projekt B sichtbar
+| Problem                     | Lösung                                  |
+| --------------------------- | --------------------------------------- |
+| User sieht keine Daten      | Prüfe `app.user_tenants` und Auth Hook  |
+| tenant_id fehlt im JWT      | Auth Hook aktivieren                    |
+| Daten-Leak zwischen Tenants | Prüfe RLS Policies und tenant_id Spalte |
 
-**Lösung**: Prüfe `NEXT_PUBLIC_PROJECT_SCHEMA` in `.env.local` - muss unterschiedlich sein!
+## Referenzen
 
-### Problem: Migrationen funktionieren nicht
-
-**Lösung**: Verwende `scripts/apply-migrations-to-schema.mjs` statt `supabase db push`
-
-### Problem: Storage-Pfade funktionieren nicht
-
-**Lösung**: Prüfe ob `NEXT_PUBLIC_PROJECT_SCHEMA` gesetzt ist - Storage verwendet projekt-spezifische Ordner
+- [Auth Hook Setup](rls-auth-hook-setup.md)
+- [Testing Guide](rls-testing-guide.md)
+- [Migration Guide](tenant-migration-guide.md)

@@ -74,6 +74,8 @@ interface CustomThemeProviderProps {
 /**
  * Lädt dynamische Theme-CSS-Datei aus Supabase Storage.
  * Prüft zuerst, ob das CSS bereits serverseitig oder client-seitig geladen wurde.
+ *
+ * Multi-Tenant: Themes liegen im tenant-spezifischen Ordner.
  */
 async function loadDynamicThemeCSS(themeId: string): Promise<void> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -82,7 +84,6 @@ async function loadDynamicThemeCSS(themeId: string): Promise<void> {
   // Prüfe, ob das CSS bereits serverseitig geladen wurde (als <style> Tag)
   const existingStyle = document.getElementById("default-theme-css")
   if (themeId === "default" && existingStyle) {
-    // Default-Theme ist bereits serverseitig geladen - nichts zu tun
     return
   }
 
@@ -90,18 +91,16 @@ async function loadDynamicThemeCSS(themeId: string): Promise<void> {
   const existingLink = document.querySelector(`link[data-theme-id="${themeId}"]`)
   if (existingLink) return
 
-  // Multi-Tenant: Schema-basierter Storage-Pfad
-  const schemaName = process.env.NEXT_PUBLIC_PROJECT_SCHEMA || "public"
-  const storagePath = schemaName === "public" ? `${themeId}.css` : `${schemaName}/${themeId}.css`
-  const cssUrl = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}`
+  // Multi-Tenant: Tenant-basierter Storage-Pfad
+  const tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null
+  const storagePath =
+    tenantSlug && tenantSlug !== "public" ? `${tenantSlug}/${themeId}.css` : `${themeId}.css`
 
-  // Erstelle neues Link-Element
   const link = document.createElement("link")
   link.rel = "stylesheet"
-  link.href = cssUrl
+  link.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}`
   link.setAttribute("data-theme-id", themeId)
 
-  // Füge zum Head hinzu
   document.head.appendChild(link)
 }
 

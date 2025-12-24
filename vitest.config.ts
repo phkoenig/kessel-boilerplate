@@ -20,6 +20,7 @@ export const vitestConfig = defineConfig({
       "src/**/*.test.tsx",
       "scripts/**/*.test.ts",
       "eslint/rules/**/*.test.ts",
+      "supabase/**/*.test.ts",
     ],
 
     // Ausgeschlossene Verzeichnisse
