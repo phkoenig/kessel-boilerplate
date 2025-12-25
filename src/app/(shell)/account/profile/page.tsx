@@ -36,6 +36,7 @@ export default function ProfilePage(): React.ReactElement {
 
   // Track which field is currently being saved
   const [savingField, setSavingField] = useState<string | null>(null)
+  const [_isSaving, setIsSaving] = useState(false)
 
   // Initialize form values from user data
   useEffect(() => {

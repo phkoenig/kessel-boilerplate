@@ -224,10 +224,7 @@ export function RoleManagement({
         throw deleteError
       }
 
-      // Erfolg: Dialog schließen
-      setShowDeleteDialog(null)
-
-      // Callback aufrufen
+      // Callback aufrufen (AlertDialog schließt sich automatisch)
       onRoleDeleted()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Löschen der Rolle")

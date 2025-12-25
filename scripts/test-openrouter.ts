@@ -267,6 +267,12 @@ async function testChatCompletion(): Promise<boolean> {
  */
 async function runTests() {
   console.log("🚀 OpenRouter Connectivity-Test\n")
+
+  if (!OPENROUTER_API_KEY) {
+    console.error("❌ OPENROUTER_API_KEY nicht gesetzt!")
+    process.exit(1)
+  }
+
   console.log(`📡 API Key: ${OPENROUTER_API_KEY.substring(0, 20)}...`)
   console.log(`🌐 Base URL: ${OPENROUTER_BASE_URL}\n`)
 

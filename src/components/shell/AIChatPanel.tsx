@@ -16,11 +16,9 @@
 
 import { useEffect } from "react"
 import { AssistantRuntimeProvider } from "@assistant-ui/react"
-import { useChat } from "@ai-sdk/react"
-import { useAISDKRuntime } from "@assistant-ui/react-ai-sdk"
+import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk"
 import { cn } from "@/lib/utils"
 import { Thread } from "@/components/thread"
-import { useInteractionLog } from "@/hooks/use-interaction-log"
 import { useScreenshotCache } from "@/hooks/use-screenshot-cache"
 import {
   captureHtmlDump,
@@ -36,80 +34,61 @@ interface AIChatPanelProps {
   className?: string
 }
 
+// Transport-Instanz außerhalb der Komponente erstellen
+// (wird nur einmal erstellt, keine Refs nötig)
+const chatTransport = new AssistantChatTransport({
+  api: "/api/chat",
+  credentials: "include",
+  prepareSendMessagesRequest: async ({ messages }) => {
+    console.log("[AIChatPanel] ===== SEND REQUEST =====")
+    console.log("[AIChatPanel] Messages count:", messages.length)
+
+    // Log ALLE Messages mit Content - mit null-safety
+    messages.forEach((m, i) => {
+      console.log(`[AIChatPanel] Message ${i}: role=${m.role}`)
+      console.log(`[AIChatPanel] Message ${i} raw:`, JSON.stringify(m).substring(0, 500))
+    })
+
+    // Context sammeln
+    const route = getCurrentRoute()
+    const htmlDump = captureHtmlDump()
+    // Interactions können wir nicht direkt vom Hook holen,
+    // da wir außerhalb der Komponente sind
+    const interactions: unknown[] = []
+
+    // Screenshot IMMER frisch machen bei jeder Nachricht
+    console.log("[AIChatPanel] Capturing screenshot...")
+    const screenshot = await captureScreenshot()
+    console.log("[AIChatPanel] Screenshot:", screenshot ? `${screenshot.length} chars` : "null")
+
+    const requestBody = {
+      messages,
+      route,
+      htmlDump,
+      interactions,
+      screenshot,
+    }
+
+    console.log("[AIChatPanel] Request body keys:", Object.keys(requestBody))
+    console.log("[AIChatPanel] ===== END SEND =====")
+
+    return { body: requestBody }
+  },
+})
+
 /**
  * AIChatPanel Komponente
  */
 export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement {
-  // Hooks für Context-Sammlung
-  const { logInteraction, getRecentInteractions } = useInteractionLog()
   const { pathname } = useScreenshotCache()
 
-  // AI SDK useChat mit prepareSendMessagesRequest für Context-Injection
-  const chat = useChat({
-    api: "/api/chat",
-    credentials: "include",
-    // Context wird bei jedem append() im body mitgeschickt
+  // useChatRuntime mit Transport
+  const runtime = useChatRuntime({
+    transport: chatTransport,
     onError: (error) => {
-      console.error("[AIChatPanel] useChat onError:", error)
+      console.error("[AIChatPanel] Chat onError:", error)
     },
   })
-
-  // Assistant-UI Runtime - wrapped den chat mit Context-Injection
-  const runtime = useAISDKRuntime(chat, {
-    prepareSendMessagesRequest: async ({ messages }) => {
-      console.log("[AIChatPanel] ===== SEND REQUEST =====")
-      console.log("[AIChatPanel] Messages count:", messages.length)
-
-      // Log ALLE Messages mit Content - mit null-safety
-      messages.forEach((m, i) => {
-        console.log(`[AIChatPanel] Message ${i}: role=${m.role}`)
-        console.log(`[AIChatPanel] Message ${i} raw:`, JSON.stringify(m).substring(0, 500))
-      })
-
-      // Context sammeln
-      const route = getCurrentRoute()
-      const htmlDump = captureHtmlDump()
-      const interactions = getRecentInteractions(20)
-
-      // Screenshot IMMER frisch machen bei jeder Nachricht
-      console.log("[AIChatPanel] Capturing screenshot...")
-      const screenshot = await captureScreenshot()
-      console.log("[AIChatPanel] Screenshot:", screenshot ? `${screenshot.length} chars` : "null")
-
-      logInteraction("chat_send", "ai-chat-panel", {
-        route,
-        hasScreenshot: !!screenshot,
-        interactionsCount: interactions.length,
-      })
-
-      const requestBody = {
-        messages,
-        route,
-        htmlDump,
-        interactions,
-        screenshot,
-      }
-
-      console.log("[AIChatPanel] Request body keys:", Object.keys(requestBody))
-      console.log("[AIChatPanel] ===== END SEND =====")
-
-      return requestBody
-    },
-  })
-
-  // Debug: log chat state
-  useEffect(() => {
-    console.log("[AIChatPanel] Chat state:", {
-      status: chat.status,
-      messagesCount: chat.messages?.length ?? 0,
-    })
-  }, [chat.status, chat.messages])
-
-  // Log chat open
-  useEffect(() => {
-    logInteraction("chat_open", "ai-chat-panel")
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Nur beim Mount
-  }, [])
 
   // Log route changes
   useEffect(() => {
