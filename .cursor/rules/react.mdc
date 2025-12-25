@@ -1,0 +1,199 @@
+---
+description: React 19 Patterns und Best Practices für Server/Client Components.
+globs: ["**/*.tsx", "**/*.jsx"]
+alwaysApply: false
+---
+
+# React 19 Patterns
+
+Dieses Projekt verwendet React 19 mit dem Next.js App Router. Die wichtigste Unterscheidung ist zwischen Server Components und Client Components.
+
+## Server Components (Standard)
+
+**Jede Komponente ist standardmäßig eine Server Component**, es sei denn, sie verwendet `"use client"`.
+
+### Wann Server Components verwenden:
+- Datenfetching (direkt `await` in der Komponente)
+- Zugriff auf Backend-Ressourcen (Datenbank, Dateisystem)
+- Sensible Daten (API-Keys, Tokens)
+- Große Dependencies, die nicht zum Client gesendet werden sollen
+
+### Beispiel Server Component:
+```tsx
+// app/(shell)/users/page.tsx
+// KEINE "use client" Direktive = Server Component
+
+import { createClient } from "@/utils/supabase/server"
+import { UserList } from "./user-list"
+
+export default async function UsersPage() {
+  const supabase = await createClient()
+  const { data: users } = await supabase.from("profiles").select("*")
+  
+  return <UserList users={users ?? []} />
+}
+```
+
+---
+
+## Client Components
+
+Verwende `"use client"` NUR wenn die Komponente:
+- React Hooks verwendet (`useState`, `useEffect`, `useContext`, etc.)
+- Event Handler benötigt (`onClick`, `onChange`, etc.)
+- Browser-APIs verwendet (`window`, `document`, `localStorage`)
+- Interaktive UI-Elemente hat
+
+### Beispiel Client Component:
+```tsx
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+
+interface CounterProps {
+  initialCount: number
+}
+
+export function Counter({ initialCount }: CounterProps) {
+  const [count, setCount] = useState(initialCount)
+  
+  return (
+    <Button onClick={() => setCount(c => c + 1)}>
+      Count: {count}
+    </Button>
+  )
+}
+```
+
+---
+
+## Composition Pattern
+
+**Best Practice:** Server Component als Container, Client Component für Interaktivität.
+
+```tsx
+// page.tsx (Server Component)
+import { createClient } from "@/utils/supabase/server"
+import { DataTable } from "./data-table" // Client Component
+
+export default async function Page() {
+  const supabase = await createClient()
+  const { data } = await supabase.from("items").select("*")
+  
+  // Daten werden als Props an Client Component übergeben
+  return <DataTable data={data ?? []} />
+}
+```
+
+```tsx
+// data-table.tsx (Client Component)
+"use client"
+
+import { useState } from "react"
+import { Table } from "@/components/ui/table"
+
+interface DataTableProps {
+  data: Item[]
+}
+
+export function DataTable({ data }: DataTableProps) {
+  const [sortBy, setSortBy] = useState<string | null>(null)
+  // Interaktive Logik hier...
+  return <Table>...</Table>
+}
+```
+
+---
+
+## React 19 Neue Features
+
+### 1. `use` Hook (experimentell)
+```tsx
+"use client"
+import { use } from "react"
+
+function Comments({ commentsPromise }: { commentsPromise: Promise<Comment[]> }) {
+  const comments = use(commentsPromise)
+  return comments.map(c => <p key={c.id}>{c.text}</p>)
+}
+```
+
+### 2. Actions (Form Actions)
+```tsx
+// Server Action
+async function submitForm(formData: FormData) {
+  "use server"
+  const name = formData.get("name")
+  await saveToDatabase(name)
+}
+
+// In der Komponente
+<form action={submitForm}>
+  <Input name="name" />
+  <Button type="submit">Speichern</Button>
+</form>
+```
+
+### 3. useOptimistic
+```tsx
+"use client"
+import { useOptimistic } from "react"
+
+function TodoList({ todos }: { todos: Todo[] }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (state, newTodo: Todo) => [...state, newTodo]
+  )
+  // ...
+}
+```
+
+---
+
+## Häufige Fehler
+
+### ❌ FALSCH: Hook in Server Component
+```tsx
+// page.tsx (Server Component)
+import { useState } from "react" // ❌ Error!
+
+export default function Page() {
+  const [count, setCount] = useState(0) // ❌ Hooks nur in Client Components
+}
+```
+
+### ❌ FALSCH: Async Client Component
+```tsx
+"use client"
+
+// ❌ Client Components können nicht async sein
+export default async function ClientComponent() {
+  const data = await fetch(...) // ❌ Error!
+}
+```
+
+### ✅ RICHTIG: Daten als Props übergeben
+```tsx
+// Server Component fetcht
+export default async function Page() {
+  const data = await fetchData()
+  return <ClientComponent data={data} />
+}
+
+// Client Component empfängt
+"use client"
+export function ClientComponent({ data }: { data: Data }) {
+  // Verwende data hier
+}
+```
+
+---
+
+## Regeln
+
+1. **Server Components sind der Standard** - Füge `"use client"` nur hinzu wenn nötig
+2. **Minimiere Client Components** - Je weniger JS zum Client, desto besser
+3. **Props statt Fetching** - Client Components erhalten Daten via Props
+4. **Keine Secrets im Client** - API-Keys nur in Server Components
+5. **Composition Pattern** - Server Container + Client Interaktivität

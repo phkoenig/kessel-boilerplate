@@ -1,0 +1,381 @@
+---
+description: Supabase Patterns für Auth, RLS, Migrations und Storage.
+globs: ["**/utils/supabase/**", "**/api/**", "supabase/**", "**/auth/**"]
+alwaysApply: false
+---
+
+# Supabase
+
+Dieses Projekt verwendet Supabase als Backend mit Auth, PostgreSQL, RLS und Storage.
+
+## Client-Erstellung
+
+### Server-Kontext (Server Components, API Routes)
+```typescript
+// src/utils/supabase/server.ts
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
+
+export async function createClient() {
+  const cookieStore = await cookies()
+  
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // Server Action/Route Handler kann keine Cookies setzen
+          }
+        },
+        remove(name: string, options) {
+          try {
+            cookieStore.set({ name, value: "", ...options })
+          } catch {}
+        },
+      },
+    }
+  )
+}
+```
+
+### Client-Kontext (Client Components)
+```typescript
+// src/utils/supabase/client.ts
+import { createBrowserClient } from "@supabase/ssr"
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+```
+
+### Proxy (Next.js 16)
+```typescript
+// src/proxy.ts
+import { createServerClient } from "@supabase/ssr"
+
+export default async function proxy(request: NextRequest) {
+  const response = NextResponse.next({ request })
+  
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
+  
+  await supabase.auth.getUser()
+  return response
+}
+```
+
+---
+
+## Authentication
+
+### Auth Context
+```typescript
+// src/components/auth/auth-context.tsx
+"use client"
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Initial Load
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) loadUserProfile(data.user)
+    })
+
+    // Auth State Listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          setUser(await loadUserProfile(session.user))
+        } else if (event === "SIGNED_OUT") {
+          setUser(null)
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  return <AuthContext.Provider value={{ user, ... }}>{children}</AuthContext.Provider>
+}
+```
+
+### Login/Logout
+```typescript
+// Login
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+})
+
+// Logout
+await supabase.auth.signOut()
+
+// Session prüfen
+const { data: { user } } = await supabase.auth.getUser()
+```
+
+---
+
+## Row Level Security (RLS)
+
+### RLS aktivieren
+```sql
+-- Migration
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+```
+
+### Policy Patterns
+
+#### Authenticated Users Only
+```sql
+CREATE POLICY "Authenticated can read"
+  ON public.profiles
+  FOR SELECT
+  TO authenticated
+  USING (true);
+```
+
+#### Own Data Only
+```sql
+CREATE POLICY "Users can update own profile"
+  ON public.profiles
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+```
+
+#### Role-Based
+```sql
+CREATE POLICY "Admins can delete"
+  ON public.profiles
+  FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+```
+
+---
+
+## Multi-Tenant Architecture
+
+Dieses Projekt unterstützt Multi-Tenancy über `tenant_id` Spalten mit RLS.
+
+### Tenant-ID im JWT
+```sql
+-- Tenant-ID aus JWT lesen
+CREATE OR REPLACE FUNCTION get_tenant_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::uuid
+$$;
+```
+
+### Tenant-scoped Policies
+```sql
+-- Nur eigene Tenant-Daten sehen
+CREATE POLICY "tenant_isolation"
+  ON public.items
+  FOR ALL
+  TO authenticated
+  USING (tenant_id = get_tenant_id())
+  WITH CHECK (tenant_id = get_tenant_id());
+```
+
+### Tenant beim Insert setzen
+```sql
+-- Trigger für automatische tenant_id
+CREATE OR REPLACE FUNCTION set_tenant_id()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.tenant_id := get_tenant_id();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_tenant_id_trigger
+  BEFORE INSERT ON public.items
+  FOR EACH ROW
+  EXECUTE FUNCTION set_tenant_id();
+```
+
+---
+
+## Migrations
+
+### Migration erstellen
+```bash
+# Neue Migration
+supabase migration new add_feature_table
+
+# Diff gegen Remote
+supabase db diff --use-migra -f new_migration
+```
+
+### Migration anwenden
+```bash
+# Lokal
+supabase db reset
+
+# Remote (Production)
+supabase db push
+```
+
+### Migration-Struktur
+```sql
+-- supabase/migrations/001_create_profiles.sql
+
+-- 1. Tabelle erstellen
+CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text NOT NULL,
+  display_name text,
+  role text DEFAULT 'user',
+  created_at timestamptz DEFAULT now()
+);
+
+-- 2. RLS aktivieren
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- 3. Policies erstellen
+CREATE POLICY "Users can read own profile"
+  ON public.profiles FOR SELECT
+  TO authenticated
+  USING (auth.uid() = id);
+
+-- 4. Indexes
+CREATE INDEX idx_profiles_email ON public.profiles(email);
+```
+
+---
+
+## Storage
+
+### Bucket erstellen
+```sql
+-- Migration
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true);
+
+-- Policy für Upload
+CREATE POLICY "Users can upload own avatar"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'avatars' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+```
+
+### File Upload (Client)
+```typescript
+const { data, error } = await supabase.storage
+  .from("avatars")
+  .upload(`${userId}/avatar.jpg`, file, {
+    upsert: true,
+    contentType: "image/jpeg",
+  })
+```
+
+### Public URL
+```typescript
+const { data } = supabase.storage
+  .from("avatars")
+  .getPublicUrl(`${userId}/avatar.jpg`)
+```
+
+---
+
+## Realtime
+
+### Subscribe to Changes
+```typescript
+const channel = supabase
+  .channel("items-changes")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "items" },
+    (payload) => {
+      console.log("Change:", payload)
+    }
+  )
+  .subscribe()
+
+// Cleanup
+channel.unsubscribe()
+```
+
+---
+
+## Edge Functions (wenn benötigt)
+
+```typescript
+// supabase/functions/hello/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+
+serve(async (req) => {
+  const { name } = await req.json()
+  return new Response(JSON.stringify({ message: `Hello ${name}!` }))
+})
+```
+
+---
+
+## Wichtige Regeln
+
+1. **Immer `@supabase/ssr`** - Nicht `@supabase/auth-helpers` (deprecated)
+2. **RLS immer aktivieren** - Niemals `ALTER TABLE ... DISABLE ROW LEVEL SECURITY`
+3. **`getUser()` statt `getSession()`** - `getUser()` validiert gegen Auth API
+4. **Migrations im Git** - Schema = Single Source of Truth
+5. **SERVICE_ROLE_KEY nur serverseitig** - Niemals im Client-Code
+6. **Cookies korrekt handhaben** - `getAll()`/`setAll()` im Proxy
+
+---
+
+## Environment Variables
+
+| Variable | Kontext | Beschreibung |
+|----------|---------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Client + Server | Projekt-URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + Server | Public/Anon Key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **NUR Server** | Admin-Zugriff, bypassed RLS |
+
+---
+
+## Dateien im Projekt
+
+| Datei | Zweck |
+|-------|-------|
+| `src/utils/supabase/server.ts` | Server Client Factory |
+| `src/utils/supabase/client.ts` | Browser Client Factory |
+| `src/proxy.ts` | Auth Session Refresh |
+| `src/components/auth/auth-context.tsx` | React Auth Provider |
+| `supabase/migrations/` | SQL Migrations |

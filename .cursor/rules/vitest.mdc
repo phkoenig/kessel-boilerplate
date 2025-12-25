@@ -1,0 +1,213 @@
+---
+description: Vitest Unit Test Patterns und AAA-Struktur.
+globs: ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"]
+alwaysApply: false
+---
+
+# Vitest Unit Tests
+
+Dieses Projekt verwendet Vitest für Unit Tests.
+
+## Test-Struktur (Arrange-Act-Assert)
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { fetchUserProfile } from "./user.service"
+import { api } from "./api/api.client"
+
+// Arrange: Mocke das API-Modul
+vi.mock("./api/api.client")
+
+describe("fetchUserProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks() // Wichtig für saubere Tests
+  })
+
+  it("sollte das Benutzerprofil bei Erfolg zurückgeben", async () => {
+    // Arrange
+    const mockProfile = { id: "1", email: "test@test.com" }
+    vi.mocked(api.get).mockResolvedValue({ data: mockProfile })
+
+    // Act
+    const result = await fetchUserProfile("1")
+
+    // Assert
+    expect(result).toEqual(mockProfile)
+    expect(api.get).toHaveBeenCalledWith("/users/1")
+  })
+
+  it("sollte einen Fehler werfen bei 404", async () => {
+    // Arrange
+    vi.mocked(api.get).mockRejectedValue({ status: 404 })
+
+    // Act & Assert
+    await expect(fetchUserProfile("unknown")).rejects.toThrow()
+  })
+})
+```
+
+---
+
+## Mocking
+
+### Module mocken
+```typescript
+// Am Anfang der Datei
+vi.mock("@/utils/supabase/server")
+
+// Im Test
+import { createClient } from "@/utils/supabase/server"
+
+vi.mocked(createClient).mockResolvedValue({
+  from: vi.fn().mockReturnValue({
+    select: vi.fn().mockResolvedValue({ data: [], error: null }),
+  }),
+})
+```
+
+### Partielle Mocks
+```typescript
+vi.mock("./utils", async () => {
+  const actual = await vi.importActual("./utils")
+  return {
+    ...actual,
+    specificFunction: vi.fn(),
+  }
+})
+```
+
+### Timer mocken
+```typescript
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+it("sollte nach Timeout ausführen", async () => {
+  const callback = vi.fn()
+  setTimeout(callback, 1000)
+  
+  vi.advanceTimersByTime(1000)
+  
+  expect(callback).toHaveBeenCalled()
+})
+```
+
+---
+
+## React Component Tests
+
+```typescript
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { Button } from "./button"
+
+describe("Button", () => {
+  it("sollte onClick aufrufen", async () => {
+    const handleClick = vi.fn()
+    render(<Button onClick={handleClick}>Click me</Button>)
+    
+    await userEvent.click(screen.getByRole("button"))
+    
+    expect(handleClick).toHaveBeenCalledOnce()
+  })
+})
+```
+
+---
+
+## Async Tests
+
+```typescript
+// Mit async/await
+it("sollte Daten laden", async () => {
+  const data = await fetchData()
+  expect(data).toBeDefined()
+})
+
+// Mit resolves/rejects
+it("sollte Promise auflösen", async () => {
+  await expect(fetchData()).resolves.toBeDefined()
+})
+
+it("sollte Promise ablehnen", async () => {
+  await expect(failingFetch()).rejects.toThrow("Error")
+})
+```
+
+---
+
+## Snapshot Tests
+
+```typescript
+it("sollte korrekt rendern", () => {
+  const { container } = render(<Component />)
+  expect(container).toMatchSnapshot()
+})
+
+// Inline Snapshot
+it("sollte Struktur haben", () => {
+  expect(formatDate(new Date("2024-01-01"))).toMatchInlineSnapshot(`"01.01.2024"`)
+})
+```
+
+---
+
+## Test Coverage
+
+```bash
+# Coverage Report
+pnpm test:coverage
+
+# Mit UI
+pnpm test --coverage --ui
+```
+
+### Coverage Konfiguration
+```typescript
+// vitest.config.ts
+export default defineConfig({
+  test: {
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      exclude: ["node_modules/", "**/*.stories.tsx"],
+    },
+  },
+})
+```
+
+---
+
+## Befehle
+
+```bash
+# Alle Tests
+pnpm test
+
+# Einmal ausführen (CI)
+pnpm test:run
+
+# Watch Mode (Standard)
+pnpm test
+
+# Spezifische Datei
+pnpm test user.test.ts
+
+# Mit UI
+pnpm test --ui
+```
+
+---
+
+## Best Practices
+
+1. **AAA-Pattern** - Arrange, Act, Assert klar trennen
+2. **Mocks zurücksetzen** - `vi.clearAllMocks()` in `beforeEach`
+3. **Nur externe Dependencies mocken** - Keine internen Module
+4. **Aussagekräftige Namen** - "sollte X tun wenn Y"
+5. **Keine Implementation Details testen** - Verhalten, nicht Struktur
+6. **Isolation** - Jeder Test unabhängig von anderen

@@ -1,0 +1,238 @@
+---
+description: TypeScript-Regeln und Typisierungsstandards für dieses Projekt.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+# TypeScript Standards
+
+Dieses Projekt verwendet TypeScript 5 im Strict Mode. Diese Regeln sind nicht verhandelbar.
+
+## Strikte Typisierung
+
+### VERBOTEN: `any`
+```typescript
+// ❌ NIEMALS
+function process(data: any) { ... }
+const result: any = fetchData()
+
+// ✅ RICHTIG: Konkreter Typ
+function process(data: UserProfile) { ... }
+
+// ✅ RICHTIG: unknown + Validierung
+function process(data: unknown) {
+  if (isUserProfile(data)) {
+    // data ist jetzt UserProfile
+  }
+}
+
+// ✅ RICHTIG: Generics
+function process<T>(data: T): T { ... }
+```
+
+### VERBOTEN: `ts-ignore` ohne Begründung
+```typescript
+// ❌ NIEMALS
+// @ts-ignore
+someProblematicCode()
+
+// ✅ ERLAUBT: Mit Link zum Issue
+// @ts-expect-error -- https://github.com/library/issue/123
+someProblematicCode()
+```
+
+---
+
+## Export-Regeln
+
+### VERBOTEN: Default Exports
+```typescript
+// ❌ NIEMALS
+export default function MyComponent() { ... }
+export default class MyService { ... }
+
+// ✅ IMMER: Named Exports
+export function MyComponent() { ... }
+export class MyService { ... }
+export const myConstant = "value"
+```
+
+**Ausnahme:** Next.js Page/Layout Dateien erfordern Default Exports.
+
+```typescript
+// app/(shell)/page.tsx - Ausnahme erlaubt
+export default function HomePage() { ... }
+```
+
+---
+
+## Funktions-Typisierung
+
+### Explizite Rückgabetypen
+```typescript
+// ❌ Implizit (nur für triviale Funktionen OK)
+const add = (a: number, b: number) => a + b
+
+// ✅ Explizit für alle exportierten Funktionen
+export function calculateTotal(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + item.price, 0)
+}
+
+// ✅ Async Funktionen
+export async function fetchUser(id: string): Promise<User | null> {
+  // ...
+}
+```
+
+### Parameter-Objekte für 3+ Parameter
+```typescript
+// ❌ Zu viele Parameter
+function createUser(name: string, email: string, role: string, active: boolean) { ... }
+
+// ✅ Options-Objekt
+interface CreateUserOptions {
+  name: string
+  email: string
+  role: UserRole
+  active?: boolean
+}
+
+function createUser(options: CreateUserOptions): User { ... }
+```
+
+---
+
+## Interface vs Type
+
+### Interface für Objekt-Shapes
+```typescript
+// ✅ Interface für erweiterbare Objekt-Typen
+export interface UserProfile {
+  id: string
+  email: string
+  displayName: string
+}
+
+// ✅ Interface Extension
+export interface AdminProfile extends UserProfile {
+  permissions: string[]
+}
+```
+
+### Type für Unions, Intersections, Utilities
+```typescript
+// ✅ Type für Unions
+export type UserRole = "admin" | "user" | "guest"
+
+// ✅ Type für komplexe Typen
+export type AsyncResult<T> = 
+  | { status: "loading" }
+  | { status: "success"; data: T }
+  | { status: "error"; error: Error }
+
+// ✅ Type für Mapped Types
+export type Nullable<T> = { [K in keyof T]: T[K] | null }
+```
+
+---
+
+## Zod Integration
+
+Verwende Zod für Runtime-Validierung und leite TypeScript-Typen ab:
+
+```typescript
+import { z } from "zod"
+
+// Schema definieren
+export const userSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  role: z.enum(["admin", "user"]),
+  createdAt: z.string().datetime(),
+})
+
+// Typ ableiten (NICHT manuell definieren!)
+export type User = z.infer<typeof userSchema>
+
+// Validierung
+function processUser(data: unknown): User {
+  return userSchema.parse(data) // Wirft bei Fehler
+}
+```
+
+---
+
+## Null-Safety
+
+### Prefer `null` over `undefined`
+```typescript
+// ✅ Konsistent null verwenden
+function findUser(id: string): User | null {
+  const user = users.find(u => u.id === id)
+  return user ?? null
+}
+```
+
+### Nullish Coalescing & Optional Chaining
+```typescript
+// ✅ Modern: Nullish Coalescing
+const name = user?.displayName ?? "Anonymous"
+
+// ❌ Veraltet
+const name = user && user.displayName ? user.displayName : "Anonymous"
+```
+
+---
+
+## Generics Best Practices
+
+### Beschreibende Namen
+```typescript
+// ❌ Kryptisch
+function fetch<T, U>(url: T): U { ... }
+
+// ✅ Beschreibend
+function fetch<TUrl extends string, TResponse>(url: TUrl): Promise<TResponse> { ... }
+```
+
+### Constraints verwenden
+```typescript
+// ✅ Mit Constraint
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key]
+}
+```
+
+---
+
+## Konstanten & Enums
+
+### Prefer `as const` over Enums
+```typescript
+// ✅ Bevorzugt: const assertion
+export const USER_ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+  GUEST: "guest",
+} as const
+
+export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES]
+
+// ⚠️ Enums nur wenn nötig (z.B. für numerische Werte)
+export enum HttpStatus {
+  OK = 200,
+  NotFound = 404,
+  ServerError = 500,
+}
+```
+
+---
+
+## Checkliste
+
+- [ ] Keine `any` Typen
+- [ ] Keine unbegründeten `ts-ignore`
+- [ ] Named Exports (außer Next.js Pages)
+- [ ] Explizite Rückgabetypen für exportierte Funktionen
+- [ ] Zod für Runtime-Validierung + Typ-Ableitung
+- [ ] Konsistente Null-Handling (`null` statt `undefined`)

@@ -1,0 +1,253 @@
+---
+description: ShadCN UI Komponenten, Design Tokens und Composition Patterns.
+globs: ["**/*.tsx", "**/*.css"]
+alwaysApply: true
+---
+
+# Design System: UI Components & Tokens
+
+Dieses Projekt verwendet ShadCN UI mit strikten Design Tokens. Native HTML-Elemente sind verboten.
+
+---
+
+## 1. Komponenten-Governance
+
+### Verbotene Native Elemente
+
+| ❌ Verboten | ✅ Verwende stattdessen | Import |
+|-------------|-------------------------|--------|
+| `<button>` | `<Button>` | `@/components/ui/button` |
+| `<input>` | `<Input>` | `@/components/ui/input` |
+| `<textarea>` | `<Textarea>` | `@/components/ui/textarea` |
+| `<select>` | `<Select>` | `@/components/ui/select` |
+| `<table>` | `<Table>` | `@/components/ui/table` |
+| `<dialog>` | `<Dialog>` | `@/components/ui/dialog` |
+| `<label>` | `<Label>` | `@/components/ui/label` |
+| `<input type="checkbox">` | `<Checkbox>` | `@/components/ui/checkbox` |
+| `<input type="radio">` | `<RadioGroup>` | `@/components/ui/radio-group` |
+| `<a href="/intern">` | `<Link href="/intern">` | `next/link` |
+
+### Erlaubte Ausnahmen
+```tsx
+// ✅ Externe Links
+<a href="https://example.com" target="_blank" rel="noopener noreferrer">
+
+// ✅ mailto/tel
+<a href="mailto:kontakt@example.com">
+
+// ✅ Hidden/File Inputs
+<input type="hidden" name="csrf" value={token} />
+<input type="file" onChange={handleUpload} />
+
+// ✅ Innerhalb von src/components/ui/ (ShadCN wraps native elements)
+```
+
+---
+
+## 2. Design Tokens
+
+### Farben (Semantisch)
+
+| Element-Typ | Hintergrund | Text | Border |
+|:------------|:------------|:-----|:-------|
+| **Seite/Body** | `bg-background` | `text-foreground` | - |
+| **Card/Container** | `bg-card` | `text-card-foreground` | `border-border` |
+| **Dialog/Modal** | `bg-popover` | `text-popover-foreground` | `border-border` |
+| **Primär-Aktion** | `bg-primary` | `text-primary-foreground` | - |
+| **Sekundär-Aktion** | `bg-secondary` | `text-secondary-foreground` | - |
+| **Destruktiv** | `bg-destructive` | `text-destructive-foreground` | - |
+| **Erfolg** | `bg-success` | `text-success` | - |
+| **Warnung** | `bg-warning` | `text-warning` | - |
+| **Info** | `bg-info` | `text-info` | - |
+| **Metadaten/Tags** | `bg-muted` | `text-muted-foreground` | - |
+| **Interaktiv (Hover)** | `bg-accent` | `text-accent-foreground` | - |
+| **Inputs** | `bg-transparent` | `text-foreground` | `border-input` |
+
+**VERBOTEN:** `bg-blue-500`, `text-red-600`, `text-[#333]`, `bg-[#ff0000]`
+
+### Hover-States
+```tsx
+// Interaktive Listen
+<div className="hover:bg-accent hover:text-accent-foreground">
+
+// Buttons
+<Button className="hover:bg-primary/90">
+```
+
+### Radius
+
+| Klasse | Verwendung |
+|:-------|:-----------|
+| `rounded-sm` | Badges, Checkboxen |
+| `rounded-md` | Buttons, Inputs (Standard) |
+| `rounded-lg` | Cards, Modals |
+| `rounded-xl` | Große Container |
+| `rounded-full` | Avatare, Pills |
+
+**VERBOTEN:** `rounded-[8px]`, `rounded-2xl`, `rounded-3xl`
+
+### Spacing (Strikte Skala)
+
+**Erlaubte Werte:** `0`, `1`, `2`, `4`, `6`, `8`, `12`, `16`, `24`, `32`, `48`, `64`
+
+| Kontext | Empfehlung |
+|:--------|:-----------|
+| Kleine Abstände | `gap-1`, `gap-2` |
+| Button Padding | `px-6 py-2`, `p-4` |
+| Card Padding | `p-6`, `p-8` |
+| Sektions-Abstände | `py-12`, `py-16` |
+
+**VERBOTEN:** `p-3`, `m-5`, `gap-7`, `p-[17px]`, `m-[23px]`
+
+### Typografie
+
+| Element | Klassen |
+|:--------|:--------|
+| H1 | `text-3xl font-bold tracking-tight` oder `text-4xl` |
+| H2 | `text-2xl font-semibold tracking-tight` |
+| H3 | `text-xl font-semibold` |
+| H4 | `text-lg font-medium` |
+| Body | `text-base leading-relaxed` |
+| Small | `text-sm text-muted-foreground` |
+| Tiny | `text-xs text-muted-foreground` |
+
+**VERBOTEN:** `text-[13px]`, `text-[18px]`, `leading-[1.7]`
+
+---
+
+## 3. Composition Patterns
+
+### Card Pattern
+```tsx
+<Card className="rounded-lg border-border">
+  <CardHeader className="p-6">
+    <CardTitle className="text-2xl font-semibold tracking-tight">
+      Titel
+    </CardTitle>
+    <CardDescription className="text-sm text-muted-foreground">
+      Beschreibung
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="p-6 pt-0">
+    {/* Inhalt */}
+  </CardContent>
+  <CardFooter className="p-6 pt-0">
+    <Button>Aktion</Button>
+  </CardFooter>
+</Card>
+```
+
+### Dashboard Page Pattern
+```tsx
+<div className="flex flex-col gap-6 p-6">
+  {/* Header */}
+  <div className="flex items-center justify-between">
+    <div>
+      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+      <p className="text-sm text-muted-foreground">Übersicht</p>
+    </div>
+    <Button>Neue Aktion</Button>
+  </div>
+  
+  {/* Stats Grid */}
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <StatCard />
+    <StatCard />
+  </div>
+</div>
+```
+
+### Stat Card Pattern
+```tsx
+<Card>
+  <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <CardTitle className="text-sm font-medium">Umsatz</CardTitle>
+    <DollarSign className="size-4 text-muted-foreground" />
+  </CardHeader>
+  <CardContent>
+    <div className="text-2xl font-bold">€45,231</div>
+    <p className="text-xs text-muted-foreground">+20% zum Vormonat</p>
+  </CardContent>
+</Card>
+```
+
+### Navigation Item Pattern
+```tsx
+<Button
+  variant="ghost"
+  className={cn(
+    "w-full justify-start gap-2",
+    "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+    isActive && "bg-accent text-accent-foreground"
+  )}
+>
+  <Icon className="size-4" />
+  <span>Menüpunkt</span>
+</Button>
+```
+
+### Empty State Pattern
+```tsx
+<div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+  <div className="rounded-full bg-muted p-4">
+    <Icon className="size-8 text-muted-foreground" />
+  </div>
+  <div className="space-y-1">
+    <h3 className="text-lg font-medium">Keine Daten</h3>
+    <p className="text-sm text-muted-foreground">
+      Erstelle deinen ersten Eintrag.
+    </p>
+  </div>
+  <Button>Neuer Eintrag</Button>
+</div>
+```
+
+### Table Pattern
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow className="border-border hover:bg-transparent">
+      <TableHead className="text-muted-foreground font-medium">Name</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow className="border-border hover:bg-muted/50">
+      <TableCell className="font-medium">Wert</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+```
+
+---
+
+## 4. ESLint Enforcement
+
+Diese Regeln werden automatisch erzwungen:
+
+- **`local/use-design-system-components`**: Verbietet `<button>`, `<input>`, etc.
+- **`local/no-hardcoded-tailwind`**: Verbietet `bg-blue-500`, `p-[17px]`, etc.
+
+---
+
+## 5. Quick Reference
+
+```
+Farben:     bg-background, bg-card, bg-primary, bg-secondary, bg-muted, bg-accent, bg-destructive
+Status:     bg-success, bg-warning, bg-info
+Text:       text-foreground, text-muted-foreground, text-primary-foreground
+Borders:    border-border, border-input
+Ring:       ring-ring
+Radii:      rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-full
+Spacing:    0, 1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64
+```
+
+---
+
+## 6. Checkliste
+
+- [ ] Keine nativen HTML-Elemente (`<button>`, `<input>`, etc.)
+- [ ] Nur semantische Farb-Tokens
+- [ ] Nur erlaubte Spacing-Werte
+- [ ] Nur erlaubte Radius-Werte
+- [ ] Typografie aus der Skala
+- [ ] Keine Arbitrary Values

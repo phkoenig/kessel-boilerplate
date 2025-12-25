@@ -1,0 +1,228 @@
+---
+description: Tailwind CSS v4 Syntax, @theme Block, Arbitrary Values verboten.
+globs: ["**/*.css", "**/*.tsx", "**/*.ts"]
+alwaysApply: true
+---
+
+# Tailwind CSS v4
+
+Dieses Projekt verwendet Tailwind CSS v4 mit der Oxide Engine und CSS-First Konfiguration.
+
+## CSS-First Konfiguration
+
+### WICHTIG:
+- Es gibt **KEINE `tailwind.config.ts`** in diesem Projekt
+- Alle Konfigurationen in `src/app/globals.css` im `@theme inline` Block
+- Versuche **NICHT**, eine tailwind.config.js/ts zu erstellen
+
+### Neue Variablen hinzufügen
+```css
+/* 1. CSS-Variable in :root */
+:root {
+  --success: oklch(0.7 0.2 145);
+}
+
+/* 2. Im @theme Block registrieren */
+@theme inline {
+  --color-success: var(--success);
+}
+```
+
+---
+
+## @theme Syntax
+
+```css
+@theme inline {
+  /* Farben */
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  
+  /* Radii */
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  
+  /* Animationen */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+}
+```
+
+---
+
+## Arbitrary Values - STRIKT VERBOTEN
+
+### Farben
+```tsx
+// ❌ VERBOTEN
+bg-[#ff0000]
+text-[rgb(255,0,0)]
+bg-blue-500
+
+// ✅ ERLAUBT
+bg-primary
+text-destructive
+bg-muted
+```
+
+### Spacing
+```tsx
+// ❌ VERBOTEN
+p-[17px]
+m-[2.3rem]
+gap-[13px]
+p-3  // Nicht in der Skala!
+m-5  // Nicht in der Skala!
+
+// ✅ ERLAUBT (nur: 0,1,2,4,6,8,12,16,24,32,48,64)
+p-4
+m-6
+gap-8
+```
+
+### Sizing
+```tsx
+// ❌ VERBOTEN
+w-[350px]
+h-[123px]
+
+// ✅ ERLAUBT
+w-full
+w-1/2
+max-w-md
+
+// ⚠️ Ausnahme: CSS-Variablen-Referenzen
+w-[var(--sidebar-width)]
+```
+
+### Radii
+```tsx
+// ❌ VERBOTEN
+rounded-[8px]
+rounded-[0.5rem]
+rounded-2xl  // Nicht definiert!
+
+// ✅ ERLAUBT
+rounded-sm
+rounded-md
+rounded-lg
+rounded-xl
+rounded-full
+```
+
+### Font-Sizes
+```tsx
+// ❌ VERBOTEN
+text-[13px]
+text-[1.125rem]
+
+// ✅ ERLAUBT
+text-sm
+text-base
+text-lg
+text-xl
+```
+
+---
+
+## Dark Mode
+
+```css
+/* Custom Variante in globals.css */
+@custom-variant dark (&:is(.dark *));
+```
+
+### Verwendung
+```tsx
+// ✅ RICHTIG: CSS-Variablen wechseln automatisch
+<div className="bg-background text-foreground">
+
+// ❌ VERMEIDEN: Explizite dark: Klassen
+<div className="bg-white dark:bg-black">
+```
+
+---
+
+## @apply Regel
+
+```css
+/* ✅ NUR in @layer base für globale Resets */
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
+/* ❌ NIEMALS in CSS-Modulen oder Komponenten */
+```
+
+---
+
+## cn() Utility
+
+```tsx
+import { cn } from "@/lib/utils"
+
+<button className={cn(
+  "bg-primary text-primary-foreground",
+  isDisabled && "opacity-50 cursor-not-allowed",
+  className
+)}>
+```
+
+---
+
+## Plugin-Syntax
+
+```css
+@import "tailwindcss";
+@plugin "tw-animate-css";
+```
+
+---
+
+## Opazitäts-Modifikatoren
+
+Mit OKLCH funktionieren Opazitäts-Modifikatoren automatisch:
+
+```tsx
+bg-primary/90      // 90% Opazität
+bg-background/50   // 50% Opazität
+border-border/20   // 20% Opazität
+```
+
+---
+
+## Container Queries
+
+```tsx
+// Container definieren
+<div className="@container">
+  // Responsive basierend auf Container-Größe
+  <div className="@sm:grid-cols-2 @lg:grid-cols-4">
+```
+
+---
+
+## ESLint Enforcement
+
+Die Regel `local/no-hardcoded-tailwind` verbietet:
+- Standard-Tailwind-Farben (`bg-blue-500`)
+- Arbitrary Values (`p-[17px]`)
+- Nicht definierte Spacing-Werte (`p-3`, `m-5`)
+
+---
+
+## Checkliste
+
+- [ ] Keine Arbitrary Values
+- [ ] Alle Farben sind semantische Tokens
+- [ ] Radii: nur `rounded-sm/md/lg/xl/full`
+- [ ] Spacing: nur `0,1,2,4,6,8,12,16,24,32,48,64`
+- [ ] Font-Sizes: Tailwind-Skala (`text-xs` bis `text-4xl`)
+- [ ] Dark Mode ohne explizite `dark:` Klassen

@@ -1,0 +1,275 @@
+---
+description: Playwright E2E Test Patterns und Best Practices.
+globs: ["e2e/**/*.spec.ts", "e2e/**/*.test.ts", "playwright.config.ts"]
+alwaysApply: false
+---
+
+# Playwright E2E Tests
+
+Dieses Projekt verwendet Playwright für End-to-End Tests.
+
+## Konfiguration
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from "@playwright/test"
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? "100%" : 1,
+  reporter: "html",
+  use: {
+    baseURL: process.env.APP_URL || "http://localhost:3000",
+    trace: "on-first-retry",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+  webServer: {
+    command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+  },
+})
+```
+
+---
+
+## Test-Struktur
+
+```
+e2e/
+├── auth.spec.ts          # Login/Logout Tests
+├── navigation.spec.ts    # Navigation Tests
+├── ai-chat.spec.ts       # AI Chat Tests
+└── fixtures/
+    └── auth.ts           # Auth Fixtures
+```
+
+---
+
+## Basis-Test Pattern
+
+```typescript
+// e2e/example.spec.ts
+import { test, expect } from "@playwright/test"
+
+test.describe("Feature Name", () => {
+  test.beforeEach(async ({ page }) => {
+    // Setup vor jedem Test
+    await page.goto("/")
+  })
+
+  test("should do something", async ({ page }) => {
+    // Arrange
+    await page.goto("/some-page")
+    
+    // Act
+    await page.getByRole("button", { name: "Click me" }).click()
+    
+    // Assert
+    await expect(page.getByText("Success")).toBeVisible()
+  })
+})
+```
+
+---
+
+## Auth Fixture
+
+```typescript
+// e2e/fixtures/auth.ts
+import { test as base, expect } from "@playwright/test"
+
+type AuthFixtures = {
+  authenticatedPage: Page
+}
+
+export const test = base.extend<AuthFixtures>({
+  authenticatedPage: async ({ page }, use) => {
+    // Login durchführen
+    await page.goto("/login")
+    await page.getByLabel("E-Mail").fill(process.env.TEST_USER_EMAIL!)
+    await page.getByLabel("Passwort").fill(process.env.TEST_USER_PASSWORD!)
+    await page.getByRole("button", { name: "Anmelden" }).click()
+    
+    // Warten bis eingeloggt
+    await expect(page).toHaveURL("/")
+    
+    await use(page)
+  },
+})
+
+export { expect }
+```
+
+### Verwendung
+```typescript
+// e2e/dashboard.spec.ts
+import { test, expect } from "./fixtures/auth"
+
+test("should show dashboard for authenticated user", async ({ authenticatedPage }) => {
+  await authenticatedPage.goto("/dashboard")
+  await expect(authenticatedPage.getByText("Willkommen")).toBeVisible()
+})
+```
+
+---
+
+## Locator Best Practices
+
+### ✅ Bevorzugt: Semantische Locators
+```typescript
+// Role-basiert (beste Accessibility)
+page.getByRole("button", { name: "Speichern" })
+page.getByRole("link", { name: "Home" })
+page.getByRole("textbox", { name: "E-Mail" })
+
+// Label-basiert
+page.getByLabel("Passwort")
+page.getByPlaceholder("Suchen...")
+
+// Text-basiert
+page.getByText("Willkommen zurück")
+```
+
+### ⚠️ Fallback: Test-IDs
+```typescript
+// Nur wenn semantische Locators nicht möglich
+page.getByTestId("user-avatar")
+
+// In der Komponente
+<Avatar data-testid="user-avatar" />
+```
+
+### ❌ Vermeiden
+```typescript
+// Fragile CSS Selectors
+page.locator(".btn-primary")
+page.locator("#submit-button")
+page.locator("div > span > button")
+```
+
+---
+
+## Warten & Assertions
+
+### Automatisches Warten
+```typescript
+// Playwright wartet automatisch
+await page.getByRole("button").click() // Wartet bis clickable
+await expect(page.getByText("Saved")).toBeVisible() // Wartet bis sichtbar
+```
+
+### Explizites Warten
+```typescript
+// Auf Navigation warten
+await page.waitForURL("/dashboard")
+
+// Auf Netzwerk-Request warten
+await page.waitForResponse(resp => 
+  resp.url().includes("/api/users") && resp.status() === 200
+)
+
+// Auf Element warten
+await page.getByText("Loading").waitFor({ state: "hidden" })
+```
+
+---
+
+## API Mocking
+
+```typescript
+test("should handle API error", async ({ page }) => {
+  // API Response mocken
+  await page.route("**/api/users", route => {
+    route.fulfill({
+      status: 500,
+      body: JSON.stringify({ error: "Server Error" }),
+    })
+  })
+  
+  await page.goto("/users")
+  await expect(page.getByText("Fehler beim Laden")).toBeVisible()
+})
+```
+
+---
+
+## Screenshots & Traces
+
+### Visual Regression
+```typescript
+test("should match snapshot", async ({ page }) => {
+  await page.goto("/dashboard")
+  await expect(page).toHaveScreenshot("dashboard.png")
+})
+```
+
+### Debug Trace
+```typescript
+// In playwright.config.ts
+use: {
+  trace: "on-first-retry", // Trace bei Retry
+  // trace: "on", // Immer Trace
+}
+
+// Trace anschauen
+// pnpm playwright show-trace trace.zip
+```
+
+---
+
+## Befehle
+
+```bash
+# Alle Tests ausführen
+pnpm test:e2e
+
+# Mit UI
+pnpm test:e2e:ui
+
+# Einzelnen Test
+pnpm playwright test auth.spec.ts
+
+# Debug Mode
+pnpm playwright test --debug
+
+# Report anzeigen
+pnpm playwright show-report
+```
+
+---
+
+## CI/CD Integration
+
+```yaml
+# .github/workflows/e2e.yml
+- name: Install Playwright Browsers
+  run: pnpm playwright install --with-deps chromium
+
+- name: Run E2E Tests
+  run: pnpm test:e2e
+  env:
+    APP_URL: http://localhost:3000
+    TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+    TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+```
+
+---
+
+## Checkliste für E2E Tests
+
+- [ ] Semantische Locators verwenden (Role, Label, Text)
+- [ ] Test-IDs nur als Fallback
+- [ ] Auth via Fixture, nicht in jedem Test
+- [ ] Keine hardcodierten Wartezeiten (`page.waitForTimeout`)
+- [ ] API-Abhängigkeiten mocken für Isolation
+- [ ] Aussagekräftige Test-Namen
+- [ ] Arrange-Act-Assert Pattern

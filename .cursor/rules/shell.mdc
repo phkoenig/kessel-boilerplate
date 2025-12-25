@@ -1,0 +1,172 @@
+---
+description: 4-Spalten-Layout-System mit react-resizable-panels.
+globs: ["**/components/shell/**", "**/app/(shell)/**"]
+alwaysApply: true
+---
+
+# App Shell Layout
+
+Dieses Projekt verwendet ein 4-Spalten-Layout basierend auf `react-resizable-panels`.
+
+## Die 4 Spalten
+
+| Spalte | Komponente | Breite | Beschreibung |
+|--------|------------|--------|--------------|
+| 1 | Navbar | 15-25% (kollabierbar) | Primäre Navigation |
+| 2 | Explorer | 15-30% (optional) | Kontext-Browser |
+| 3 | Main Area | Flexibel (min 30%) | Hauptinhalt |
+| 4 | Assist | 20-35% (optional) | AI-Chat, Hilfe |
+
+---
+
+## Layout-Struktur
+
+```
+src/components/shell/
+├── AppShell.tsx           # Haupt-Layout mit ResizablePanelGroup
+├── shell-context.tsx      # ShellProvider mit LocalStorage
+├── Navbar.tsx             # Spalte 1
+├── ExplorerPanel.tsx      # Spalte 2
+├── AssistPanel.tsx        # Spalte 4
+├── AIChatPanel.tsx        # AI-Chat in Assist
+├── MainHeader.tsx         # Floating Header
+├── MainFooter.tsx         # Floating Footer
+├── Breadcrumbs.tsx        # Auto-generierte Breadcrumbs
+├── PageContent.tsx        # Standard-Wrapper
+└── KeyboardShortcuts.tsx  # Cmd+B, Cmd+E, etc.
+```
+
+---
+
+## Neue Seiten erstellen
+
+Seiten in `(shell)/` verwenden automatisch das Layout:
+
+```tsx
+// app/(shell)/neue-seite/page.tsx
+import { PageContent } from "@/components/shell"
+
+export default function NeueSeitePage() {
+  return (
+    <PageContent>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Titel</h1>
+        <p>Inhalt...</p>
+      </div>
+    </PageContent>
+  )
+}
+```
+
+---
+
+## PageContent Props
+
+| Property | Default | Beschreibung |
+|----------|---------|--------------|
+| `maxWidth` | `6xl` | Content-Breite |
+| `padding` | `lg` | Padding (`p-8`) |
+| `showBreadcrumbs` | `true` | Breadcrumbs anzeigen |
+| `showAssistActions` | `true` | Assist-Buttons anzeigen |
+
+### Breiten-Schema
+```
+maxWidth="sm"   → 384px   - Modals
+maxWidth="md"   → 448px   - Login-Formulare
+maxWidth="lg"   → 512px   - Fokussierter Content
+maxWidth="xl"   → 576px   - Artikel
+maxWidth="2xl"  → 672px   - Dokumentation
+maxWidth="4xl"  → 896px   - Breite Formulare
+maxWidth="6xl"  → 1152px  - Standard (Default)
+maxWidth="full" → 100%    - Dashboards, Tabellen
+```
+
+---
+
+## Shell-State verwenden
+
+```tsx
+"use client"
+
+import { useShell, useExplorer, useAssist } from "@/components/shell"
+
+function MyComponent() {
+  const { navbarCollapsed, toggleNavbar } = useShell()
+  const { isOpen: explorerOpen, toggle: toggleExplorer } = useExplorer()
+  const { isOpen: assistOpen, toggle: toggleAssist } = useAssist()
+  
+  return <Button onClick={toggleExplorer}>Explorer toggle</Button>
+}
+```
+
+---
+
+## Tastaturkürzel
+
+| Kürzel | Aktion |
+|--------|--------|
+| `Cmd/Ctrl + B` | Navbar toggle |
+| `Cmd/Ctrl + E` | Explorer toggle |
+| `Cmd/Ctrl + J` | Assist toggle |
+
+---
+
+## VERBOTEN
+
+### Keine eigenen Container in page.tsx
+```tsx
+// ❌ VERBOTEN
+<PageContent>
+  <div className="mx-auto max-w-4xl">  {/* Eigener Container */}
+    ...
+  </div>
+</PageContent>
+
+// ❌ VERBOTEN
+<PageContent>
+  <div className="flex min-h-screen flex-col justify-center">
+    ...
+  </div>
+</PageContent>
+
+// ✅ RICHTIG
+<PageContent>
+  <div className="space-y-6">
+    ...
+  </div>
+</PageContent>
+```
+
+### Weitere Verbote
+- Keine neuen Layouts außerhalb von `src/components/shell/`
+- Keine hardcodierten z-Index-Werte
+- Keine verschachtelten `<main>` Tags (PageContent stellt `<main>` bereit)
+- Keine `maxWidth` Props außer bei bewusstem Abweichen
+
+---
+
+## Zentrierte Seiten (Welcome, Landing)
+
+```tsx
+<PageContent showBreadcrumbs={false} showAssistActions={false}>
+  <div className="flex min-h-full flex-col items-center justify-center py-16">
+    <div className="w-full space-y-8 md:w-3/4 lg:w-2/3 xl:w-1/2">
+      <h1>Willkommen</h1>
+      <p>Linksbündiger Text in einem zentrierten Block...</p>
+    </div>
+  </div>
+</PageContent>
+```
+
+---
+
+## Begriffe
+
+| Begriff | Bedeutung |
+|---------|-----------|
+| `navbar` | Spalte 1: Primäre Navigation |
+| `explorer` | Spalte 2: Kontext-Browser |
+| `main` | Spalte 3: Hauptinhalt |
+| `assist` | Spalte 4: Hilfe/Chat |
+| `header` | Floating Header in Main |
+| `footer` | Floating Footer in Main |

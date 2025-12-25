@@ -1,0 +1,175 @@
+---
+description: OpenRouter Provider Konfiguration und Model-Auswahl.
+globs: ["**/lib/ai/openrouter*.ts", "**/api/chat/**"]
+alwaysApply: false
+---
+
+# OpenRouter Integration
+
+Dieses Projekt verwendet OpenRouter als AI-Provider, um verschiedene Modelle (Gemini, Claude, GPT-4o) über eine einheitliche API anzusprechen.
+
+## Provider Setup
+
+```typescript
+// src/lib/ai/openrouter-provider.ts
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
+
+export const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  compatibility: "compatible",
+  headers: {
+    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://app.example.com",
+    "X-Title": process.env.NEXT_PUBLIC_APP_NAME || "My App",
+  },
+})
+```
+
+---
+
+## Verfügbare Modelle
+
+| Model ID | Name | Vision | Tools | Empfohlen für |
+|----------|------|--------|-------|---------------|
+| `google/gemini-2.5-flash` | Gemini 2.5 Flash | ✅ | ✅ | **Standard** - Schnell & günstig |
+| `google/gemini-2.0-flash-exp` | Gemini 2.0 Flash | ✅ | ✅ | Experimentell |
+| `anthropic/claude-3.5-sonnet` | Claude 3.5 Sonnet | ✅ | ✅ | Komplexe Reasoning |
+| `anthropic/claude-3-opus` | Claude 3 Opus | ✅ | ✅ | Höchste Qualität |
+| `openai/gpt-4o` | GPT-4o | ✅ | ✅ | Allrounder |
+| `openai/gpt-4-turbo` | GPT-4 Turbo | ✅ | ✅ | Legacy Support |
+
+### Standard-Modell
+```typescript
+export const DEFAULT_MODEL = "google/gemini-2.5-flash"
+```
+
+---
+
+## Verwendung in der Chat API
+
+```typescript
+import { streamText } from "ai"
+import { openrouter, DEFAULT_MODEL } from "@/lib/ai/openrouter-provider"
+
+const result = await streamText({
+  model: openrouter(selectedModel ?? DEFAULT_MODEL),
+  system: systemPrompt,
+  messages: modelMessages,
+  tools: availableTools,
+  maxSteps: 5,
+})
+```
+
+---
+
+## Model-Capabilities prüfen
+
+```typescript
+// src/lib/ai/openrouter-provider.ts
+
+export function modelSupportsVision(modelId: string): boolean {
+  return OPENROUTER_MODELS[modelId]?.supportsVision ?? false
+}
+
+export function modelSupportsTools(modelId: string): boolean {
+  return OPENROUTER_MODELS[modelId]?.supportsTools ?? true
+}
+```
+
+### Verwendung
+```typescript
+if (modelSupportsVision(selectedModel) && screenshot) {
+  // Screenshot an Nachricht anhängen
+}
+
+if (modelSupportsTools(selectedModel)) {
+  // Tools aktivieren
+}
+```
+
+---
+
+## Environment Variables
+
+| Variable | Beschreibung | Wo setzen |
+|----------|--------------|-----------|
+| `OPENROUTER_API_KEY` | API Key von openrouter.ai | `.env.local`, Vercel |
+| `NEXT_PUBLIC_SITE_URL` | App URL für Referer Header | `.env.local`, Vercel |
+| `NEXT_PUBLIC_APP_NAME` | App Name für X-Title Header | `.env.local`, Vercel |
+
+### API Key beschaffen
+1. Gehe zu https://openrouter.ai
+2. Account erstellen / einloggen
+3. API Key generieren
+4. In Supabase Vault speichern oder direkt in `.env.local`
+
+---
+
+## Fehlerbehandlung
+
+```typescript
+export async function POST(req: Request) {
+  // API Key prüfen
+  if (!process.env.OPENROUTER_API_KEY) {
+    return Response.json(
+      { 
+        error: "AI Service nicht konfiguriert",
+        code: "AI_SERVICE_NOT_CONFIGURED" 
+      },
+      { status: 503 }
+    )
+  }
+
+  try {
+    const result = await streamText({ ... })
+    return result.toTextStreamResponse()
+  } catch (error) {
+    // OpenRouter-spezifische Fehler
+    if (error.message?.includes("rate limit")) {
+      return Response.json({ error: "Rate limit erreicht" }, { status: 429 })
+    }
+    if (error.message?.includes("insufficient")) {
+      return Response.json({ error: "Nicht genug Credits" }, { status: 402 })
+    }
+    throw error
+  }
+}
+```
+
+---
+
+## Kosten-Optimierung
+
+### 1. Günstigstes Modell als Standard
+```typescript
+// Gemini Flash ist sehr günstig und schnell
+export const DEFAULT_MODEL = "google/gemini-2.5-flash"
+```
+
+### 2. Kontext begrenzen
+```typescript
+// Nur die letzten 20 Interaktionen
+const interactions = getRecentInteractions(20)
+
+// Screenshot-Größe optimieren (JPEG, 80% Qualität)
+const screenshot = await captureScreenshot({ quality: 0.8 })
+```
+
+### 3. maxSteps begrenzen
+```typescript
+const result = await streamText({
+  // ...
+  maxSteps: 5, // Verhindert endlose Tool-Loops
+})
+```
+
+---
+
+## Regeln
+
+1. **API Key aus Environment** - Niemals hardcoden
+2. **Gemini als Standard** - Günstig und schnell
+3. **Vision prüfen** - Nicht alle Modelle unterstützen Bilder
+4. **Tool-Support prüfen** - Manche Modelle haben kein Function Calling
+5. **Fehler abfangen** - Rate Limits und Credit-Probleme graceful handeln
+6. **Headers setzen** - HTTP-Referer und X-Title für OpenRouter Analytics

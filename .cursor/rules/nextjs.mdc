@@ -1,0 +1,139 @@
+---
+description: Next.js 16 App Router, Proxy (statt Middleware), Routing-Konventionen.
+globs: ["**/app/**", "**/proxy.ts", "next.config.ts"]
+alwaysApply: true
+---
+
+# Next.js 16
+
+Dieses Projekt verwendet Next.js 16 mit App Router.
+
+## ⚠️ KRITISCH: Proxy statt Middleware
+
+Ab Next.js 16 wurde "Middleware" in "Proxy" umbenannt.
+
+### VERBOTEN - NIEMALS verwenden:
+- ❌ `middleware.ts` (existiert NICHT in Next.js 16)
+- ❌ `export function middleware()`
+- ❌ Jegliche Referenz zu "middleware" in Route Protection Code
+
+### ERLAUBT - IMMER verwenden:
+- ✅ `src/proxy.ts` (auf gleicher Ebene wie `app/`)
+- ✅ `export default async function proxy(request: NextRequest)`
+- ✅ `export const config = { matcher: [...] }`
+
+### Datei-Speicherort
+```
+src/
+├── app/          # App Router
+├── proxy.ts      # ✅ Hier! Gleiche Ebene wie app/
+└── ...
+```
+
+---
+
+## Proxy-Konfiguration
+
+```typescript
+// src/proxy.ts
+import { type NextRequest, NextResponse } from "next/server"
+
+export default async function proxy(request: NextRequest) {
+  const response = NextResponse.next({ request })
+  
+  // Auth-Logik hier...
+  
+  return response
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"
+  ],
+}
+```
+
+**WICHTIG:** Verwende `export default` (nicht nur `export`)!
+
+### Cookie-Handling (Supabase SSR)
+```typescript
+const supabase = createServerClient(url, key, {
+  cookies: {
+    getAll() {
+      return request.cookies.getAll()
+    },
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options)
+      })
+    },
+  },
+})
+```
+
+---
+
+## Routing-Konventionen
+
+### App Router Dateien
+| Datei | Zweck |
+|-------|-------|
+| `page.tsx` | Route UI |
+| `layout.tsx` | Shared Layout |
+| `loading.tsx` | Loading UI (Suspense) |
+| `error.tsx` | Error Boundary |
+| `not-found.tsx` | 404 Page |
+| `route.ts` | API Endpoint |
+
+### Route Groups
+```
+app/
+├── (shell)/          # Gruppiert, aber nicht in URL
+│   ├── dashboard/
+│   └── settings/
+├── (auth)/           # Separate Layout-Gruppe
+│   ├── login/
+│   └── signup/
+└── api/
+```
+
+### VERBOTEN:
+- `/pages` Verzeichnis
+- `pages/api` für API Routes
+- `getServerSideProps`, `getStaticProps`
+
+---
+
+## Dev Auto-Login
+
+Für schnellere lokale Entwicklung:
+
+```bash
+# .env.local
+NEXT_PUBLIC_AUTH_BYPASS=true
+NEXT_PUBLIC_DEV_ADMIN_EMAIL=admin@kessel.local
+NEXT_PUBLIC_DEV_ADMIN_PASSWORD=dein-passwort
+```
+
+**Funktioniert NUR wenn:**
+- `NODE_ENV=development`
+- Alle drei Variablen gesetzt
+
+---
+
+## ESLint Enforcement
+
+Die Regel `local/no-middleware-file` erzwingt:
+- Keine Dateien mit "middleware" im Namen
+- Keine Funktionen namens `middleware()`
+
+---
+
+## Häufige Fehler
+
+| Fehler | Symptom | Lösung |
+|--------|---------|--------|
+| `proxy.ts` im Root | Proxy wird nicht ausgeführt | Nach `src/proxy.ts` verschieben |
+| `export function proxy()` | Proxy wird nicht ausgeführt | `export default` verwenden |
+| `middleware.ts` existiert | Konflikt | `middleware.ts` löschen |
+| Falsches Cookie-Handling | Auth-Probleme | `getAll()`/`setAll()` verwenden |

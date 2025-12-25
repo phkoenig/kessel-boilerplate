@@ -1,0 +1,81 @@
+---
+description: MCP Server Governance - ein Supabase-MCP pro Workspace.
+alwaysApply: false
+---
+
+# MCP Governance
+
+Dieses Projekt nutzt **genau einen Supabase-MCP** pro Cursor-Workspace.
+
+## Kernprinzip
+
+**Ein MCP pro Cursor-Workspace** - keine Multi-MCP-Konfiguration für Supabase.
+
+---
+
+## Regeln
+
+### 1. Ein Supabase-MCP pro Workspace
+
+- Jedes Cursor-Projekt hat **maximal einen** Supabase-MCP konfiguriert
+- Dieser zeigt immer auf die aktive Entwicklungs-Datenbank
+- Keine parallelen Supabase-MCP-Instanzen
+
+### 2. Andere DBs via API/SDK
+
+Alle anderen Supabase-Datenbanken werden angesprochen über:
+
+- Backend-API-Routes (`/api/...`)
+- Supabase JavaScript SDK (`@supabase/ssr`)
+- Server-Side Scripts (`scripts/*.mjs`)
+
+**NIEMALS** über zusätzliche MCP-Instanzen im selben Workspace!
+
+### 3. Keine weiteren Supabase-MCPs aktivieren
+
+```
+❌ VERBOTEN: Mehrere Supabase-MCPs in einem Workspace
+✅ ERLAUBT: Ein Supabase-MCP + andere MCPs (Context7, Shadcn, etc.)
+```
+
+---
+
+## Warum diese Architektur?
+
+Cursor hat bekannte Bugs beim Routing von Requests auf mehrere MCP-Instanzen desselben Typs:
+
+- Requests werden unzuverlässig geroutet
+- Falsche Datenbank-Instanz wird angesprochen
+- Authentifizierung kann fehlschlagen
+
+---
+
+## Konfiguration
+
+```json
+// .cursor/mcp.json
+{
+  "mcpServers": {
+    "supabase_KESSEL": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=PROJECT_REF"
+    }
+  }
+}
+```
+
+---
+
+## Für AI-Assistenten
+
+1. **Nutze den konfigurierten MCP** für die aktive Dev-DB
+2. **Schlage KEINE weiteren Supabase-MCPs vor**
+3. **Für andere DBs:** Verwende API-Routes oder SDK-Code
+
+```typescript
+// ✅ RICHTIG: SDK für andere DBs
+import { createClient } from "@supabase/supabase-js"
+const infraClient = createClient(INFRA_URL, INFRA_KEY)
+
+// ❌ FALSCH: Nicht vorschlagen, weiteren MCP zu konfigurieren
+```

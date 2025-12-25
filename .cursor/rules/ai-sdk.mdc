@@ -1,0 +1,253 @@
+---
+description: Vercel AI SDK Patterns für Chat, Streaming und Tool Calling.
+globs: ["**/api/chat/**", "**/lib/ai/**", "**/lib/ai-chat/**", "**/components/**/AI*.tsx"]
+alwaysApply: false
+---
+
+# Vercel AI SDK
+
+Dieses Projekt verwendet das Vercel AI SDK v5 für KI-Chat-Funktionalität mit Tool Calling.
+
+## Architektur-Übersicht
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (Client)                        │
+│  ┌─────────────────┐    ┌─────────────────────────────────┐ │
+│  │  AIChatPanel    │───▶│  @assistant-ui/react            │ │
+│  │  (Shell Col 4)  │    │  - useLocalRuntime              │ │
+│  └─────────────────┘    │  - ChatModelAdapter             │ │
+│                         └─────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ POST /api/chat
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Backend (Server)                         │
+│  ┌─────────────────┐    ┌─────────────────────────────────┐ │
+│  │  route.ts       │───▶│  streamText()                   │ │
+│  │  /api/chat      │    │  - OpenRouter Provider          │ │
+│  └─────────────────┘    │  - Tool Registry                │ │
+│                         │  - System Prompt + Kontext      │ │
+│                         └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Backend: API Route
+
+### Streaming Chat Endpoint
+```typescript
+// src/app/api/chat/route.ts
+import { streamText, type CoreMessage } from "ai"
+import { openrouter } from "@/lib/ai/openrouter-provider"
+import { generateAllTools } from "@/lib/ai/tool-registry"
+
+export const maxDuration = 60 // Streaming-Timeout
+
+export async function POST(req: Request) {
+  // 1. Auth prüfen
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // 2. Request parsen
+  const { messages, screenshot, route } = await req.json()
+
+  // 3. Tools generieren (basierend auf Berechtigungen)
+  const tools = await generateAllTools({ userId: user.id, dryRun: false })
+
+  // 4. Streaming Response
+  const result = await streamText({
+    model: openrouter("google/gemini-2.5-flash"),
+    system: buildSystemPrompt({ ... }),
+    messages,
+    tools,
+    maxSteps: 5, // Max Tool-Call Iterationen
+  })
+
+  return result.toTextStreamResponse()
+}
+```
+
+---
+
+## Tool Registry
+
+Das Tool-System generiert dynamisch CRUD-Tools basierend auf der `ai_datasources` Tabelle.
+
+### DataSource Konfiguration
+```typescript
+interface DataSource {
+  table_name: string
+  display_name: string
+  access_level: "none" | "read" | "read_write" | "full"
+  excluded_columns: string[]
+  max_rows_per_query: number
+}
+```
+
+### Generierte Tools
+| Access Level | Generierte Tools |
+|--------------|------------------|
+| `read` | `query_{table}` |
+| `read_write` | `query_{table}`, `insert_{table}`, `update_{table}` |
+| `full` | Alle + `delete_{table}` |
+
+### Tool Definition Pattern
+```typescript
+import { tool } from "ai"
+import { z } from "zod"
+
+const queryTool = tool({
+  description: "Liest Daten aus der Tabelle",
+  inputSchema: z.object({
+    filters: z.record(z.unknown()).optional(),
+    limit: z.number().max(100).optional(),
+  }),
+  execute: async (args) => {
+    // Supabase Query ausführen
+    return result.data
+  },
+})
+```
+
+---
+
+## Frontend: Assistant UI
+
+### Chat Panel Komponente
+```typescript
+// src/components/shell/AIChatPanel.tsx
+"use client"
+
+import { AssistantRuntimeProvider, useLocalRuntime } from "@assistant-ui/react"
+import { Thread } from "@/components/thread"
+
+export function AIChatPanel() {
+  const modelAdapter: ChatModelAdapter = {
+    async *run({ messages, abortSignal }) {
+      // Kontext sammeln
+      const screenshot = await captureScreenshot()
+      const route = getCurrentRoute()
+
+      // API aufrufen
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages, screenshot, route }),
+        signal: abortSignal,
+      })
+
+      // Streaming verarbeiten
+      const reader = response.body?.getReader()
+      // ... yield chunks
+    },
+  }
+
+  const runtime = useLocalRuntime(modelAdapter)
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <Thread />
+    </AssistantRuntimeProvider>
+  )
+}
+```
+
+---
+
+## Kontext-Sammlung
+
+Der Chat erhält automatisch Kontext über die aktuelle Ansicht:
+
+```typescript
+// src/lib/ai-chat/context-collector.ts
+
+// Screenshot der aktuellen Seite (Base64)
+export async function captureScreenshot(): Promise<string | null>
+
+// HTML-Struktur für technische Fragen
+export function captureHtmlDump(): string
+
+// Aktuelle Route
+export function getCurrentRoute(): string
+```
+
+### System Prompt Aufbau
+```typescript
+function buildSystemPrompt(context: {
+  wikiContent: string      // Aus src/content/wiki.md
+  interactions: string     // Letzte User-Aktionen
+  currentRoute: string     // z.B. "/account/users"
+  hasScreenshot: boolean
+  availableTools: string[] // ["query_profiles", "insert_bugs", ...]
+}): string
+```
+
+---
+
+## Wichtige Patterns
+
+### 1. Streaming Response verarbeiten
+```typescript
+const reader = response.body?.getReader()
+const decoder = new TextDecoder()
+let fullText = ""
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  
+  const chunk = decoder.decode(value, { stream: true })
+  fullText += chunk
+  
+  yield { content: [{ type: "text", text: fullText }] }
+}
+```
+
+### 2. Tool Execution mit Dry-Run
+```typescript
+const toolContext: ToolExecutionContext = {
+  userId: user.id,
+  sessionId: crypto.randomUUID(),
+  dryRun: true, // Zeigt SQL ohne Ausführung
+}
+```
+
+### 3. Multimodale Nachrichten (mit Bild)
+```typescript
+const message: CoreMessage = {
+  role: "user",
+  content: [
+    { type: "text", text: "Was siehst du?" },
+    { type: "image", image: screenshotBytes, mediaType: "image/jpeg" },
+  ],
+}
+```
+
+---
+
+## Dateien im Projekt
+
+| Datei | Zweck |
+|-------|-------|
+| `src/app/api/chat/route.ts` | Chat API Endpoint |
+| `src/lib/ai/openrouter-provider.ts` | OpenRouter Konfiguration |
+| `src/lib/ai/tool-registry.ts` | Dynamische Tool-Generierung |
+| `src/lib/ai/tool-executor.ts` | Tool Execution Logic |
+| `src/lib/ai-chat/context-collector.ts` | Screenshot, HTML, Route |
+| `src/lib/ai-chat/wiki-content.ts` | Wiki als Wissensbasis |
+| `src/components/shell/AIChatPanel.tsx` | Chat UI Komponente |
+
+---
+
+## Regeln
+
+1. **Auth immer prüfen** in `/api/chat` - niemals ohne User-Session
+2. **Tools aus ai_datasources** - keine hardcodierten Tools
+3. **Streaming verwenden** - `streamText()` statt `generateText()`
+4. **Kontext mitgeben** - Screenshot + Route für bessere Antworten
+5. **maxSteps begrenzen** - Verhindert endlose Tool-Loops
+6. **Fehler graceful behandeln** - AI-Fehler sollten nicht die App crashen

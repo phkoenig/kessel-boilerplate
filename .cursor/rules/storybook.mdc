@@ -1,0 +1,270 @@
+---
+description: Storybook 10 Patterns für Component Documentation.
+globs: ["**/*.stories.tsx", "**/*.stories.ts", ".storybook/**"]
+alwaysApply: false
+---
+
+# Storybook
+
+Dieses Projekt verwendet Storybook 10 mit dem Next.js Vite Framework für Component Documentation.
+
+## Konfiguration
+
+```typescript
+// .storybook/main.ts
+import type { StorybookConfig } from "@storybook/nextjs-vite"
+
+const config: StorybookConfig = {
+  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  addons: [
+    "@storybook/addon-docs",
+    "@storybook/addon-a11y",
+    "@storybook/addon-links",
+  ],
+  framework: {
+    name: "@storybook/nextjs-vite",
+    options: {},
+  },
+  staticDirs: ["../public"],
+}
+```
+
+---
+
+## Story-Struktur
+
+### Basis-Story
+```typescript
+// src/components/ui/button.stories.tsx
+import type { Meta, StoryObj } from "@storybook/react"
+import { Button } from "./button"
+
+const meta: Meta<typeof Button> = {
+  title: "UI/Button",
+  component: Button,
+  tags: ["autodocs"],
+  argTypes: {
+    variant: {
+      control: "select",
+      options: ["default", "destructive", "outline", "secondary", "ghost", "link"],
+    },
+    size: {
+      control: "select",
+      options: ["default", "sm", "lg", "icon"],
+    },
+  },
+}
+
+export default meta
+type Story = StoryObj<typeof Button>
+
+export const Default: Story = {
+  args: {
+    children: "Button",
+  },
+}
+
+export const Destructive: Story = {
+  args: {
+    variant: "destructive",
+    children: "Delete",
+  },
+}
+
+export const WithIcon: Story = {
+  render: (args) => (
+    <Button {...args}>
+      <PlusIcon className="mr-2 size-4" />
+      Add Item
+    </Button>
+  ),
+}
+```
+
+---
+
+## Ordner-Struktur
+
+```
+src/components/
+├── ui/
+│   ├── button.tsx
+│   ├── button.stories.tsx    # Story direkt bei Komponente
+│   ├── card.tsx
+│   └── card.stories.tsx
+```
+
+### Story-Titel Konvention
+```typescript
+// Gruppierung nach Ordner
+title: "UI/Button"           // src/components/ui/button.stories.tsx
+title: "Shell/Navbar"        // src/components/shell/navbar.stories.tsx
+title: "Forms/Input"         // src/components/forms/input.stories.tsx
+```
+
+---
+
+## Autodocs
+
+```typescript
+const meta: Meta<typeof Component> = {
+  tags: ["autodocs"], // Automatische Dokumentation aus Props
+}
+```
+
+### JSDoc für bessere Docs
+```typescript
+interface ButtonProps {
+  /** Die visuelle Variante des Buttons */
+  variant?: "default" | "destructive" | "outline"
+  /** Die Größe des Buttons */
+  size?: "default" | "sm" | "lg"
+  /** Deaktiviert den Button */
+  disabled?: boolean
+}
+```
+
+---
+
+## Decorators
+
+### Global Decorator (Theme, Provider)
+```typescript
+// .storybook/preview.ts
+import { ThemeProvider } from "next-themes"
+import "../src/app/globals.css"
+
+const preview: Preview = {
+  decorators: [
+    (Story) => (
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <div className="p-4">
+          <Story />
+        </div>
+      </ThemeProvider>
+    ),
+  ],
+}
+```
+
+### Story-spezifischer Decorator
+```typescript
+export const InCard: Story = {
+  decorators: [
+    (Story) => (
+      <Card className="p-4">
+        <Story />
+      </Card>
+    ),
+  ],
+}
+```
+
+---
+
+## Args & Controls
+
+### Typed Args
+```typescript
+export const Playground: Story = {
+  args: {
+    variant: "default",
+    size: "default",
+    disabled: false,
+    children: "Click me",
+  },
+}
+```
+
+### ArgTypes für Controls
+```typescript
+argTypes: {
+  // Select Dropdown
+  variant: {
+    control: "select",
+    options: ["default", "destructive"],
+  },
+  // Boolean Toggle
+  disabled: {
+    control: "boolean",
+  },
+  // Text Input
+  children: {
+    control: "text",
+  },
+  // Color Picker
+  color: {
+    control: "color",
+  },
+  // Disable Control
+  onClick: {
+    control: false, // Kein Control anzeigen
+  },
+}
+```
+
+---
+
+## Actions
+
+```typescript
+import { fn } from "@storybook/test"
+
+const meta: Meta<typeof Button> = {
+  args: {
+    onClick: fn(), // Logged in Actions Panel
+  },
+}
+
+// Oder inline
+export const WithAction: Story = {
+  args: {
+    onClick: fn(() => console.log("Clicked!")),
+  },
+}
+```
+
+---
+
+## A11y Testing
+
+```typescript
+// Automatisch mit @storybook/addon-a11y
+// Zeigt Accessibility-Violations im Panel
+
+// Spezifische Story deaktivieren
+export const Decorative: Story = {
+  parameters: {
+    a11y: {
+      disable: true, // Nur für dekorative Elemente
+    },
+  },
+}
+```
+
+---
+
+## Befehle
+
+```bash
+# Storybook starten (Dev)
+pnpm storybook
+
+# Build für Deployment
+pnpm build-storybook
+
+# Accessibility Tests
+# (automatisch in der UI)
+```
+
+---
+
+## Checkliste für Stories
+
+- [ ] `title` folgt Ordner-Struktur (`UI/Button`)
+- [ ] `tags: ["autodocs"]` für automatische Docs
+- [ ] `argTypes` für interaktive Controls
+- [ ] Mindestens `Default` Story
+- [ ] Wichtige Varianten als separate Stories
+- [ ] JSDoc Kommentare für bessere Autodocs
+- [ ] Actions für Event Handler (`onClick: fn()`)
