@@ -84,14 +84,29 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
   const { pathname } = useScreenshotCache()
   const router = useRouter()
 
-  // Callback für Auto-Reload nach Tool-Calls
-  const handleFinish = useCallback(() => {
-    // Kurze Verzögerung für DB-Konsistenz, dann Seite refreshen
-    setTimeout(() => {
-      console.log("[AIChatPanel] Chat finished, refreshing page data...")
-      router.refresh()
-    }, 300)
-  }, [router])
+  // Write-Tool Prefixes die DB-Änderungen auslösen
+  const WRITE_TOOL_PREFIXES = ["insert_", "update_", "delete_", "create_user", "delete_user"]
+
+  // Callback für Auto-Reload nach Write-Tool-Calls
+  const handleFinish = useCallback(
+    ({ message }: { message: { parts?: Array<{ type: string; toolName?: string }> } }) => {
+      // Prüfe ob Write-Tools aufgerufen wurden
+      const hasWriteToolCall = message.parts?.some(
+        (part) =>
+          part.type === "tool-call" &&
+          WRITE_TOOL_PREFIXES.some((prefix) => part.toolName?.startsWith(prefix))
+      )
+
+      if (hasWriteToolCall) {
+        // Kurze Verzögerung für DB-Konsistenz, dann Seite refreshen
+        setTimeout(() => {
+          console.log("[AIChatPanel] Write-Tool detected, refreshing page data...")
+          router.refresh()
+        }, 300)
+      }
+    },
+    [router]
+  )
 
   // useChatRuntime mit Transport
   const runtime = useChatRuntime({
