@@ -2,8 +2,6 @@
 // scripts/execute-migration-via-api.mjs
 // Führt Migration direkt via Supabase Management API aus
 
-import { readFileSync } from "fs"
-import { join } from "path"
 import { config } from "dotenv"
 
 // .env laden
@@ -26,10 +24,6 @@ if (!projectRef) {
 
 async function executeMigration() {
   console.log("🔐 Führe Migration 018_ai_datasources via Supabase Management API aus...\n")
-
-  // Migration SQL laden
-  const migrationPath = join(process.cwd(), "supabase/migrations/018_ai_datasources.sql")
-  const migrationSQL = readFileSync(migrationPath, "utf-8")
 
   // Supabase Management API Endpoint
   // Leider gibt es keine öffentliche Management API für SQL-Execution

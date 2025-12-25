@@ -58,6 +58,7 @@ type AttachmentPreviewProps = {
 const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
   const [isLoaded, setIsLoaded] = useState(false)
   return (
+    /* eslint-disable local/no-hardcoded-tailwind -- Viewport-basierter max-height für Modal */
     <Image
       src={src}
       alt="Image Preview"
@@ -71,6 +72,7 @@ const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
       onLoadingComplete={() => setIsLoaded(true)}
       priority={false}
     />
+    /* eslint-enable local/no-hardcoded-tailwind */
   )
 }
 
@@ -205,7 +207,7 @@ export const ComposerAddAttachment: FC = () => {
         side="bottom"
         variant="ghost"
         size="icon"
-        className="aui-composer-add-attachment hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-[34px] rounded-full p-1 text-xs font-semibold"
+        className="aui-composer-add-attachment hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-8 rounded-full p-1 text-xs font-semibold"
         aria-label="Add Attachment"
       >
         <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />

@@ -9,7 +9,8 @@ import { resolve } from "path"
 config({ path: resolve(process.cwd(), ".env.local") })
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 async function testFullFlow() {
   console.log("🧪 Teste vollständigen AI Chat Flow...\n")
@@ -39,7 +40,7 @@ async function testFullFlow() {
 
   // 3. Teste Chat API mit authentifiziertem Request
   console.log("\n📡 Teste Chat API...")
-  
+
   const session = await supabase.auth.getSession()
   const accessToken = session.data.session?.access_token
 
@@ -75,7 +76,7 @@ async function testFullFlow() {
     console.log("✅ Chat API antwortet erfolgreich")
     console.log(`   Antwort-Länge: ${text.length} Zeichen`)
     console.log(`   Erste 100 Zeichen: ${text.substring(0, 100)}...`)
-    
+
     if (text.toLowerCase().includes("theme") || text.toLowerCase().includes("themes")) {
       console.log("   ✅ Antwort enthält 'theme' - Tool-Call könnte funktioniert haben")
     }
@@ -113,4 +114,3 @@ testFullFlow().catch((err) => {
   console.error("❌ Fehler:", err)
   process.exit(1)
 })
-

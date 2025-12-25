@@ -512,7 +512,7 @@ async function testTenantSetup() {
       let success = false
 
       while (retries > 0 && !success) {
-        const { data: assignResult, error } = await infraClient.rpc("assign_user_to_tenant", {
+        const { error } = await infraClient.rpc("assign_user_to_tenant", {
           p_user_id: user1Id,
           p_tenant_id: tenant1Id,
           p_role: "owner",
@@ -621,7 +621,7 @@ async function testTenantSetup() {
     console.log(`✓ User-Role ID: ${userRoleId}`)
 
     // Erstelle Test-Daten für Tenant 1 (über Service Role)
-    const { data: profile1, error: profileError1 } = await supabaseClient
+    const { error: profileError1 } = await supabaseClient
       .from("profiles")
       .insert({
         id: user1Id,

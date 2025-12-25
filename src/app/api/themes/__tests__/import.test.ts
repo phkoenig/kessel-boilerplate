@@ -6,7 +6,7 @@
  * beim Importieren von TweakCN-Themes.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { mapRawFontToVariable } from "@/lib/fonts"
 
 // Mock fs/promises für API-Route Tests

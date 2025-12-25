@@ -63,7 +63,8 @@ describe("Tool Executor", () => {
         }),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -128,7 +129,8 @@ describe("Tool Executor", () => {
         }),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -186,7 +188,8 @@ describe("Tool Executor", () => {
         }),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -237,7 +240,8 @@ describe("Tool Executor", () => {
 
       const mockInsertedData = [{ id: "2", name: "New Theme", description: "Test" }]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.select.mockResolvedValue({
         data: mockInsertedData,
         error: null,
@@ -288,7 +292,8 @@ describe("Tool Executor", () => {
         select: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -336,7 +341,8 @@ describe("Tool Executor", () => {
         eq: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -405,7 +411,8 @@ describe("Tool Executor", () => {
         select: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.select.mockResolvedValue({
         data: [{ id: "1", name: "Test" }],
         error: null,
@@ -480,7 +487,8 @@ describe("Tool Executor", () => {
         }),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,

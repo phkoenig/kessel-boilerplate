@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TableInlineEdit } from "@/components/ui/table-inline-edit"
-import { Loader2, RefreshCw, Users, Trash2 } from "lucide-react"
+import { Loader2, Users, Trash2 } from "lucide-react"
 import { AddButton } from "@/components/ui/add-button"
 import { ExpandableSearch } from "@/components/ui/expandable-search"
 import { createClient } from "@/utils/supabase/client"

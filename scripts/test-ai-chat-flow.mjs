@@ -10,7 +10,8 @@ import { resolve } from "path"
 config({ path: resolve(process.cwd(), ".env.local") })
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error("❌ NEXT_PUBLIC_SUPABASE_URL und NEXT_PUBLIC_SUPABASE_ANON_KEY müssen gesetzt sein")
@@ -32,7 +33,7 @@ async function testAIChatFlow() {
   if (authError || !authData.user) {
     console.error("❌ Login fehlgeschlagen:", authError?.message)
     console.log("   Versuche mit admin@local / admin123...")
-    
+
     const { data: authData2, error: authError2 } = await supabase.auth.signInWithPassword({
       email: "admin@local",
       password: "admin123",
@@ -43,7 +44,7 @@ async function testAIChatFlow() {
       console.log("   Bitte führe 'pnpm setup:users' aus, um Test-User anzulegen")
       process.exit(1)
     }
-    
+
     console.log("✅ Login erfolgreich als:", authData2.user.email)
   } else {
     console.log("✅ Login erfolgreich als:", authData.user.email)
@@ -66,7 +67,9 @@ async function testAIChatFlow() {
   if (datasources && datasources.length > 0) {
     console.log("   Beispiel:")
     datasources.slice(0, 3).forEach((ds) => {
-      console.log(`   - ${ds.table_name}: ${ds.access_level} ${ds.is_enabled ? "(aktiviert)" : "(deaktiviert)"}`)
+      console.log(
+        `   - ${ds.table_name}: ${ds.access_level} ${ds.is_enabled ? "(aktiviert)" : "(deaktiviert)"}`
+      )
     })
   }
 
@@ -74,9 +77,10 @@ async function testAIChatFlow() {
   console.log("\n3️⃣ Prüfe Tool-Registry...")
   try {
     // Simuliere Tool-Generierung (ohne tatsächliche API-Call)
-    const readTables = datasources?.filter((ds) => 
-      ["read", "read_write", "full"].includes(ds.access_level) && ds.is_enabled
-    ) ?? []
+    const readTables =
+      datasources?.filter(
+        (ds) => ["read", "read_write", "full"].includes(ds.access_level) && ds.is_enabled
+      ) ?? []
 
     console.log(`✅ ${readTables.length} Tabellen mit Read-Zugriff gefunden`)
     if (readTables.length > 0) {
@@ -92,7 +96,7 @@ async function testAIChatFlow() {
   // 4. Prüfe Chat API (mit Auth)
   console.log("\n4️⃣ Teste Chat API...")
   const session = await supabase.auth.getSession()
-  
+
   if (!session.data.session) {
     console.error("❌ Keine aktive Session")
     process.exit(1)
@@ -151,9 +155,10 @@ async function testAIChatFlow() {
   }
 
   // 6. Zusammenfassung
-  const readTables = datasources?.filter((ds) => 
-    ["read", "read_write", "full"].includes(ds.access_level) && ds.is_enabled
-  ) ?? []
+  const readTables =
+    datasources?.filter(
+      (ds) => ["read", "read_write", "full"].includes(ds.access_level) && ds.is_enabled
+    ) ?? []
 
   console.log("\n" + "=".repeat(60))
   console.log("📊 Test-Zusammenfassung")
@@ -176,4 +181,3 @@ testAIChatFlow().catch((err) => {
   console.error("❌ Fehler:", err)
   process.exit(1)
 })
-

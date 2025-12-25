@@ -12,22 +12,6 @@ import { Loader2 } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 
 /**
- * Formatiert ein Datum für die Anzeige (z.B. "Januar 2024")
- */
-function formatMemberSince(dateString?: string): string {
-  if (!dateString) return "Unbekannt"
-
-  try {
-    const date = new Date(dateString)
-    const month = date.toLocaleDateString("de-DE", { month: "long" })
-    const year = date.getFullYear()
-    return `${month} ${year}`
-  } catch {
-    return "Unbekannt"
-  }
-}
-
-/**
  * User Profile Seite
  */
 export default function ProfilePage(): React.ReactElement {
@@ -41,7 +25,6 @@ export default function ProfilePage(): React.ReactElement {
   const [confirmPassword, setConfirmPassword] = useState("")
 
   // UI States
-  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)

@@ -7,7 +7,6 @@ import { describe, it, expect } from "vitest"
 import {
   FONT_NAME_TO_VARIABLE,
   KNOWN_FONT_VARIABLES,
-  FONT_CATEGORIES,
   isKnownFontVariable,
   getFontCategory,
 } from "../registry"

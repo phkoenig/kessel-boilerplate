@@ -71,7 +71,8 @@ describe("Tool Registry", () => {
         },
       ]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: mockDataSources,
         error: null,
@@ -97,7 +98,8 @@ describe("Tool Registry", () => {
         neq: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: [],
         error: null,
@@ -122,7 +124,8 @@ describe("Tool Registry", () => {
 
       const mockError = { message: "Database error", code: "PGRST116" }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: null,
         error: mockError,
@@ -175,7 +178,8 @@ describe("Tool Registry", () => {
         },
       ]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: mockDataSources,
         error: null,
@@ -215,7 +219,8 @@ describe("Tool Registry", () => {
         neq: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: [],
         error: null,
@@ -261,7 +266,8 @@ describe("Tool Registry", () => {
         },
       ]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: mockDataSources,
         error: null,
@@ -286,22 +292,11 @@ describe("Tool Registry", () => {
         neq: vi.fn().mockReturnThis(),
       }
 
-      const mockDataSources: DataSource[] = [
-        {
-          id: "1",
-          table_schema: "public",
-          table_name: "themes",
-          display_name: "Themes",
-          description: null,
-          access_level: "none",
-          is_enabled: true,
-          allowed_columns: [],
-          excluded_columns: [],
-          max_rows_per_query: 100,
-        },
-      ]
+      // Datasource mit access_level: "none" - wird nicht in Tools aufgenommen
+      // daher gibt neq.mockResolvedValue ein leeres Array zurück
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: [],
         error: null,
@@ -340,7 +335,8 @@ describe("Tool Registry", () => {
         },
       ]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: mockDataSources,
         error: null,
@@ -382,7 +378,8 @@ describe("Tool Registry", () => {
         },
       ]
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: mockDataSources,
         error: null,
@@ -409,7 +406,8 @@ describe("Tool Registry", () => {
         neq: vi.fn().mockReturnThis(),
       }
 
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+      vi.mocked(createClient).mockResolvedValue(mockSupabase)
       mockSupabase.neq.mockResolvedValue({
         data: [],
         error: null,

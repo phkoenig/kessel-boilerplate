@@ -4,7 +4,7 @@ import { PageContent, PageHeader } from "@/components/shell"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Calendar, User, ArrowRight } from "lucide-react"
+import { Calendar, User, ArrowRight } from "lucide-react"
 
 /**
  * Blog Layout Template Demo-Seite

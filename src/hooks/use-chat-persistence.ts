@@ -81,14 +81,18 @@ export function useChatPersistence() {
         // Entferne Query-Parameter aus URL ohne Reload
         const newUrl = window.location.pathname
         window.history.replaceState({}, "", newUrl)
-        setIsLoaded(true)
+        // Verzögere setState um cascading renders zu vermeiden
+        queueMicrotask(() => setIsLoaded(true))
         return
       }
     }
-    
+
     const loaded = loadMessages()
-    setMessages(loaded)
-    setIsLoaded(true)
+    // Batch beide setState calls zusammen
+    queueMicrotask(() => {
+      setMessages(loaded)
+      setIsLoaded(true)
+    })
     console.log("[ChatPersistence] Geladen:", loaded.length, "Messages")
   }, [])
 
@@ -133,4 +137,3 @@ export function useChatPersistence() {
     getInitialMessages,
   }
 }
-

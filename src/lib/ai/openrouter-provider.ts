@@ -78,7 +78,7 @@ export const OPENROUTER_MODELS = {
 
 /**
  * Standard-Model für Chat
- * 
+ *
  * Claude 3.5 Sonnet wird empfohlen für Tool-Calling, da es
  * zuverlässiger Tools aufruft als Gemini über OpenRouter.
  * Gemini über OpenRouter hat bekannte Probleme mit Tool-Calling.

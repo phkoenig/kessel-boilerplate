@@ -51,4 +51,3 @@ testChatAPI().catch((err) => {
   console.error("❌ Fehler:", err)
   process.exit(1)
 })
-

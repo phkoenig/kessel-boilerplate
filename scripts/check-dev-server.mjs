@@ -17,13 +17,13 @@ async function checkRoute(route) {
       method: route.method || "GET",
       headers: { "Content-Type": "application/json" },
     }
-    
+
     if (route.body) {
       options.body = JSON.stringify(route.body)
     }
 
     const response = await fetch(`${BASE_URL}${route.path}`, options)
-    
+
     return {
       name: route.name,
       path: route.path,
@@ -57,7 +57,7 @@ async function checkDevServer() {
   console.log("📋 Prüfe Routes:\n")
   for (const route of routes) {
     const result = await checkRoute(route)
-    
+
     if (result.error) {
       console.log(`❌ ${result.name}: ${result.error}`)
     } else if (result.status === 401 || result.status === 307) {
@@ -87,4 +87,3 @@ checkDevServer().catch((err) => {
   console.error("❌ Fehler:", err)
   process.exit(1)
 })
-

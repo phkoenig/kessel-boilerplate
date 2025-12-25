@@ -31,6 +31,7 @@ function CommandDialog({
   description = "Search for a command to run...",
   children,
   className,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Für zukünftige Close-Button-Implementierung
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof Dialog> & {

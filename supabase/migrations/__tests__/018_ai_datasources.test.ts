@@ -150,7 +150,7 @@ describe("Migration 018: AI Datasources", () => {
 
   describe("RLS Policies", () => {
     it("sollte RLS auf ai_datasources aktiviert haben", async () => {
-      const { data, error } = await supabase.rpc("get_table_columns", {
+      const { error } = await supabase.rpc("get_table_columns", {
         p_schema: "public",
         p_table: "ai_datasources",
       })

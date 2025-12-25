@@ -9,7 +9,8 @@ import { resolve } from "path"
 config({ path: resolve(process.cwd(), ".env.local") })
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 async function testToolGeneration() {
   console.log("🧪 Teste Tool-Generierung...\n")
@@ -45,11 +46,15 @@ async function testToolGeneration() {
   if (colError) {
     console.error("❌ Fehler bei get_table_columns:", colError.message)
   } else {
-    console.log(`✅ get_table_columns funktioniert: ${columns?.length ?? 0} Spalten für 'themes' gefunden`)
+    console.log(
+      `✅ get_table_columns funktioniert: ${columns?.length ?? 0} Spalten für 'themes' gefunden`
+    )
     if (columns && columns.length > 0) {
       console.log("   Beispiel-Spalten:")
       columns.slice(0, 3).forEach((col) => {
-        console.log(`   - ${col.column_name}: ${col.data_type} ${col.is_nullable ? "(nullable)" : "(required)"}`)
+        console.log(
+          `   - ${col.column_name}: ${col.data_type} ${col.is_nullable ? "(nullable)" : "(required)"}`
+        )
       })
     }
   }
@@ -78,4 +83,3 @@ testToolGeneration().catch((err) => {
   console.error("❌ Fehler:", err)
   process.exit(1)
 })
-

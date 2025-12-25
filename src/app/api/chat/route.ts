@@ -239,7 +239,10 @@ export async function POST(req: Request) {
     const toolCount = Object.keys(tools).length
 
     console.log("[Chat API] Starting streamText with model:", selectedModel)
-    console.log("[Chat API] Tools available:", toolCount > 0 ? Object.keys(tools).join(", ") : "none")
+    console.log(
+      "[Chat API] Tools available:",
+      toolCount > 0 ? Object.keys(tools).join(", ") : "none"
+    )
 
     const result = await streamText({
       model: openrouter(selectedModel),
@@ -249,10 +252,10 @@ export async function POST(req: Request) {
       maxSteps: 5, // Max. 5 Tool-Call Iterationen
       onStepFinish: (step) => {
         // Logging für jeden Schritt (inkl. Tool-Calls)
-        const textPreview = step.text 
+        const textPreview = step.text
           ? step.text.substring(0, 100) + (step.text.length > 100 ? "..." : "")
           : "(no text)"
-        
+
         console.log("[Chat API] Step finished:", {
           stepType: step.stepType,
           text: textPreview,

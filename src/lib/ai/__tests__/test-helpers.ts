@@ -18,8 +18,7 @@ import type { ToolExecutionContext, ToolExecutionResult } from "../tool-executor
  */
 export function getServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
@@ -74,10 +73,7 @@ export async function createTestUser(
 
   if (profileError) {
     // Falls Profile bereits existiert, aktualisiere es
-    await serviceClient
-      .from("profiles")
-      .update({ role })
-      .eq("id", user.id)
+    await serviceClient.from("profiles").update({ role }).eq("id", user.id)
   }
 
   // 3. Session-Token für den User erstellen
@@ -177,13 +173,9 @@ export interface SuccessResult extends ToolExecutionResult {
 /**
  * Assertion: Prüft dass Tool-Call erfolgreich war
  */
-export function assertToolSuccess(
-  result: ToolExecutionResult
-): asserts result is SuccessResult {
+export function assertToolSuccess(result: ToolExecutionResult): asserts result is SuccessResult {
   if (!result.success) {
-    throw new Error(
-      `Tool-Call fehlgeschlagen: ${result.error ?? "Unbekannter Fehler"}`
-    )
+    throw new Error(`Tool-Call fehlgeschlagen: ${result.error ?? "Unbekannter Fehler"}`)
   }
 
   if (result.data === undefined) {
@@ -199,13 +191,13 @@ export function assertToolError(
   expectedError?: string
 ): asserts result is { success: false; error: string } {
   if (result.success) {
-    throw new Error(`Tool-Call sollte fehlschlagen, war aber erfolgreich: ${JSON.stringify(result.data)}`)
+    throw new Error(
+      `Tool-Call sollte fehlschlagen, war aber erfolgreich: ${JSON.stringify(result.data)}`
+    )
   }
 
   if (expectedError && result.error !== expectedError) {
-    throw new Error(
-      `Erwarteter Fehler: "${expectedError}", aber erhalten: "${result.error}"`
-    )
+    throw new Error(`Erwarteter Fehler: "${expectedError}", aber erhalten: "${result.error}"`)
   }
 }
 
@@ -247,4 +239,3 @@ export const globalCleanup = new CleanupTracker()
 afterEach(async () => {
   await globalCleanup.cleanup()
 })
-

@@ -17,19 +17,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest"
 import { createClient } from "@supabase/supabase-js"
 import { executeTool } from "../tool-executor"
-import {
-  getTestContext,
-  assertToolSuccess,
-  assertToolError,
-  globalCleanup,
-  type TestContext,
-} from "./test-helpers"
-import {
-  getTestUserData,
-  getTestBugData,
-  getTestFeatureData,
-  TEST_BUG_UPDATE,
-} from "./test-fixtures"
+import { getTestContext, assertToolSuccess, globalCleanup, type TestContext } from "./test-helpers"
+import { getTestBugData, getTestFeatureData, TEST_BUG_UPDATE } from "./test-fixtures"
 
 // Mock createClient aus @/utils/supabase/server
 // Wir erstellen einen Client mit dem Access-Token des Test-Users
@@ -46,8 +35,7 @@ describe("Tool-Calling E2E Tests", () => {
     // Environment-Variablen prüfen
     testSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     testAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 
     if (!testSupabaseUrl || !testAnonKey) {
       throw new Error(
@@ -60,7 +48,7 @@ describe("Tool-Calling E2E Tests", () => {
 
     // Mock createClient: Gibt einen Client mit Test-User-Token zurück
     const { createClient: mockCreateClient } = await import("@/utils/supabase/server")
-    
+
     // Erstelle Client mit Access-Token aus dem testContext
     const userClient = createClient(testSupabaseUrl, testAnonKey, {
       global: {
@@ -69,8 +57,9 @@ describe("Tool-Calling E2E Tests", () => {
         },
       },
     })
-    
-    vi.mocked(mockCreateClient).mockResolvedValue(userClient as any)
+
+    // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
+    vi.mocked(mockCreateClient).mockResolvedValue(userClient)
   })
 
   afterEach(async () => {
@@ -121,13 +110,13 @@ describe("Tool-Calling E2E Tests", () => {
       // Assert
       assertToolSuccess(rolesResult)
       expect(Array.isArray(rolesResult.data)).toBe(true)
-      
+
       const roles = rolesResult.data as Array<{ id: string; name: string }>
       expect(roles.length).toBeGreaterThan(0)
 
       // Step 2: "User" Rolle finden (case-insensitive)
       const userRole = roles.find((r) => r.name.toLowerCase() === "user")
-      
+
       // Es sollte eine User-Rolle geben
       expect(userRole).toBeDefined()
       expect(userRole!.id).toBeDefined()
@@ -178,6 +167,7 @@ describe("Tool-Calling E2E Tests", () => {
 
       // Mock für Admin-Context aktualisieren
       const { createClient: mockCreateClient } = await import("@/utils/supabase/server")
+      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
       vi.mocked(mockCreateClient).mockResolvedValue(
         createClient(testSupabaseUrl, testAnonKey, {
           global: {
@@ -185,7 +175,7 @@ describe("Tool-Calling E2E Tests", () => {
               Authorization: `Bearer ${adminContext.accessToken}`,
             },
           },
-        }) as any
+        })
       )
 
       // Erstelle einen Bug als Admin
@@ -395,4 +385,3 @@ describe("Tool-Calling E2E Tests", () => {
     })
   })
 })
-

@@ -168,6 +168,7 @@ function TreeDragLine({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
+        // eslint-disable-next-line local/no-hardcoded-tailwind -- Präzise Position für Drag-Line-Indikator
         "bg-primary before:border-primary before:bg-background absolute z-30 -mt-px h-0.5 w-[unset] before:absolute before:-top-[3px] before:left-0 before:size-2 before:rounded-full before:border-2",
         className
       )}

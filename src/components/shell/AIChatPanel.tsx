@@ -28,7 +28,7 @@ type ParsedLine =
 
 /**
  * Parst eine Zeile aus dem Vercel AI SDK Data Stream Protocol
- * 
+ *
  * Format:
  * - 0:"text" - Text content
  * - 9:{"toolCallId":"...","toolName":"...","args":{}} - Tool call
@@ -127,9 +127,10 @@ function formatToolResult(toolName: string, result: unknown): string {
     return `_${result.length} Einträge gefunden._\n\nErste 3:\n${result
       .slice(0, 3)
       .map((item, index) => {
-        const name = typeof item === "object" && item !== null 
-          ? (item.name || item.title || item.email || "Eintrag")
-          : String(item)
+        const name =
+          typeof item === "object" && item !== null
+            ? item.name || item.title || item.email || "Eintrag"
+            : String(item)
         return `${index + 1}. ${name}`
       })
       .join("\n")}\n...`
@@ -174,11 +175,11 @@ interface AIChatPanelProps {
 export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement {
   // Interaction-Log Hook (Local-First)
   const { logInteraction, getRecentInteractions } = useInteractionLog()
-  
+
   // Refs für stabile Callbacks
   const logInteractionRef = useRef(logInteraction)
   const getRecentInteractionsRef = useRef(getRecentInteractions)
-  
+
   useEffect(() => {
     logInteractionRef.current = logInteraction
     getRecentInteractionsRef.current = getRecentInteractions
@@ -187,228 +188,232 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
   // Custom Model Adapter mit Kontext und Screenshot
   // WICHTIG: useMemo damit der Adapter stabil bleibt und useLocalRuntime
   // den Composer korrekt mit dem Adapter verbinden kann
-  const modelAdapter: ChatModelAdapter = useMemo(() => ({
-    async *run({ messages, abortSignal }) {
-      console.log("[AIChatPanel] run() called with messages:", messages.length)
-      
-      // Kontext sammeln bei jedem Request
-      const interactions = getRecentInteractionsRef.current(20)
-      const htmlDump = captureHtmlDump()
-      const route = getCurrentRoute()
+  const modelAdapter: ChatModelAdapter = useMemo(
+    () => ({
+      async *run({ messages, abortSignal }) {
+        console.log("[AIChatPanel] run() called with messages:", messages.length)
 
-      // Screenshot bei jeder Nachricht
-      console.log("[AIChatPanel] Taking fresh screenshot for route:", route)
-      const screenshot = await captureScreenshot()
-      console.log(
-        "[AIChatPanel] Screenshot taken:",
-        screenshot ? `${screenshot.length} chars` : "FAILED"
-      )
-      logInteractionRef.current("screenshot_taken", "ai-chat-panel", { route })
+        // Kontext sammeln bei jedem Request
+        const interactions = getRecentInteractionsRef.current(20)
+        const htmlDump = captureHtmlDump()
+        const route = getCurrentRoute()
 
-      console.log("[AIChatPanel] Sending to API with screenshot:", !!screenshot)
-      logInteractionRef.current("chat_send", "ai-chat-panel", { hasScreenshot: !!screenshot })
+        // Screenshot bei jeder Nachricht
+        console.log("[AIChatPanel] Taking fresh screenshot for route:", route)
+        const screenshot = await captureScreenshot()
+        console.log(
+          "[AIChatPanel] Screenshot taken:",
+          screenshot ? `${screenshot.length} chars` : "FAILED"
+        )
+        logInteractionRef.current("screenshot_taken", "ai-chat-panel", { route })
 
-      // Request an die API senden
-      const startTime = Date.now()
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Wichtig für Supabase Auth Cookies
-        body: JSON.stringify({
-          messages: messages.map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: (m.content || []).map((c) => {
-              if (c.type === "text") return { type: "text", text: c.text }
-              return c
-            }),
-          })),
-          route,
-          htmlDump,
-          interactions,
-          screenshot,
-        }),
-        signal: abortSignal,
-      })
+        console.log("[AIChatPanel] Sending to API with screenshot:", !!screenshot)
+        logInteractionRef.current("chat_send", "ai-chat-panel", { hasScreenshot: !!screenshot })
 
-      console.log("[AIChatPanel] Response status:", response.status)
+        // Request an die API senden
+        const startTime = Date.now()
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // Wichtig für Supabase Auth Cookies
+          body: JSON.stringify({
+            messages: messages.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content: (m.content || []).map((c) => {
+                if (c.type === "text") return { type: "text", text: c.text }
+                return c
+              }),
+            })),
+            route,
+            htmlDump,
+            interactions,
+            screenshot,
+          }),
+          signal: abortSignal,
+        })
 
-      if (!response.ok) {
-        let errorText = "Unknown error"
-        let errorCode: string | undefined
-        try {
-          const errorData = await response.json()
-          errorText = errorData.error || errorText
-          errorCode = errorData.code
-        } catch {
-          errorText = await response.text().catch(() => `HTTP ${response.status}`)
-        }
+        console.log("[AIChatPanel] Response status:", response.status)
 
-        // Spezielle Behandlung für nicht konfigurierten AI-Service
-        if (errorCode === "AI_SERVICE_NOT_CONFIGURED" || response.status === 503) {
-          throw new Error(
-            "AI-Service ist nicht konfiguriert. Bitte setze OPENROUTER_API_KEY in den Supabase Vault."
-          )
-        }
-
-        throw new Error(`API error: ${errorText}`)
-      }
-
-      // Streaming Response verarbeiten
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error("No response body - Stream nicht verfügbar")
-      }
-
-      const decoder = new TextDecoder("utf-8")
-      let fullText = ""
-      let chunkCount = 0
-      let buffer = "" // Buffer für unvollständige Zeilen
-      const toolCalls: Map<string, { toolName: string; args: Record<string, unknown> }> = new Map()
-
-      const contentType = response.headers.get("Content-Type")
-      console.log("[AIChatPanel] Starting stream read, Content-Type:", contentType)
-
-      try {
-        while (true) {
-          // Prüfe ob Request abgebrochen wurde
-          if (abortSignal?.aborted) {
-            console.log("[AIChatPanel] Request aborted by signal")
-            break
-          }
-
-          // Timeout für jeden Chunk (60 Sekunden)
-          const readPromise = reader.read()
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Stream timeout after 60s")), 60000)
-          )
-
-          let done: boolean
-          let value: Uint8Array | undefined
+        if (!response.ok) {
+          let errorText = "Unknown error"
+          let errorCode: string | undefined
           try {
-            const readResult = await Promise.race([readPromise, timeoutPromise])
-            done = readResult.done
-            value = readResult.value
-          } catch (timeoutError) {
-            console.error("[AIChatPanel] Stream timeout:", timeoutError)
-            if (fullText) {
-              yield { content: [{ type: "text" as const, text: fullText }] }
-            }
-            throw timeoutError
+            const errorData = await response.json()
+            errorText = errorData.error || errorText
+            errorCode = errorData.code
+          } catch {
+            errorText = await response.text().catch(() => `HTTP ${response.status}`)
           }
 
-          if (done) {
-            // Stream beendet - verarbeite verbleibenden Buffer
-            if (buffer.trim()) {
-              const lines = buffer.split('\n')
-              for (const line of lines) {
-                if (!line.trim()) continue
-                const parsed = parseDataStreamLine(line)
-                if (parsed?.type === "text") {
-                  fullText += parsed.text
-                }
-              }
-            }
-            // Final yield mit vollständigem Text
-            if (fullText.trim()) {
-              yield { content: [{ type: "text" as const, text: fullText }] }
-            }
-            break
+          // Spezielle Behandlung für nicht konfigurierten AI-Service
+          if (errorCode === "AI_SERVICE_NOT_CONFIGURED" || response.status === 503) {
+            throw new Error(
+              "AI-Service ist nicht konfiguriert. Bitte setze OPENROUTER_API_KEY in den Supabase Vault."
+            )
           }
 
-          if (value && value.length > 0) {
+          throw new Error(`API error: ${errorText}`)
+        }
+
+        // Streaming Response verarbeiten
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error("No response body - Stream nicht verfügbar")
+        }
+
+        const decoder = new TextDecoder("utf-8")
+        let fullText = ""
+        let chunkCount = 0
+        let buffer = "" // Buffer für unvollständige Zeilen
+        const toolCalls: Map<string, { toolName: string; args: Record<string, unknown> }> =
+          new Map()
+
+        const contentType = response.headers.get("Content-Type")
+        console.log("[AIChatPanel] Starting stream read, Content-Type:", contentType)
+
+        try {
+          while (true) {
+            // Prüfe ob Request abgebrochen wurde
+            if (abortSignal?.aborted) {
+              console.log("[AIChatPanel] Request aborted by signal")
+              break
+            }
+
+            // Timeout für jeden Chunk (60 Sekunden)
+            const readPromise = reader.read()
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("Stream timeout after 60s")), 60000)
+            )
+
+            let done: boolean
+            let value: Uint8Array | undefined
             try {
-              const chunk = decoder.decode(value, { stream: true })
-              if (chunk) {
-                chunkCount++
-                buffer += chunk
-                
-                // Verarbeite vollständige Zeilen
-                const lines = buffer.split('\n')
-                buffer = lines.pop() || "" // Letzte (möglicherweise unvollständige) Zeile behalten
-                
+              const readResult = await Promise.race([readPromise, timeoutPromise])
+              done = readResult.done
+              value = readResult.value
+            } catch (timeoutError) {
+              console.error("[AIChatPanel] Stream timeout:", timeoutError)
+              if (fullText) {
+                yield { content: [{ type: "text" as const, text: fullText }] }
+              }
+              throw timeoutError
+            }
+
+            if (done) {
+              // Stream beendet - verarbeite verbleibenden Buffer
+              if (buffer.trim()) {
+                const lines = buffer.split("\n")
                 for (const line of lines) {
                   if (!line.trim()) continue
-                  
                   const parsed = parseDataStreamLine(line)
-                  if (!parsed) continue
-                  
-                  switch (parsed.type) {
-                    case "text":
-                      fullText += parsed.text
-                      break
-                    case "tool-call":
-                      // Tool-Call beginnt
-                      toolCalls.set(parsed.toolCallId, {
-                        toolName: parsed.toolName,
-                        args: parsed.args || {},
-                      })
-                      console.log("[AIChatPanel] Tool call started:", parsed.toolName)
-                      // Zeige dem User, dass ein Tool aufgerufen wird
-                      fullText += `\n\n🔧 *Rufe ${parsed.toolName} auf...*\n`
-                      break
-                    case "tool-result":
-                      // Tool-Result erhalten
-                      console.log("[AIChatPanel] Tool result received:", parsed.toolCallId)
-                      const toolCall = toolCalls.get(parsed.toolCallId)
-                      if (toolCall) {
-                        // Formatiere das Ergebnis für den User
-                        const resultStr = formatToolResult(toolCall.toolName, parsed.result)
-                        fullText += `\n📊 **Ergebnis von ${toolCall.toolName}:**\n${resultStr}\n`
-                      }
-                      break
-                    case "finish":
-                      // Stream beendet
-                      console.log("[AIChatPanel] Stream finished, reason:", parsed.finishReason)
-                      break
+                  if (parsed?.type === "text") {
+                    fullText += parsed.text
                   }
                 }
-                
-                // Yield mit akkumuliertem Text
-                if (fullText) {
-                  yield { content: [{ type: "text" as const, text: fullText }] }
-                }
-
-                if (chunkCount % 10 === 0) {
-                  console.log(
-                    `[AIChatPanel] Received ${chunkCount} chunks, text length: ${fullText.length}`
-                  )
-                }
               }
-            } catch (decodeError) {
-              console.error("[AIChatPanel] Decode error:", decodeError)
+              // Final yield mit vollständigem Text
+              if (fullText.trim()) {
+                yield { content: [{ type: "text" as const, text: fullText }] }
+              }
+              break
+            }
+
+            if (value && value.length > 0) {
+              try {
+                const chunk = decoder.decode(value, { stream: true })
+                if (chunk) {
+                  chunkCount++
+                  buffer += chunk
+
+                  // Verarbeite vollständige Zeilen
+                  const lines = buffer.split("\n")
+                  buffer = lines.pop() || "" // Letzte (möglicherweise unvollständige) Zeile behalten
+
+                  for (const line of lines) {
+                    if (!line.trim()) continue
+
+                    const parsed = parseDataStreamLine(line)
+                    if (!parsed) continue
+
+                    switch (parsed.type) {
+                      case "text":
+                        fullText += parsed.text
+                        break
+                      case "tool-call":
+                        // Tool-Call beginnt
+                        toolCalls.set(parsed.toolCallId, {
+                          toolName: parsed.toolName,
+                          args: parsed.args || {},
+                        })
+                        console.log("[AIChatPanel] Tool call started:", parsed.toolName)
+                        // Zeige dem User, dass ein Tool aufgerufen wird
+                        fullText += `\n\n🔧 *Rufe ${parsed.toolName} auf...*\n`
+                        break
+                      case "tool-result":
+                        // Tool-Result erhalten
+                        console.log("[AIChatPanel] Tool result received:", parsed.toolCallId)
+                        const toolCall = toolCalls.get(parsed.toolCallId)
+                        if (toolCall) {
+                          // Formatiere das Ergebnis für den User
+                          const resultStr = formatToolResult(toolCall.toolName, parsed.result)
+                          fullText += `\n📊 **Ergebnis von ${toolCall.toolName}:**\n${resultStr}\n`
+                        }
+                        break
+                      case "finish":
+                        // Stream beendet
+                        console.log("[AIChatPanel] Stream finished, reason:", parsed.finishReason)
+                        break
+                    }
+                  }
+
+                  // Yield mit akkumuliertem Text
+                  if (fullText) {
+                    yield { content: [{ type: "text" as const, text: fullText }] }
+                  }
+
+                  if (chunkCount % 10 === 0) {
+                    console.log(
+                      `[AIChatPanel] Received ${chunkCount} chunks, text length: ${fullText.length}`
+                    )
+                  }
+                }
+              } catch (decodeError) {
+                console.error("[AIChatPanel] Decode error:", decodeError)
+              }
             }
           }
-        }
-      } catch (streamError) {
-        console.error("[AIChatPanel] Stream error:", streamError)
-        if (fullText) {
-          yield {
-            content: [
-              {
-                type: "text" as const,
-                text: fullText + "\n\n[Fehler: Stream unterbrochen]",
-              },
-            ],
+        } catch (streamError) {
+          console.error("[AIChatPanel] Stream error:", streamError)
+          if (fullText) {
+            yield {
+              content: [
+                {
+                  type: "text" as const,
+                  text: fullText + "\n\n[Fehler: Stream unterbrochen]",
+                },
+              ],
+            }
+          } else {
+            throw streamError
           }
-        } else {
-          throw streamError
+        } finally {
+          try {
+            reader.releaseLock()
+          } catch {
+            // Ignore
+          }
         }
-      } finally {
-        try {
-          reader.releaseLock()
-        } catch {
-          // Ignore
-        }
-      }
 
-      const duration = Date.now() - startTime
-      console.log(
-        `[AIChatPanel] Stream completed: ${chunkCount} chunks, ${fullText.length} chars, ${duration}ms`
-      )
-      logInteractionRef.current("chat_response", "ai-chat-panel", { chunkCount, duration })
-    },
-  }), []) // Empty deps - Adapter nutzt Refs für aktuelle Werte
+        const duration = Date.now() - startTime
+        console.log(
+          `[AIChatPanel] Stream completed: ${chunkCount} chunks, ${fullText.length} chars, ${duration}ms`
+        )
+        logInteractionRef.current("chat_response", "ai-chat-panel", { chunkCount, duration })
+      },
+    }),
+    []
+  ) // Empty deps - Adapter nutzt Refs für aktuelle Werte
 
   // Local Runtime mit Custom Adapter
   const runtime = useLocalRuntime(modelAdapter)

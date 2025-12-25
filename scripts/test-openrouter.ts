@@ -279,7 +279,7 @@ async function runTests() {
   try {
     await testAvailableModels()
     results.availableModels = true
-  } catch (error) {
+  } catch {
     console.error("\n❌ Connectivity-Test fehlgeschlagen: Modelle nicht abrufbar")
     process.exit(1)
   }
