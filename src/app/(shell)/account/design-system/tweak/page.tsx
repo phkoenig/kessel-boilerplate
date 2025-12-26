@@ -1,12 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { PageContent, PageHeader } from "@/components/shell"
 import { useExplorer } from "@/components/shell"
 import { useTheme as useColorMode } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import { Label } from "@/components/ui/label"
 import { useTheme } from "@/lib/themes"
-import { TokenEditor } from "@/components/theme/TokenEditor"
+import { useThemeEditor } from "@/hooks/use-theme-editor"
+import { ColorTokenPopover } from "@/components/theme/ColorTokenPopover"
+import { SaveThemeDialog } from "@/components/theme/SaveThemeDialog"
+import { Save, RotateCcw } from "lucide-react"
 
 /**
  * Tweak the UI Seite
@@ -18,6 +24,9 @@ export default function TweakPage(): React.ReactElement {
   const { theme: currentThemeId } = useTheme()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const { setOpen: setExplorerOpen } = useExplorer()
+  const { isDirty, resetPreview, previewToken } = useThemeEditor()
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const [radiusValue, setRadiusValue] = useState(0.5)
 
   // Warte auf Client-Mount, um Hydration-Mismatch zu vermeiden
   const [mounted, setMounted] = useState(false)
@@ -107,13 +116,35 @@ export default function TweakPage(): React.ReactElement {
     return () => clearTimeout(timeoutId)
   }, [currentThemeId])
 
-  // Dark Mode ist aktiv wenn:
-  // - colorMode explizit "dark" ist, ODER
-  // - colorMode "system" ist UND das System Dark Mode verwendet (resolvedTheme === "dark")
-  // Während SSR (mounted === false) verwenden wir einen sicheren Fallback
-  const isDarkMode = mounted
-    ? colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
-    : false
+  // Lade aktuellen Radius-Wert
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const updateRadius = () => {
+      const root = document.documentElement
+      const computedStyle = window.getComputedStyle(root)
+      const radiusStr = computedStyle.getPropertyValue("--radius").trim()
+      if (radiusStr) {
+        const match = radiusStr.match(/(\d+\.?\d*)/)
+        if (match) {
+          setRadiusValue(parseFloat(match[1]) / 16) // Convert px to rem
+        }
+      }
+    }
+    // Delay um sicherzustellen, dass Theme geladen ist
+    const timeoutId = setTimeout(updateRadius, 100)
+    return () => clearTimeout(timeoutId)
+  }, [currentThemeId])
+
+  const handleRadiusChange = useCallback(
+    (value: number[]) => {
+      const remValue = value[0]
+      setRadiusValue(remValue)
+      const pxValue = `${remValue * 16}px`
+      previewToken("--radius", pxValue, pxValue)
+    },
+    [previewToken]
+  )
 
   return (
     <PageContent>
@@ -121,6 +152,23 @@ export default function TweakPage(): React.ReactElement {
         title="Tweak the UI"
         description="Passe Design-Tokens live an und speichere sie als neues Theme"
       />
+
+      {/* Save/Reset Toolbar */}
+      {isDirty && (
+        <div className="bg-muted/50 flex items-center justify-between rounded-lg p-4">
+          <span className="text-muted-foreground text-sm">Ungespeicherte Änderungen</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={resetPreview}>
+              <RotateCcw className="mr-2 size-4" />
+              Zurücksetzen
+            </Button>
+            <Button size="sm" onClick={() => setIsSaveDialogOpen(true)}>
+              <Save className="mr-2 size-4" />
+              Als neues Theme speichern
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-8">
         {/* Farbsystem */}
@@ -132,42 +180,56 @@ export default function TweakPage(): React.ReactElement {
           <CardContent className="space-y-8">
             {/* Hauptfarben als Kreise */}
             <div className="flex flex-wrap gap-6">
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Primary</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-foreground size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Foreground</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-muted-foreground size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Muted FG</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-border size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Border</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-background size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Background</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-destructive size-12 rounded-full border shadow-sm" />
-                <span className="text-muted-foreground text-xs">Destructive</span>
-              </div>
+              <ColorTokenPopover tokenName="--primary" label="Primary">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Primary</span>
+                </div>
+              </ColorTokenPopover>
+              <ColorTokenPopover tokenName="--foreground" label="Foreground">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-foreground hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Foreground</span>
+                </div>
+              </ColorTokenPopover>
+              <ColorTokenPopover tokenName="--muted-foreground" label="Muted Foreground">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-muted-foreground hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Muted FG</span>
+                </div>
+              </ColorTokenPopover>
+              <ColorTokenPopover tokenName="--border" label="Border">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-border hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Border</span>
+                </div>
+              </ColorTokenPopover>
+              <ColorTokenPopover tokenName="--background" label="Background">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-background hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Background</span>
+                </div>
+              </ColorTokenPopover>
+              <ColorTokenPopover tokenName="--destructive" label="Destructive">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-destructive hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
+                  <span className="text-muted-foreground text-xs">Destructive</span>
+                </div>
+              </ColorTokenPopover>
             </div>
 
             {/* Farbpaletten mit Verläufen */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
               {/* Brand/Primary */}
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Brand</h4>
                 <div className="space-y-1">
-                  <div className="bg-primary text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs font-medium">Primary</span>
-                    <span className="text-xs opacity-70">FG</span>
-                  </div>
+                  <ColorTokenPopover tokenName="--primary" label="Primary">
+                    <div className="bg-primary text-primary-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Primary</span>
+                      <span className="text-xs opacity-70">FG</span>
+                    </div>
+                  </ColorTokenPopover>
                   <div className="bg-primary/80 text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
                     <span className="text-xs">80%</span>
                   </div>
@@ -187,31 +249,43 @@ export default function TweakPage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Neutral</h4>
                 <div className="space-y-1">
-                  <div className="bg-foreground text-background flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs font-medium">Foreground</span>
-                  </div>
-                  <div className="bg-muted-foreground text-background flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">Muted FG</span>
-                  </div>
-                  <div className="bg-border flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">Border</span>
-                  </div>
-                  <div className="bg-muted text-muted-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">Muted</span>
-                  </div>
-                  <div className="bg-background text-foreground flex items-center justify-between rounded-md border px-3 py-2">
-                    <span className="text-xs">Background</span>
-                  </div>
+                  <ColorTokenPopover tokenName="--foreground" label="Foreground">
+                    <div className="bg-foreground text-background hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Foreground</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--muted-foreground" label="Muted Foreground">
+                    <div className="bg-muted-foreground text-background hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs">Muted FG</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--border" label="Border">
+                    <div className="bg-border hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs">Border</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--muted" label="Muted">
+                    <div className="bg-muted text-muted-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs">Muted</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--background" label="Background">
+                    <div className="bg-background text-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs">Background</span>
+                    </div>
+                  </ColorTokenPopover>
                 </div>
               </div>
 
-              {/* Status */}
+              {/* Status - Destructive */}
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Status</h4>
                 <div className="space-y-1">
-                  <div className="bg-destructive text-destructive-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs font-medium">Destructive</span>
-                  </div>
+                  <ColorTokenPopover tokenName="--destructive" label="Destructive">
+                    <div className="bg-destructive text-destructive-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Destructive</span>
+                    </div>
+                  </ColorTokenPopover>
                   <div className="bg-destructive/80 text-destructive-foreground flex items-center justify-between rounded-md px-3 py-2">
                     <span className="text-xs">80%</span>
                   </div>
@@ -224,6 +298,57 @@ export default function TweakPage(): React.ReactElement {
                   <div className="bg-destructive/20 flex items-center justify-between rounded-md px-3 py-2">
                     <span className="text-xs">20%</span>
                   </div>
+                  <ColorTokenPopover tokenName="--success" label="Success">
+                    <div className="bg-success text-success-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Success</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <div className="bg-success/80 text-success-foreground flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">80%</span>
+                  </div>
+                  <div className="bg-success/60 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">60%</span>
+                  </div>
+                  <div className="bg-success/40 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">40%</span>
+                  </div>
+                  <div className="bg-success/20 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">20%</span>
+                  </div>
+                  <ColorTokenPopover tokenName="--warning" label="Warning">
+                    <div className="bg-warning text-warning-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Warning</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <div className="bg-warning/80 text-warning-foreground flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">80%</span>
+                  </div>
+                  <div className="bg-warning/60 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">60%</span>
+                  </div>
+                  <div className="bg-warning/40 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">40%</span>
+                  </div>
+                  <div className="bg-warning/20 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">20%</span>
+                  </div>
+                  <ColorTokenPopover tokenName="--info" label="Info">
+                    <div className="bg-info text-info-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Info</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <div className="bg-info/80 text-info-foreground flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">80%</span>
+                  </div>
+                  <div className="bg-info/60 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">60%</span>
+                  </div>
+                  <div className="bg-info/40 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">40%</span>
+                  </div>
+                  <div className="bg-info/20 flex items-center justify-between rounded-md px-3 py-2">
+                    <span className="text-xs">20%</span>
+                  </div>
                 </div>
               </div>
 
@@ -231,21 +356,31 @@ export default function TweakPage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Charts</h4>
                 <div className="space-y-1">
-                  <div className="bg-chart-1 flex items-center justify-between rounded-md px-3 py-2 text-white">
-                    <span className="text-xs font-medium">Chart 1</span>
-                  </div>
-                  <div className="bg-chart-2 flex items-center justify-between rounded-md px-3 py-2 text-white">
-                    <span className="text-xs">Chart 2</span>
-                  </div>
-                  <div className="bg-chart-3 flex items-center justify-between rounded-md px-3 py-2 text-white">
-                    <span className="text-xs">Chart 3</span>
-                  </div>
-                  <div className="bg-chart-4 flex items-center justify-between rounded-md px-3 py-2 text-white">
-                    <span className="text-xs">Chart 4</span>
-                  </div>
-                  <div className="bg-chart-5 flex items-center justify-between rounded-md px-3 py-2 text-white">
-                    <span className="text-xs">Chart 5</span>
-                  </div>
+                  <ColorTokenPopover tokenName="--chart-1" label="Chart 1">
+                    <div className="bg-chart-1 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
+                      <span className="text-xs font-medium">Chart 1</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--chart-2" label="Chart 2">
+                    <div className="bg-chart-2 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
+                      <span className="text-xs">Chart 2</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--chart-3" label="Chart 3">
+                    <div className="bg-chart-3 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
+                      <span className="text-xs">Chart 3</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--chart-4" label="Chart 4">
+                    <div className="bg-chart-4 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
+                      <span className="text-xs">Chart 4</span>
+                    </div>
+                  </ColorTokenPopover>
+                  <ColorTokenPopover tokenName="--chart-5" label="Chart 5">
+                    <div className="bg-chart-5 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
+                      <span className="text-xs">Chart 5</span>
+                    </div>
+                  </ColorTokenPopover>
                 </div>
               </div>
             </div>
@@ -254,18 +389,26 @@ export default function TweakPage(): React.ReactElement {
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Interaktiv</h4>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <div className="bg-secondary text-secondary-foreground rounded-md px-3 py-2 text-center">
-                  <span className="text-xs">Secondary</span>
-                </div>
-                <div className="bg-accent text-accent-foreground rounded-md px-3 py-2 text-center">
-                  <span className="text-xs">Accent</span>
-                </div>
-                <div className="bg-card text-card-foreground rounded-md border px-3 py-2 text-center">
-                  <span className="text-xs">Card</span>
-                </div>
-                <div className="bg-popover text-popover-foreground rounded-md border px-3 py-2 text-center">
-                  <span className="text-xs">Popover</span>
-                </div>
+                <ColorTokenPopover tokenName="--secondary" label="Secondary">
+                  <div className="bg-secondary text-secondary-foreground hover:ring-ring cursor-pointer rounded-md px-3 py-2 text-center transition-all hover:ring-2">
+                    <span className="text-xs">Secondary</span>
+                  </div>
+                </ColorTokenPopover>
+                <ColorTokenPopover tokenName="--accent" label="Accent">
+                  <div className="bg-accent text-accent-foreground hover:ring-ring cursor-pointer rounded-md px-3 py-2 text-center transition-all hover:ring-2">
+                    <span className="text-xs">Accent</span>
+                  </div>
+                </ColorTokenPopover>
+                <ColorTokenPopover tokenName="--card" label="Card">
+                  <div className="bg-card text-card-foreground hover:ring-ring cursor-pointer rounded-md border px-3 py-2 text-center transition-all hover:ring-2">
+                    <span className="text-xs">Card</span>
+                  </div>
+                </ColorTokenPopover>
+                <ColorTokenPopover tokenName="--popover" label="Popover">
+                  <div className="bg-popover text-popover-foreground hover:ring-ring cursor-pointer rounded-md border px-3 py-2 text-center transition-all hover:ring-2">
+                    <span className="text-xs">Popover</span>
+                  </div>
+                </ColorTokenPopover>
               </div>
             </div>
           </CardContent>
@@ -372,26 +515,44 @@ export default function TweakPage(): React.ReactElement {
             <CardDescription>Border Radius Varianten basierend auf --radius</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-16 rounded-sm" />
-                <span className="text-muted-foreground text-xs">sm</span>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">--radius</Label>
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {radiusValue.toFixed(2)}rem ({Math.round(radiusValue * 16)}px)
+                  </span>
+                </div>
+                <Slider
+                  value={[radiusValue]}
+                  onValueChange={handleRadiusChange}
+                  min={0}
+                  max={2}
+                  step={0.125}
+                  className="w-full"
+                />
               </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-16 rounded-md" />
-                <span className="text-muted-foreground text-xs">md</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-16 rounded-lg" />
-                <span className="text-muted-foreground text-xs">lg</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-16 rounded-xl" />
-                <span className="text-muted-foreground text-xs">xl</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="bg-primary size-16 rounded-full" />
-                <span className="text-muted-foreground text-xs">full</span>
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary size-16 rounded-sm" />
+                  <span className="text-muted-foreground text-xs">sm</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary size-16 rounded-md" />
+                  <span className="text-muted-foreground text-xs">md</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary size-16 rounded-lg" />
+                  <span className="text-muted-foreground text-xs">lg</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary size-16 rounded-xl" />
+                  <span className="text-muted-foreground text-xs">xl</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="bg-primary size-16 rounded-full" />
+                  <span className="text-muted-foreground text-xs">full</span>
+                </div>
               </div>
             </div>
             <p className="text-muted-foreground text-xs">
@@ -433,10 +594,9 @@ export default function TweakPage(): React.ReactElement {
             </p>
           </CardContent>
         </Card>
-
-        {/* Token Editor */}
-        <TokenEditor />
       </div>
+
+      <SaveThemeDialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen} />
     </PageContent>
   )
 }
