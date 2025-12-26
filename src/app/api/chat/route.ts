@@ -14,7 +14,7 @@
 
 import { streamText, stepCountIs, type CoreMessage, type ImagePart, type TextPart } from "ai"
 import { openrouter } from "@/lib/ai/openrouter-provider"
-import { detectToolNeed, type RouterDecision } from "@/lib/ai/model-router"
+import { detectToolNeedWithAI, type RouterDecision } from "@/lib/ai/model-router"
 import { generateAllTools } from "@/lib/ai/tool-registry"
 import type { ToolExecutionContext } from "@/lib/ai/tool-executor"
 import { generateUIActionTool, type UIAction } from "@/lib/ai/special-tools"
@@ -77,28 +77,46 @@ function buildSystemPrompt(context: {
 - Du antwortest auf Deutsch, es sei denn der User schreibt auf Englisch
 
 ## Kontext über die Anwendung
-
-### Wiki-Dokumentation
 ${context.wikiContent}
 
-### Aktuelle Route des Users
-${context.currentRoute || "Unbekannt"}
+## Aktuelle Route
+${context.currentRoute || "/"}
 
-### Letzte User-Aktionen (chronologisch)
+## Kürzliche Interaktionen
 ${context.interactions}
 
-${context.hasScreenshot ? "### Screenshot\nDu hast einen Screenshot der aktuellen Ansicht erhalten. Nutze diesen, um kontextbezogene Hilfe zu geben." : ""}
+${context.hasScreenshot ? "\n## Screenshot verfügbar\nDu hast Zugriff auf einen Screenshot der aktuellen Seite. Nutze ihn um visuelle Fragen zu beantworten." : ""}
+${context.hasHtmlDump ? "\n## HTML-Dump verfügbar\nDu hast Zugriff auf einen HTML-Dump der Seite für strukturelle Analysen." : ""}${toolList}
 
-${context.hasHtmlDump ? "### HTML-Struktur\nDu hast die HTML-Struktur der aktuellen Seite erhalten. Nutze diese für technische Fragen zur Seitenstruktur." : ""}
-${toolList}
+## Antwort-Stil
+- Sei präzise und hilfreich
+- Verwende Tools wenn nötig - keine unnötigen Fragen
+- Bei Fehlern: Erkläre was schiefgelaufen ist und wie man es behebt
+- Bei UI-Aktionen: Führe sie direkt aus mit execute_ui_action Tool
 
-## Antwort-Richtlinien
-1. Sei präzise und hilfreich
-2. WICHTIG: Wenn Daten benötigt werden, RUFE das passende Tool SOFORT auf - nicht ankündigen!
-3. Bei Tool-Aufrufen: Führe sie DIREKT aus, dann erkläre das Ergebnis
-4. Bei Unsicherheit frage nach mehr Details
-5. Formatiere längere Antworten mit Markdown
-6. Füge am ENDE jeder Antwort eine neue Zeile hinzu mit: \`<sub>— ${context.modelName}</sub>\``
+## UI-Element-Suche (WICHTIG!)
+Wenn der User nach UI-Elementen fragt (z.B. "Wo ist der Dark Mode Switch?", "Finde den Theme Toggle", "Wie schalte ich X ein?"):
+1. Verwende IMMER zuerst **search_ui_components** mit relevanten Keywords
+2. Das Tool durchsucht alle registrierten UI-Komponenten nach Keywords
+3. Wähle aus den Ergebnissen das passendste Element
+4. Führe dann **execute_ui_action** mit der gefundenen action_id aus
+
+Beispiel-Workflow:
+- User: "Wo ist der Dark Mode?"
+- Du: search_ui_components(query: "dark mode theme")
+- Ergebnis zeigt: theme-toggle [Keywords: dark mode, light mode, theme]
+- Du: execute_ui_action(action_id: "theme-toggle")
+- Du: "Ich habe den Theme-Toggle gefunden und aktiviert!"
+
+## KRITISCH: Nach Tool-Aufrufen
+**IMMER** nachdem du ein Tool aufgerufen hast und das Ergebnis erhältst, musst du:
+1. Eine kurze Zusammenfassung für den User schreiben
+2. Bei query_*: Zeige die wichtigsten Daten in lesbarer Form
+3. Bei execute_ui_action: Bestätige was du getan hast (z.B. "Ich habe dich zu X navigiert")
+4. NIEMALS nur Tool-Ergebnisse ohne Text-Antwort zurückgeben!
+
+\`\`\`
+<sub>— ${context.modelName}</sub>\``
 }
 
 /**
@@ -117,7 +135,7 @@ interface ClientMessage {
  */
 interface ChatRequestBody {
   messages: ClientMessage[]
-  screenshot?: string
+  screenshot?: string | null
   htmlDump?: string
   route?: string
   interactions?: UserInteraction[]
@@ -166,31 +184,35 @@ function convertMessages(messages: ClientMessage[], screenshot?: string | null):
 
   // Screenshot an die letzte User-Nachricht anhängen (multimodal)
   if (screenshot && converted.length > 0) {
-    for (let i = converted.length - 1; i >= 0; i--) {
-      if (converted[i].role === "user") {
-        const textContent = converted[i].content as string
-
-        // Base64 zu Uint8Array konvertieren
-        const binaryString = atob(screenshot)
-        const bytes = new Uint8Array(binaryString.length)
-        for (let j = 0; j < binaryString.length; j++) {
-          bytes[j] = binaryString.charCodeAt(j)
-        }
-
-        const textPart: TextPart = { type: "text", text: textContent }
-        const imagePart: ImagePart = {
-          type: "image",
-          image: bytes,
-          mediaType: "image/jpeg",
-        }
-
-        converted[i] = {
+    const lastUserMessageIndex = converted.map((m) => m.role).lastIndexOf("user")
+    if (lastUserMessageIndex >= 0) {
+      const lastUserMessage = converted[lastUserMessageIndex]
+      if (typeof lastUserMessage.content === "string") {
+        // Konvertiere zu multimodalem Format
+        const multimodalContent: Array<TextPart | ImagePart> = [
+          { type: "text", text: lastUserMessage.content },
+          {
+            type: "image",
+            image: Buffer.from(screenshot, "base64"),
+          } as ImagePart,
+        ]
+        converted[lastUserMessageIndex] = {
           role: "user",
-          content: [textPart, imagePart],
-        }
-
-        console.log("[Chat API] Screenshot attached, size:", bytes.length, "bytes")
-        break
+          content: multimodalContent,
+        } as CoreMessage
+      } else if (Array.isArray(lastUserMessage.content)) {
+        // Füge Screenshot zu bestehendem multimodalem Content hinzu
+        const multimodalContent: Array<TextPart | ImagePart> = [
+          ...lastUserMessage.content.filter((c): c is TextPart => c.type === "text"),
+          {
+            type: "image",
+            image: Buffer.from(screenshot, "base64"),
+          } as ImagePart,
+        ]
+        converted[lastUserMessageIndex] = {
+          role: "user",
+          content: multimodalContent,
+        } as CoreMessage
       }
     }
   }
@@ -235,7 +257,8 @@ export async function POST(req: Request) {
     }
 
     // 4. Messages konvertieren (für Router-Analyse)
-    const modelMessages = convertMessages(messages, screenshot)
+    // WICHTIG: Screenshot erstmal NICHT mitkonvertieren, da Router entscheidet ob benötigt
+    const modelMessages = convertMessages(messages, null)
 
     // DEBUG: Log incoming messages - vollständig
     console.log("[Chat API] RAW messages:", JSON.stringify(messages, null, 2).substring(0, 2000))
@@ -252,18 +275,29 @@ export async function POST(req: Request) {
       }))
     )
 
-    // 5. INTELLIGENTER MODEL-ROUTER
-    // Entscheidet ob Tools benötigt werden und wählt passendes Modell
-    const routerDecision: RouterDecision = detectToolNeed(modelMessages)
+    // 5. AI-GESTÜTZTER MODEL-ROUTER
+    // Entscheidet ob Tools/Screenshot benötigt werden und wählt passendes Modell
+    const routerDecision: RouterDecision = await detectToolNeedWithAI(modelMessages)
 
     console.log("[Chat API] Router decision:", {
       needsTools: routerDecision.needsTools,
+      needsScreenshot: routerDecision.needsScreenshot,
       reason: routerDecision.reason,
       model: routerDecision.model,
       maxSteps: routerDecision.maxSteps,
     })
 
-    // 6. Tools NUR laden wenn Router entscheidet dass sie gebraucht werden
+    // 6. Screenshot nur verwenden wenn Router es als notwendig erachtet
+    // UND wenn Screenshot tatsächlich vorhanden ist
+    const shouldUseScreenshot =
+      routerDecision.needsScreenshot === true && screenshot !== null && screenshot !== undefined
+
+    // 7. Messages mit Screenshot konvertieren (nur wenn benötigt)
+    const finalMessages = shouldUseScreenshot
+      ? convertMessages(messages, screenshot)
+      : modelMessages
+
+    // 8. Tools NUR laden wenn Router entscheidet dass sie gebraucht werden
     // Das spart DB-Calls bei einfachen Chat-Anfragen
     let tools: Awaited<ReturnType<typeof generateAllTools>> | undefined
     let availableToolNames: string[] = []
@@ -279,7 +313,7 @@ export async function POST(req: Request) {
       console.log("[Chat API] Tools loaded:", availableToolNames.join(", ") || "none")
     }
 
-    // 6.5. UI-Action Tool hinzufügen wenn Actions verfügbar sind
+    // 8.5. UI-Action Tool hinzufügen wenn Actions verfügbar sind
     // UI-Actions sind immer verfügbar, auch ohne Tool-Routing
     if (availableActions && availableActions.length > 0) {
       const uiActionTool = generateUIActionTool(availableActions)
@@ -292,50 +326,38 @@ export async function POST(req: Request) {
       console.log("[Chat API] UI-Action Tool loaded:", availableActions.length, "actions available")
     }
 
-    // 7. Modell aus Router-Decision verwenden (oder explizit überschrieben)
+    // 9. Modell aus Router-Decision verwenden (oder explizit überschrieben)
     const selectedModel = model ?? routerDecision.model
     const maxSteps = routerDecision.maxSteps
 
-    // 8. Kontext und System-Prompt aufbauen
+    // 10. Kontext und System-Prompt aufbauen
     const wikiContent = await loadWikiContent()
     const systemPrompt = buildSystemPrompt({
       wikiContent: wikiContent || "Wiki-Content nicht verfügbar.",
       interactions: formatInteractions(interactions ?? []),
       currentRoute: route ?? "",
-      hasScreenshot: !!screenshot,
+      hasScreenshot: shouldUseScreenshot,
       hasHtmlDump: !!htmlDump,
       availableTools: availableToolNames,
       modelName: selectedModel,
     })
 
-    console.log("[Chat API] Starting streamText:", {
-      model: selectedModel,
-      toolCount: availableToolNames.length,
-      maxSteps,
-      hasScreenshot: !!screenshot,
-    })
-
-    // 9. OpenRouter aufrufen (vorher Schritt 9, jetzt nach Modell-Auswahl)
-    // Hinweis: streamText in AI SDK v5 gibt ein StreamTextResult zurück
+    // 11. Stream-Text mit gewähltem Modell und Tools
     const result = streamText({
       model: openrouter(selectedModel),
       system: systemPrompt,
-      messages: modelMessages,
-      tools: tools && Object.keys(tools).length > 0 ? tools : undefined,
-      // stopWhen ersetzt maxSteps in AI SDK v5
-      stopWhen: stepCountIs(maxSteps),
+      messages: finalMessages,
+      ...(tools && Object.keys(tools).length > 0 ? { tools, stopWhen: stepCountIs(maxSteps) } : {}),
+      experimental_telemetry: { isEnabled: true },
     })
 
-    console.log("[Chat API] StreamText started")
-
-    // 10. UI Message Stream Response zurückgeben (vorher Schritt 10)
-    // Streamt Text UND Tool-Calls/Results im UI Message Protocol Format
+    // 12. Streaming-Response zurückgeben
+    // assistant-ui benötigt toUIMessageStreamResponse() für korrektes Streaming
     return result.toUIMessageStreamResponse({
       headers: {
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
-        // Custom Headers für Debugging/Monitoring
         "X-Model-Used": selectedModel,
         "X-Router-Reason": routerDecision.reason,
         "X-Tools-Enabled": String(routerDecision.needsTools),
@@ -343,18 +365,12 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error("[Chat API] Error:", error)
-
-    if (error instanceof Error) {
-      console.error("[Chat API] Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      })
-    }
-
-    const errorMessage =
-      error instanceof Error ? error.message : typeof error === "string" ? error : "Unknown error"
-
-    return Response.json({ error: errorMessage }, { status: 500 })
+    return Response.json(
+      {
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    )
   }
 }

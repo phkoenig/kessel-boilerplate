@@ -266,6 +266,40 @@ KI-Assistent mit **multimodalem Kontext**:
 
 → [AI Chat Assist Dokumentation](docs/03_features/ai-chat-assist.md)
 
+### 🎯 AI-Interactable Component System
+
+**NEU:** Deklarative KI-Steuerung von UI-Komponenten:
+
+```tsx
+// Jede interaktive Komponente wird für die KI "sichtbar"
+<AIInteractable
+  id="theme-dark-mode-toggle"
+  action="toggle"
+  target="color-mode"
+  description="Schaltet zwischen Dark Mode und Light Mode um"
+  keywords={["dark mode", "light mode", "dunkel", "hell"]}
+  category="settings"
+>
+  <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
+</AIInteractable>
+```
+
+**Features:**
+
+- **Deklarativ**: Komponenten beschreiben ihre KI-Capabilities
+- **Build-Zeit Validierung**: ESLint-Regeln erzwingen Compliance
+- **Dynamische Tools**: Runtime-Generierung von KI-Tools aus Registry
+- **Keyword-Suche**: KI findet Komponenten über natürliche Sprache
+
+**ESLint Governance:**
+
+| Regel                     | Funktion                                   |
+| ------------------------- | ------------------------------------------ |
+| `ai-component-compliance` | Prüft Manifest-Registrierung               |
+| `require-ai-wrapper`      | Erzwingt AIInteractable für UI-Komponenten |
+
+→ [AI-Interactable System Dokumentation](docs/ai-interactable-system.md)
+
 ### 🌈 Supabase Theme System
 
 Dynamische Themes aus **Supabase Storage**:

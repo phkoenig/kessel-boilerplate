@@ -8,6 +8,7 @@
 "use client"
 
 import { useEffect, useRef, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { useAIRegistry } from "@/lib/ai/ai-registry-context"
 import type { AIActionType, AIComponentCategory } from "@/lib/ai/ai-manifest.schema"
 
@@ -53,22 +54,46 @@ export function AIInteractable({
   className,
 }: AIInteractableProps): React.ReactElement {
   const { register } = useAIRegistry()
+  const router = useRouter()
   const elementRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Prüfe Verfügbarkeit
     const isAvailable = availableWhen?.() ?? true
 
-    // Execute-Funktion: Klickt das Element
+    // Execute-Funktion: Führt die Aktion aus
     const execute = () => {
       const element = elementRef.current
-      if (!element) return
+      if (!element) {
+        console.warn(`[AIInteractable] Element not found for action ${id}`)
+        return
+      }
 
-      // Suche nach klickbarem Element innerhalb des Containers
+      // Navigation-Actions direkt über router.push() ausführen
+      if (action === "navigate" && target) {
+        console.log(`[AIInteractable] Navigating to: ${target}`)
+        router.push(target)
+        return
+      }
+
+      // Toggle-Actions: Suche nach Button/Click-Handler
+      if (action === "toggle") {
+        // Suche nach klickbarem Element innerhalb des Containers
+        const clickableElement = element.querySelector<HTMLElement>("button, a, [role='button']")
+        if (clickableElement) {
+          console.log(`[AIInteractable] Clicking element for toggle action ${id}`)
+          clickableElement.click()
+          return
+        }
+      }
+
+      // Fallback: Suche nach klickbarem Element
       const clickableElement = element.querySelector<HTMLElement>("button, a, [role='button']")
       if (clickableElement) {
+        console.log(`[AIInteractable] Clicking element for action ${id}`)
         clickableElement.click()
       } else {
+        console.warn(`[AIInteractable] No clickable element found for action ${id}`)
         // Fallback: Klicke den Container selbst
         element.click()
       }
@@ -88,10 +113,17 @@ export function AIInteractable({
 
     // Cleanup beim Unmount
     return unregister
-  }, [id, action, target, description, keywords, category, availableWhen, register])
+  }, [id, action, target, description, keywords, category, availableWhen, register, router])
 
   return (
-    <div ref={elementRef} data-ai-id={id} data-ai-action={action} className={className}>
+    <div
+      ref={elementRef}
+      data-ai-id={id}
+      data-ai-action={action}
+      data-ai-target={target}
+      data-ai-keywords={keywords.join(",")}
+      className={className}
+    >
       {children}
     </div>
   )

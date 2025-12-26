@@ -189,22 +189,10 @@ const accountSection: NavSection = {
           href: "/account/design-system/theme-management",
         },
         {
-          id: "ds-colors",
-          label: "Farben",
+          id: "ds-tweak",
+          label: "Tweak the UI",
           icon: Paintbrush,
-          href: "/account/design-system/colors",
-        },
-        {
-          id: "ds-fonts",
-          label: "Schriften",
-          icon: Type,
-          href: "/account/design-system/fonts",
-        },
-        {
-          id: "ds-geometry",
-          label: "Geometrie",
-          icon: Shapes,
-          href: "/account/design-system/geometry",
+          href: "/account/design-system/tweak",
         },
         {
           id: "ds-components",

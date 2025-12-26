@@ -10,6 +10,7 @@
 
 import type { CoreMessage } from "ai"
 import { DEFAULT_CHAT_MODEL, DEFAULT_TOOL_MODEL } from "./openrouter-provider"
+import { routeWithAI, type RouteCategory } from "./ai-router"
 
 /**
  * Router-Entscheidung
@@ -17,6 +18,8 @@ import { DEFAULT_CHAT_MODEL, DEFAULT_TOOL_MODEL } from "./openrouter-provider"
 export interface RouterDecision {
   /** Ob Tools benötigt werden */
   needsTools: boolean
+  /** Ob Screenshot benötigt wird (für Vision-Analyse) */
+  needsScreenshot: boolean
   /** Grund für die Entscheidung (für Logging) */
   reason: string
   /** Gewähltes Modell */
@@ -322,6 +325,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
   if (!lastUserMessage) {
     return {
       needsTools: false,
+      needsScreenshot: false,
       reason: "no-user-message",
       model: DEFAULT_CHAT_MODEL,
       maxSteps: 1,
@@ -335,6 +339,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
   if (analysis.hasVisionRef) {
     return {
       needsTools: false,
+      needsScreenshot: true,
       reason: `vision-request:${analysis.matchedVisionKeyword}`,
       model: DEFAULT_CHAT_MODEL,
       maxSteps: 1,
@@ -345,6 +350,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
   if (analysis.hasUIRef) {
     return {
       needsTools: true,
+      needsScreenshot: false,
       reason: `ui-action:${analysis.matchedUIKeyword}`,
       model: DEFAULT_TOOL_MODEL,
       maxSteps: 8,
@@ -355,6 +361,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
   if (analysis.hasDbRef) {
     return {
       needsTools: true,
+      needsScreenshot: false,
       reason: `explicit-db-reference`,
       model: DEFAULT_TOOL_MODEL,
       maxSteps: 8,
@@ -365,6 +372,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
   if (analysis.hasEntity && analysis.hasCrud) {
     return {
       needsTools: true,
+      needsScreenshot: false,
       reason: `entity-crud:${analysis.matchedEntity}+${analysis.crudType}`,
       model: DEFAULT_TOOL_MODEL,
       maxSteps: 8,
@@ -376,6 +384,7 @@ export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
 
   return {
     needsTools: false,
+    needsScreenshot: false,
     reason: "general-chat",
     model: DEFAULT_CHAT_MODEL,
     maxSteps: 1,
@@ -397,4 +406,55 @@ const TOOL_SUPPORTED_MODELS = [
  */
 export function modelSupportsTools(modelId: string): boolean {
   return TOOL_SUPPORTED_MODELS.includes(modelId)
+}
+
+/**
+ * AI-gestützter Model-Router
+ *
+ * Verwendet Gemini Flash zur intelligenten Klassifikation.
+ * Ersetzt den keyword-basierten Router für kontextbewusste Entscheidungen.
+ *
+ * @param messages - Chatverlauf
+ * @returns RouterDecision mit Modell, Tools und Screenshot-Anforderung
+ */
+export async function detectToolNeedWithAI(messages: CoreMessage[]): Promise<RouterDecision> {
+  const category = await routeWithAI(messages)
+
+  console.log(`[AI-Router] Classified as: ${category}`)
+
+  switch (category) {
+    case "UI_ACTION":
+      return {
+        needsTools: true,
+        needsScreenshot: false,
+        reason: `ai-router:ui-action`,
+        model: DEFAULT_TOOL_MODEL,
+        maxSteps: 8,
+      }
+    case "DB_QUERY":
+      return {
+        needsTools: true,
+        needsScreenshot: false,
+        reason: `ai-router:db-query`,
+        model: DEFAULT_TOOL_MODEL,
+        maxSteps: 8,
+      }
+    case "VISION":
+      return {
+        needsTools: false,
+        needsScreenshot: true,
+        reason: `ai-router:vision`,
+        model: DEFAULT_CHAT_MODEL,
+        maxSteps: 1,
+      }
+    case "CHAT":
+    default:
+      return {
+        needsTools: false,
+        needsScreenshot: false,
+        reason: `ai-router:chat`,
+        model: DEFAULT_CHAT_MODEL,
+        maxSteps: 1,
+      }
+  }
 }

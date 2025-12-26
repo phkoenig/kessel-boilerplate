@@ -16,6 +16,7 @@ import { tool, type ToolSet } from "ai"
 import { z } from "zod"
 import { createClient } from "@supabase/supabase-js"
 import type { ToolExecutionContext } from "./tool-executor"
+import { generateThemeTools } from "./theme-tools"
 
 /**
  * Prüft ob der aktuelle User Admin ist
@@ -257,6 +258,7 @@ export function generateSpecialTools(ctx: ToolExecutionContext): ToolSet {
   return {
     ...createUserTool(ctx),
     ...deleteUserTool(ctx),
+    ...generateThemeTools(ctx),
     // Weitere Special Tools hier hinzufügen:
     // ...sendEmailTool(ctx),
     // ...uploadFileTool(ctx),
@@ -272,6 +274,8 @@ export interface UIAction {
   action: string
   target?: string
   description: string
+  keywords: string[]
+  category: string
 }
 
 /**
@@ -279,6 +283,104 @@ export interface UIAction {
  *
  * Ermöglicht der KI, UI-Aktionen auszuführen (Navigation, Panel-Toggles, etc.)
  */
+/**
+ * Durchsucht UI-Komponenten nach Keywords
+ */
+function searchUIComponentsTool(availableActions: UIAction[]): ToolSet {
+  if (availableActions.length === 0) {
+    return {}
+  }
+
+  return {
+    search_ui_components: tool({
+      description: `Durchsucht alle KI-steuerbaren UI-Komponenten nach Keywords. 
+Nutze dieses Tool wenn der User nach UI-Elementen fragt (z.B. "Wo ist der Dark Mode Switch?", "Finde den Theme Toggle").
+Gibt eine Liste passender Komponenten zurück, die du dann mit execute_ui_action ausführen kannst.`,
+      inputSchema: z.object({
+        query: z.string().describe("Suchbegriff(e), z.B. 'dark mode', 'theme', 'navigation'"),
+      }),
+      execute: async ({ query }) => {
+        const queryLower = query.toLowerCase()
+        const queryWords = queryLower.split(/\s+/)
+
+        // Suche nach Übereinstimmungen in keywords, description und id
+        const matches = availableActions
+          .map((action) => {
+            let score = 0
+            const matchedKeywords: string[] = []
+
+            // Keyword-Match (höchste Priorität)
+            for (const keyword of action.keywords) {
+              const keywordLower = keyword.toLowerCase()
+              if (keywordLower.includes(queryLower) || queryLower.includes(keywordLower)) {
+                score += 10
+                matchedKeywords.push(keyword)
+              }
+              for (const word of queryWords) {
+                if (keywordLower.includes(word)) {
+                  score += 5
+                  if (!matchedKeywords.includes(keyword)) matchedKeywords.push(keyword)
+                }
+              }
+            }
+
+            // Description-Match
+            const descLower = action.description.toLowerCase()
+            if (descLower.includes(queryLower)) {
+              score += 3
+            }
+            for (const word of queryWords) {
+              if (descLower.includes(word)) {
+                score += 1
+              }
+            }
+
+            // ID-Match
+            const idLower = action.id.toLowerCase()
+            for (const word of queryWords) {
+              if (idLower.includes(word)) {
+                score += 2
+              }
+            }
+
+            return { action, score, matchedKeywords }
+          })
+          .filter((m) => m.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5) // Top 5 Ergebnisse
+
+        if (matches.length === 0) {
+          return {
+            found: false,
+            message: `Keine UI-Komponenten gefunden für "${query}". Verfügbare Kategorien: ${[...new Set(availableActions.map((a) => a.category))].join(", ")}`,
+            suggestions: availableActions.slice(0, 3).map((a) => ({
+              id: a.id,
+              description: a.description,
+              keywords: a.keywords.slice(0, 3),
+            })),
+          }
+        }
+
+        return {
+          found: true,
+          query,
+          results: matches.map((m) => ({
+            id: m.action.id,
+            description: m.action.description,
+            action: m.action.action,
+            target: m.action.target,
+            keywords: m.action.keywords,
+            category: m.action.category,
+            matchedKeywords: m.matchedKeywords,
+            score: m.score,
+          })),
+          hint: "Verwende execute_ui_action mit der passenden action_id um die Aktion auszuführen.",
+        }
+      },
+    }),
+  }
+}
+
 function executeUIActionTool(availableActions: UIAction[]): ToolSet {
   if (availableActions.length === 0) {
     return {}
@@ -287,9 +389,34 @@ function executeUIActionTool(availableActions: UIAction[]): ToolSet {
   // Erstelle Enum der verfügbaren Action-IDs
   const actionIds = availableActions.map((a) => a.id)
 
+  // Gruppiere Actions nach Kategorie für bessere Übersicht
+  const byCategory = availableActions.reduce(
+    (acc, a) => {
+      if (!acc[a.category]) acc[a.category] = []
+      acc[a.category].push(a)
+      return acc
+    },
+    {} as Record<string, UIAction[]>
+  )
+
+  // Erstelle detaillierte Description mit Keywords
+  const categoryDescriptions = Object.entries(byCategory)
+    .map(([category, actions]) => {
+      const actionList = actions
+        .map((a) => `  - ${a.id}: ${a.description} [Keywords: ${a.keywords.join(", ")}]`)
+        .join("\n")
+      return `${category}:\n${actionList}`
+    })
+    .join("\n\n")
+
   return {
     execute_ui_action: tool({
-      description: `Führt eine UI-Aktion aus. Verfügbare Aktionen: ${availableActions.map((a) => `${a.id} (${a.description})`).join(", ")}`,
+      description: `Führt eine UI-Aktion aus. 
+
+**WICHTIG:** Verwende zuerst search_ui_components wenn der User nach einem UI-Element fragt!
+
+Verfügbare Aktionen nach Kategorie:
+${categoryDescriptions}`,
       inputSchema: z.object({
         action_id: z
           .enum(actionIds as [string, ...string[]])
@@ -313,16 +440,28 @@ function executeUIActionTool(availableActions: UIAction[]): ToolSet {
 }
 
 /**
- * Generiert UI-Action Tool aus verfügbaren Actions
+ * Generiert UI-Action Tools aus verfügbaren Actions
+ *
+ * Erstellt zwei Tools:
+ * 1. search_ui_components - Durchsucht UI-Komponenten nach Keywords
+ * 2. execute_ui_action - Führt eine UI-Aktion aus
  *
  * @param availableActions - Liste der verfügbaren UI-Actions vom Client
  */
 export function generateUIActionTool(availableActions: UIAction[]): ToolSet {
-  return executeUIActionTool(availableActions)
+  return {
+    ...searchUIComponentsTool(availableActions),
+    ...executeUIActionTool(availableActions),
+  }
 }
 
 /**
  * Liste aller verfügbaren Special Tools (für Dokumentation/System Prompt)
  */
-export const SPECIAL_TOOL_NAMES = ["create_user", "delete_user", "execute_ui_action"] as const
+export const SPECIAL_TOOL_NAMES = [
+  "create_user",
+  "delete_user",
+  "search_ui_components",
+  "execute_ui_action",
+] as const
 export type SpecialToolName = (typeof SPECIAL_TOOL_NAMES)[number]

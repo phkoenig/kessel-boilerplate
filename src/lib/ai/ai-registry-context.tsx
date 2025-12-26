@@ -7,8 +7,20 @@
 
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import type { AIActionType, AIComponentCategory } from "./ai-manifest.schema"
+
+/**
+ * Global Window Interface für aiRegistry
+ */
+declare global {
+  interface Window {
+    aiRegistry?: {
+      getAvailableActions: () => AIAction[]
+      executeAction: (id: string) => Promise<{ success: boolean; message: string }>
+    }
+  }
+}
 
 /**
  * AI Action Interface
@@ -106,16 +118,29 @@ export function AIRegistryProvider({ children }: AIRegistryProviderProps): React
    */
   const executeAction = useCallback(
     async (id: string): Promise<{ success: boolean; message: string }> => {
+      console.warn("[AIRegistry] executeAction called with ID:", id)
+      console.warn("[AIRegistry] Available actions:", Array.from(actions.keys()))
+
       const action = actions.get(id)
 
       if (!action) {
+        console.error("[AIRegistry] ❌ Action not found:", id)
+        console.warn("[AIRegistry] Available action IDs:", Array.from(actions.keys()))
         return {
           success: false,
-          message: `Action "${id}" nicht gefunden`,
+          message: `Action "${id}" nicht gefunden. Verfügbare Actions: ${Array.from(actions.keys()).join(", ")}`,
         }
       }
 
+      console.warn("[AIRegistry] ✅ Action found:", {
+        id: action.id,
+        action: action.action,
+        target: action.target,
+        isAvailable: action.isAvailable,
+      })
+
       if (!action.isAvailable) {
+        console.warn("[AIRegistry] ⚠️ Action not available:", id)
         return {
           success: false,
           message: `Action "${id}" ist aktuell nicht verfügbar`,
@@ -123,13 +148,16 @@ export function AIRegistryProvider({ children }: AIRegistryProviderProps): React
       }
 
       try {
+        console.warn("[AIRegistry] Executing action...")
         await action.execute()
+        console.warn("[AIRegistry] ✅ Action executed successfully")
         return {
           success: true,
           message: action.description,
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error("[AIRegistry] ❌ Error executing action:", error)
         return {
           success: false,
           message: `Fehler beim Ausführen von "${id}": ${errorMessage}`,
@@ -152,6 +180,16 @@ export function AIRegistryProvider({ children }: AIRegistryProviderProps): React
     executeAction,
     getAvailableActions,
   }
+
+  // Expose registry globally für context-collector (non-React access)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.aiRegistry = {
+        getAvailableActions,
+        executeAction,
+      }
+    }
+  }, [getAvailableActions, executeAction])
 
   return <AIRegistryContext.Provider value={contextValue}>{children}</AIRegistryContext.Provider>
 }

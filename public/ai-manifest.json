@@ -146,30 +146,23 @@
       "requiredRole": "admin"
     },
     {
-      "id": "nav-ds-colors",
-      "description": "Öffnet die Farben-Verwaltung",
+      "id": "nav-ds-tweak",
+      "description": "Öffnet die UI-Anpassungsseite zum Live-Editing von Design-Tokens",
       "action": "navigate",
-      "target": "/account/design-system/colors",
+      "target": "/account/design-system/tweak",
       "category": "navigation",
-      "keywords": ["farben", "colors", "design", "palette", "color-palette"],
-      "requiredRole": "admin"
-    },
-    {
-      "id": "nav-ds-fonts",
-      "description": "Öffnet die Schriften-Verwaltung",
-      "action": "navigate",
-      "target": "/account/design-system/fonts",
-      "category": "navigation",
-      "keywords": ["schriften", "fonts", "typografie", "typography", "text"],
-      "requiredRole": "admin"
-    },
-    {
-      "id": "nav-ds-geometry",
-      "description": "Öffnet die Geometrie-Verwaltung",
-      "action": "navigate",
-      "target": "/account/design-system/geometry",
-      "category": "navigation",
-      "keywords": ["geometrie", "geometry", "radius", "spacing", "abstände"],
+      "keywords": [
+        "tweak",
+        "ui",
+        "anpassen",
+        "design",
+        "tokens",
+        "farben",
+        "colors",
+        "typografie",
+        "geometry",
+        "live-edit"
+      ],
       "requiredRole": "admin"
     },
     {
@@ -323,6 +316,36 @@
       "target": "assist-cart",
       "category": "layout",
       "keywords": ["cart", "warenkorb", "shopping", "panel"],
+      "requiredRole": "public"
+    },
+    {
+      "id": "theme-dark-mode-toggle",
+      "description": "Schaltet zwischen Dark Mode und Light Mode um",
+      "action": "toggle",
+      "target": "color-mode",
+      "category": "settings",
+      "keywords": [
+        "dark mode",
+        "light mode",
+        "theme",
+        "appearance",
+        "design",
+        "dunkel",
+        "hell",
+        "farbschema",
+        "nachtmodus",
+        "dark",
+        "light"
+      ],
+      "requiredRole": "public"
+    },
+    {
+      "id": "assist-panel-tabs",
+      "description": "Wechselt zwischen den Assist-Panel Tabs (Chat, Wiki, Kommentare, Warenkorb)",
+      "action": "toggle",
+      "target": "assist-panel",
+      "category": "layout",
+      "keywords": ["tabs", "assist", "chat", "wiki", "kommentare", "warenkorb", "panel"],
       "requiredRole": "public"
     }
   ]

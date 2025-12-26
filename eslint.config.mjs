@@ -11,6 +11,7 @@ import noHardcodedTailwind from "./eslint/rules/no-hardcoded-tailwind.js"
 import useDesignSystemComponents from "./eslint/rules/use-design-system-components.js"
 import noMiddlewareFile from "./eslint/rules/no-middleware-file.js"
 import aiComponentCompliance from "./eslint/rules/ai-component-compliance.js"
+import requireAiWrapper from "./eslint/rules/require-ai-wrapper.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -30,6 +31,7 @@ const localPlugin = {
     "use-design-system-components": useDesignSystemComponents,
     "no-middleware-file": noMiddlewareFile,
     "ai-component-compliance": aiComponentCompliance,
+    "require-ai-wrapper": requireAiWrapper,
   },
 }
 
@@ -128,6 +130,26 @@ const eslintConfig = defineConfig([
     rules: {
       // Prüft dass AIInteractable Komponenten im Manifest registriert sind
       "local/ai-component-compliance": "error",
+    },
+  },
+  // AI Component Governance: Erzwingt AIInteractable für interaktive Komponenten
+  // Stellt sicher, dass keine UI-Elemente für die KI "unsichtbar" sind
+  {
+    files: ["src/app/**/*.tsx", "src/components/shell/**/*.tsx"],
+    ignores: [
+      "src/components/ui/**",
+      "src/components/ai/**",
+      "**/__tests__/**",
+      "**/*.test.tsx",
+      "**/*.stories.tsx",
+    ],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      // WARNUNG statt ERROR für sanfte Migration
+      // Nach Migration auf "error" setzen!
+      "local/require-ai-wrapper": "warn",
     },
   },
   // ESLint-Regel-Dateien ausschließen (dürfen require() verwenden)

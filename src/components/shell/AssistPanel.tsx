@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { AIInteractable } from "@/components/ai/AIInteractable"
 
 import { useAssist, type AssistPanelType } from "./shell-context"
 import { AIChatPanel } from "./AIChatPanel"
@@ -58,33 +59,42 @@ export function AssistPanel({
   return (
     <div className={cn("flex h-full flex-col", className)}>
       {/* Tabbed Content - gesteuert über FloatingAssistActions */}
-      <Tabs
-        value={activePanel ?? "chat"}
-        onValueChange={(value) => setPanel(value as AssistPanelType)}
-        className="flex flex-1 flex-col overflow-hidden"
+      <AIInteractable
+        id="assist-panel-tabs"
+        action="toggle"
+        target="assist-panel"
+        description="Wechselt zwischen den Assist-Panel Tabs (Chat, Wiki, Kommentare, Warenkorb)"
+        keywords={["tabs", "assist", "chat", "wiki", "kommentare", "warenkorb", "panel"]}
+        category="layout"
       >
-        {/* Tab Contents */}
-        {/* forceMount für Chat: Verhindert Unmounting bei Tab-Wechsel, erhält Chat-State */}
-        <TabsContent
-          value="chat"
-          className="mt-0 flex-1 overflow-hidden data-[state=inactive]:hidden"
-          forceMount
+        <Tabs
+          value={activePanel ?? "chat"}
+          onValueChange={(value) => setPanel(value as AssistPanelType)}
+          className="flex flex-1 flex-col overflow-hidden"
         >
-          {chatContent ?? <AIChatPanel />}
-        </TabsContent>
+          {/* Tab Contents */}
+          {/* forceMount für Chat: Verhindert Unmounting bei Tab-Wechsel, erhält Chat-State */}
+          <TabsContent
+            value="chat"
+            className="mt-0 flex-1 overflow-hidden data-[state=inactive]:hidden"
+            forceMount
+          >
+            {chatContent ?? <AIChatPanel />}
+          </TabsContent>
 
-        <TabsContent value="wiki" className="mt-0 flex-1 overflow-hidden">
-          {wikiContent ?? <DefaultWikiContent />}
-        </TabsContent>
+          <TabsContent value="wiki" className="mt-0 flex-1 overflow-hidden">
+            {wikiContent ?? <DefaultWikiContent />}
+          </TabsContent>
 
-        <TabsContent value="comments" className="mt-0 flex-1 overflow-hidden">
-          {commentsContent ?? <DefaultCommentsContent />}
-        </TabsContent>
+          <TabsContent value="comments" className="mt-0 flex-1 overflow-hidden">
+            {commentsContent ?? <DefaultCommentsContent />}
+          </TabsContent>
 
-        <TabsContent value="cart" className="mt-0 flex-1 overflow-hidden">
-          {cartContent ?? <DefaultCartContent />}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="cart" className="mt-0 flex-1 overflow-hidden">
+            {cartContent ?? <DefaultCartContent />}
+          </TabsContent>
+        </Tabs>
+      </AIInteractable>
     </div>
   )
 }
@@ -103,12 +113,13 @@ function DefaultWikiContent(): React.ReactElement {
   return (
     <ScrollArea className="flex-1">
       <div className="space-y-2 p-4">
-        <Input placeholder="Wiki durchsuchen..." className="mb-4" />
+        <Input placeholder="Wiki durchsuchen..." className="mb-4" data-ai-exempt="true" />
         {articles.map((article, index) => (
           <Button
             key={index}
             variant="ghost"
             className="h-auto w-full flex-col items-start gap-1 py-3"
+            data-ai-exempt="true"
           >
             <span className="text-sm font-medium">{article.title}</span>
             <span className="text-muted-foreground text-xs">{article.description}</span>
@@ -147,8 +158,8 @@ function DefaultCommentsContent(): React.ReactElement {
       {/* Comment Input */}
       <div className="border-border border-t p-4">
         <div className="flex gap-2">
-          <Input placeholder="Kommentar schreiben..." className="flex-1" />
-          <Button size="icon">
+          <Input placeholder="Kommentar schreiben..." className="flex-1" data-ai-exempt="true" />
+          <Button size="icon" data-ai-exempt="true">
             <Send className="size-4" />
           </Button>
         </div>
@@ -165,7 +176,7 @@ function DefaultCartContent(): React.ReactElement {
     <div className="flex h-full flex-col items-center justify-center p-4">
       <ShoppingCart className="text-muted-foreground/50 size-12" />
       <p className="text-muted-foreground mt-4 text-sm">Dein Warenkorb ist leer</p>
-      <Button variant="outline" className="mt-4">
+      <Button variant="outline" className="mt-4" data-ai-exempt="true">
         Produkte entdecken
       </Button>
     </div>

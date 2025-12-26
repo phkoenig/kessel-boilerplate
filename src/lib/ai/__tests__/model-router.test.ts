@@ -19,6 +19,7 @@ describe("Model Router", () => {
       const result = detectToolNeed(messages)
 
       expect(result.needsTools).toBe(false)
+      expect(result.needsScreenshot).toBe(false)
       expect(result.model).toBe(DEFAULT_CHAT_MODEL)
       expect(result.reason).toBe("general-chat")
       expect(result.maxSteps).toBe(1)
@@ -30,6 +31,7 @@ describe("Model Router", () => {
       const result = detectToolNeed(messages)
 
       expect(result.needsTools).toBe(false)
+      expect(result.needsScreenshot).toBe(false)
       expect(result.model).toBe(DEFAULT_CHAT_MODEL)
       expect(result.reason).toBe("no-user-message")
     })

@@ -113,7 +113,12 @@ export function ExplorerFileTree(): React.ReactElement {
   return (
     <div className="space-y-1">
       {folders.map((folder) => (
-        <Button key={folder.name} variant="ghost" className="w-full justify-start gap-2 text-sm">
+        <Button
+          key={folder.name}
+          variant="ghost"
+          className="w-full justify-start gap-2 text-sm"
+          data-ai-exempt="true"
+        >
           <FolderTree className="text-muted-foreground size-4" />
           <span className="flex-1 text-left">{folder.name}</span>
           <span className="text-muted-foreground text-xs">{folder.count}</span>
@@ -146,6 +151,7 @@ export function ExplorerOutline(): React.ReactElement {
         <Button
           key={index}
           variant="ghost"
+          data-ai-exempt="true"
           className={cn(
             "w-full justify-start text-sm",
             section.level === 1 && "font-medium",
