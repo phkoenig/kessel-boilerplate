@@ -46,6 +46,16 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 **Hinweis**: Status-Farben sind **nicht** Teil des Standard-TweakCN-Exports, wurden aber in unserer Codebase hinzugefügt.
 
+**Verwendung in der Codebase**:
+
+- `app-status/page.tsx`: Status-Icons und Badges (operational = success, degraded = warning)
+- `saveable-input.tsx`: Button-Hintergrund bei erfolgreichem Speichern
+- `profile/page.tsx`: Erfolgs-Meldungen
+- `features/page.tsx`: Feature-Status (planned = info, in-progress = warning, released = success)
+- `bugs/page.tsx`: Bug-Status (in-progress = warning, fixed = success, medium = warning)
+- `payment/page.tsx`: Erfolgs-Icons
+- `dashboard/page.tsx`: Statistik-Änderungen (positive = success)
+
 ### Border & Input
 
 | Token      | TweakCN | Codebase | Editierbar | Beschreibung       |
