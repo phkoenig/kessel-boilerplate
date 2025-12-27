@@ -255,8 +255,8 @@ export default function BugsPage(): React.ReactElement {
 
   const statusColors: Record<string, string> = {
     open: "bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20",
-    "in-progress": "bg-warning/10 text-warning hover:bg-warning/20 border-warning/20",
-    fixed: "bg-success/10 text-success hover:bg-success/20 border-success/20",
+    "in-progress": "bg-chart-2/10 text-chart-2 hover:bg-chart-2/20 border-chart-2/20",
+    fixed: "bg-chart-1/10 text-chart-1 hover:bg-chart-1/20 border-chart-1/20",
   }
 
   const statusLabels: Record<string, string> = {
@@ -268,7 +268,7 @@ export default function BugsPage(): React.ReactElement {
   const severityColors: Record<string, string> = {
     critical: "text-destructive font-bold",
     high: "text-destructive",
-    medium: "text-warning",
+    medium: "text-chart-2",
     low: "text-muted-foreground",
   }
 

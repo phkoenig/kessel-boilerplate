@@ -1,150 +1,533 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { PageContent, PageHeader } from "@/components/shell"
 import { useExplorer } from "@/components/shell"
 import { useTheme as useColorMode } from "next-themes"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { RotateCcw, Palette } from "lucide-react"
 import { useTheme } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
-import { ColorTokenPopover } from "@/components/theme/ColorTokenPopover"
-import { SaveThemeDialog } from "@/components/theme/SaveThemeDialog"
-import { Save, RotateCcw } from "lucide-react"
+import { ColorPairSwatch } from "@/components/theme/ColorPairSwatch"
+import { FloatingToolbar } from "@/components/theme/FloatingToolbar"
+
+/**
+ * BorderSwatch - Zeigt einen Border-Token als leeres Rechteck (256×64)
+ */
+function BorderSwatch({
+  tokenName,
+  label,
+}: {
+  tokenName: string
+  label: string
+}): React.ReactElement {
+  const { previewToken, getCurrentTokens } = useThemeEditor()
+  const { theme: colorMode, resolvedTheme } = useColorMode()
+  const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState("#808080")
+  const [originalValue, setOriginalValue] = useState("")
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const loadValue = () => {
+      const tokens = getCurrentTokens()
+      const token = tokens[tokenName] || { light: "", dark: "" }
+      const currentValue = isDarkMode ? token.dark : token.light
+      setValue(oklchToHex(currentValue))
+      if (!originalValue) setOriginalValue(currentValue)
+    }
+    const timeout = setTimeout(loadValue, 50)
+    return () => clearTimeout(timeout)
+  }, [tokenName, getCurrentTokens, isDarkMode, originalValue])
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const hex = e.target.value
+      setValue(hex)
+      if (isDarkMode) {
+        previewToken(tokenName, undefined, hex)
+      } else {
+        previewToken(tokenName, hex)
+      }
+    },
+    [tokenName, previewToken, isDarkMode]
+  )
+
+  const handleReset = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (originalValue) {
+        setValue(oklchToHex(originalValue))
+        if (isDarkMode) {
+          previewToken(tokenName, undefined, originalValue)
+        } else {
+          previewToken(tokenName, originalValue)
+        }
+      }
+    },
+    [tokenName, originalValue, previewToken, isDarkMode]
+  )
+
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-muted-foreground w-32 shrink-0 text-sm">{label}</span>
+      <div className="group relative h-16 w-64">
+        {/* eslint-disable-next-line local/use-design-system-components -- Native color picker required */}
+        <input
+          ref={inputRef}
+          type="color"
+          value={value}
+          onChange={handleChange}
+          className="sr-only"
+          tabIndex={-1}
+        />
+        <div
+          onClick={() => inputRef.current?.click()}
+          className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border-2 transition-all hover:ring-2"
+          style={{
+            borderColor: `var(${tokenName})`,
+            borderRadius: "var(--radius)",
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleReset}
+          className="bg-background/80 hover:bg-background absolute top-2 right-2 z-20 size-6 rounded-full opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          title="Auf Original zurücksetzen"
+        >
+          <RotateCcw className="text-muted-foreground size-3" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ChartSwatch - Zeigt einen Chart-Token als Rechteck mit Gradient (256×64)
+ */
+function ChartSwatch({
+  tokenName,
+  label,
+}: {
+  tokenName: string
+  label: string
+}): React.ReactElement {
+  const { previewToken, getCurrentTokens } = useThemeEditor()
+  const { theme: colorMode, resolvedTheme } = useColorMode()
+  const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState("#808080")
+  const [originalValue, setOriginalValue] = useState("")
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const loadValue = () => {
+      const tokens = getCurrentTokens()
+      const token = tokens[tokenName] || { light: "", dark: "" }
+      const currentValue = isDarkMode ? token.dark : token.light
+      setValue(oklchToHex(currentValue))
+      if (!originalValue) setOriginalValue(currentValue)
+    }
+    const timeout = setTimeout(loadValue, 50)
+    return () => clearTimeout(timeout)
+  }, [tokenName, getCurrentTokens, isDarkMode, originalValue])
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const hex = e.target.value
+      setValue(hex)
+      if (isDarkMode) {
+        previewToken(tokenName, undefined, hex)
+      } else {
+        previewToken(tokenName, hex)
+      }
+    },
+    [tokenName, previewToken, isDarkMode]
+  )
+
+  const handleReset = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (originalValue) {
+        setValue(oklchToHex(originalValue))
+        if (isDarkMode) {
+          previewToken(tokenName, undefined, originalValue)
+        } else {
+          previewToken(tokenName, originalValue)
+        }
+      }
+    },
+    [tokenName, originalValue, previewToken, isDarkMode]
+  )
+
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-muted-foreground w-32 shrink-0 text-sm">{label}</span>
+      <div className="group relative h-16 w-64">
+        {/* eslint-disable-next-line local/use-design-system-components -- Native color picker required */}
+        <input
+          ref={inputRef}
+          type="color"
+          value={value}
+          onChange={handleChange}
+          className="sr-only"
+          tabIndex={-1}
+        />
+        <div
+          onClick={() => inputRef.current?.click()}
+          className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
+          style={{
+            background: `linear-gradient(135deg, var(${tokenName}) 0%, var(${tokenName}) 60%, transparent 60%)`,
+            backgroundColor: `var(${tokenName})`,
+            borderRadius: "var(--radius)",
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleReset}
+          className="bg-background/80 hover:bg-background absolute top-2 right-2 z-20 size-6 rounded-full opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          title="Auf Original zurücksetzen"
+        >
+          <RotateCcw className="text-muted-foreground size-3" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * RadiusSwatch - Zeigt Radius-Vorschau als Rechteck (256×64)
+ */
+function RadiusSwatch({
+  radiusClass,
+  label,
+}: {
+  radiusClass: string
+  label: string
+}): React.ReactElement {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-muted-foreground w-32 shrink-0 text-sm">{label}</span>
+      <div className={`bg-primary h-16 w-64 border shadow-sm ${radiusClass}`} />
+    </div>
+  )
+}
+
+/**
+ * ShadowSwatch - Zeigt Shadow-Vorschau als Rechteck (256×64)
+ */
+function ShadowSwatch({
+  shadowClass,
+  label,
+}: {
+  shadowClass: string
+  label: string
+}): React.ReactElement {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-muted-foreground w-32 shrink-0 text-sm">{label}</span>
+      <div className={`bg-card h-16 w-64 rounded-lg border ${shadowClass}`} />
+    </div>
+  )
+}
+
+/**
+ * OKLCH zu Hex Konvertierung
+ */
+function oklchToHex(oklch: string): string {
+  if (!oklch) return "#808080"
+  if (oklch.startsWith("#")) return oklch
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext("2d")
+    if (ctx) {
+      ctx.fillStyle = oklch
+      ctx.fillRect(0, 0, 1, 1)
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+      return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
+    }
+  }
+  return "#808080"
+}
 
 /**
  * Tweak the UI Seite
  *
- * Zeigt alle Design-Tokens des aktiven Themes und ermöglicht Live-Editing.
- * Änderungen werden als temporäre Inline-Styles angezeigt und können als neues Theme gespeichert werden.
+ * Vertikales Layout ohne Cards, H2-Kapitelüberschriften
  */
 export default function TweakPage(): React.ReactElement {
   const { theme: currentThemeId } = useTheme()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const { setOpen: setExplorerOpen } = useExplorer()
-  const { isDirty, resetPreview, previewToken } = useThemeEditor()
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const { isDirty, resetPreview, previewToken, getCurrentTokens } = useThemeEditor()
+
+  const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
+
+  // State
   const [radiusValue, setRadiusValue] = useState(0.5)
+  const [spacingValue, setSpacingValue] = useState(0.25)
+  const [letterSpacing, setLetterSpacing] = useState(0)
+  const [hueShift, setHueShift] = useState(0)
+  const [saturationMult, setSaturationMult] = useState(1.0)
+  const [lightnessMult, setLightnessMult] = useState(1.0)
 
-  // Warte auf Client-Mount, um Hydration-Mismatch zu vermeiden
-  const [mounted, setMounted] = useState(false)
+  // Debounce refs
+  const globalAdjustTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Notwendig für Hydration-Safety
-    setMounted(true)
-  }, [])
-
-  // Font-Namen State
-  const [fontNames, setFontNames] = useState<{
-    sans: { name: string; isFallback: boolean }
-    mono: { name: string; isFallback: boolean }
-    serif: { name: string; isFallback: boolean }
-  }>({
-    sans: { name: "", isFallback: false },
-    mono: { name: "", isFallback: false },
-    serif: { name: "", isFallback: false },
-  })
-
-  // Explorer für diese Seite deaktivieren
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setExplorerOpen(false)
-    }, 50)
+    const timer = setTimeout(() => setExplorerOpen(false), 50)
     return () => clearTimeout(timer)
   }, [setExplorerOpen])
 
-  // Lade Schriftnamen aus CSS-Variablen
-  useEffect(() => {
-    // Skip on server
-    if (typeof window === "undefined") return
-
-    const genericFonts = [
-      "sans-serif",
-      "serif",
-      "monospace",
-      "system-ui",
-      "ui-sans-serif",
-      "ui-serif",
-      "ui-monospace",
-    ]
-
-    const extractFontInfo = (cssVar: string): { name: string; isFallback: boolean } => {
-      const root = document.documentElement
-      const computedStyle = window.getComputedStyle(root)
-      const value = computedStyle.getPropertyValue(cssVar).trim()
-
-      if (!value) {
-        return { name: "nicht definiert", isFallback: true }
-      }
-
-      const firstFont = value.split(",")[0].trim().replace(/['"]/g, "")
-      const isGeneric = !firstFont || genericFonts.includes(firstFont.toLowerCase())
-
-      let isFontLoaded = false
-      if (firstFont && !isGeneric) {
-        try {
-          isFontLoaded = document.fonts.check(`16px "${firstFont}"`)
-        } catch {
-          isFontLoaded = false
-        }
-      }
-
-      return {
-        name: !firstFont || isGeneric ? "Standard" : firstFont,
-        isFallback: isGeneric || (!isFontLoaded && !!firstFont),
-      }
-    }
-
-    const updateFontNames = () => {
-      setFontNames({
-        sans: extractFontInfo("--font-sans"),
-        mono: extractFontInfo("--font-mono"),
-        serif: extractFontInfo("--font-serif"),
-      })
-    }
-
-    const timeoutId = setTimeout(() => {
-      if (document.fonts?.ready) {
-        document.fonts.ready.then(updateFontNames)
-      } else {
-        updateFontNames()
-      }
-    }, 200)
-
-    return () => clearTimeout(timeoutId)
-  }, [currentThemeId])
-
-  // Lade aktuellen Radius-Wert
+  // Lade aktuelle Werte
   useEffect(() => {
     if (typeof window === "undefined") return
-
-    const updateRadius = () => {
+    const updateValues = () => {
       const root = document.documentElement
       const computedStyle = window.getComputedStyle(root)
+
       const radiusStr = computedStyle.getPropertyValue("--radius").trim()
       if (radiusStr) {
         const match = radiusStr.match(/(\d+\.?\d*)/)
-        if (match) {
-          setRadiusValue(parseFloat(match[1]) / 16) // Convert px to rem
-        }
+        if (match) setRadiusValue(parseFloat(match[1]) / 16)
+      }
+
+      const spacingStr = computedStyle.getPropertyValue("--spacing").trim()
+      if (spacingStr) {
+        const match = spacingStr.match(/(\d+\.?\d*)/)
+        if (match) setSpacingValue(parseFloat(match[1]))
       }
     }
-    // Delay um sicherzustellen, dass Theme geladen ist
-    const timeoutId = setTimeout(updateRadius, 100)
-    return () => clearTimeout(timeoutId)
+    const timeout = setTimeout(updateValues, 100)
+    return () => clearTimeout(timeout)
   }, [currentThemeId])
 
+  // Font-Namen
+  const [fontNames, setFontNames] = useState<{
+    sans: string
+    mono: string
+    serif: string
+  }>({ sans: "", mono: "", serif: "" })
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const extractFontName = (cssVar: string): string => {
+      const root = document.documentElement
+      const value = window.getComputedStyle(root).getPropertyValue(cssVar).trim()
+      if (!value) return "nicht definiert"
+      const firstFont = value.split(",")[0].trim().replace(/['"]/g, "")
+      return firstFont || "Standard"
+    }
+    const timeout = setTimeout(() => {
+      setFontNames({
+        sans: extractFontName("--font-sans"),
+        mono: extractFontName("--font-mono"),
+        serif: extractFontName("--font-serif"),
+      })
+    }, 200)
+    return () => clearTimeout(timeout)
+  }, [currentThemeId])
+
+  // Handler
   const handleRadiusChange = useCallback(
     (value: number[]) => {
-      const remValue = value[0]
-      setRadiusValue(remValue)
-      const pxValue = `${remValue * 16}px`
-      previewToken("--radius", pxValue, pxValue)
+      const rem = value[0]
+      setRadiusValue(rem)
+      previewToken("--radius", `${rem * 16}px`)
     },
     [previewToken]
   )
+
+  const handleSpacingChange = useCallback(
+    (value: number[]) => {
+      const rem = value[0]
+      setSpacingValue(rem)
+      previewToken("--spacing", `${rem}rem`)
+    },
+    [previewToken]
+  )
+
+  // Harmonize Chart Colors
+  const handleHarmonize = useCallback(() => {
+    if (typeof window === "undefined") return
+    const tokens = getCurrentTokens()
+    const chart1Value = isDarkMode ? tokens["--chart-1"]?.dark : tokens["--chart-1"]?.light
+    if (!chart1Value) return
+
+    const match = chart1Value.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
+    if (!match) return
+
+    const l = parseFloat(match[1])
+    const c = parseFloat(match[2])
+    const h = parseFloat(match[3])
+
+    const hueSpacing = 72 // 360/5
+    const chartTokens = ["--chart-2", "--chart-3", "--chart-4", "--chart-5"]
+
+    chartTokens.forEach((token, index) => {
+      const newHue = (h + (index + 1) * hueSpacing) % 360
+      const newValue = `oklch(${l.toFixed(2)} ${c} ${newHue})`
+      if (isDarkMode) {
+        previewToken(token, undefined, newValue)
+      } else {
+        previewToken(token, newValue)
+      }
+    })
+  }, [getCurrentTokens, previewToken, isDarkMode])
+
+  // Global Adjustments
+  const applyGlobalAdjustments = useCallback(
+    (hue: number, sat: number, light: number) => {
+      if (typeof window === "undefined") return
+
+      const tokens = getCurrentTokens()
+      const colorTokens = [
+        "--primary",
+        "--primary-foreground",
+        "--secondary",
+        "--secondary-foreground",
+        "--background",
+        "--foreground",
+        "--card",
+        "--card-foreground",
+        "--popover",
+        "--popover-foreground",
+        "--muted",
+        "--muted-foreground",
+        "--accent",
+        "--accent-foreground",
+        "--destructive",
+        "--destructive-foreground",
+        "--border",
+        "--input",
+        "--ring",
+        "--chart-1",
+        "--chart-2",
+        "--chart-3",
+        "--chart-4",
+        "--chart-5",
+        "--sidebar",
+        "--sidebar-foreground",
+        "--sidebar-primary",
+        "--sidebar-primary-foreground",
+        "--sidebar-accent",
+        "--sidebar-accent-foreground",
+        "--sidebar-border",
+        "--sidebar-ring",
+      ]
+
+      colorTokens.forEach((tokenName) => {
+        const tokenValue = tokens[tokenName]
+        if (!tokenValue) return
+
+        const currentValue = isDarkMode ? tokenValue.dark : tokenValue.light
+        const match = currentValue.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
+        if (!match) return
+
+        const l = Math.max(0, Math.min(1, parseFloat(match[1]) * light))
+        const c = Math.max(0, Math.min(0.4, parseFloat(match[2]) * sat))
+        const h = (((parseFloat(match[3]) + hue) % 360) + 360) % 360
+
+        const adjusted = `oklch(${l.toFixed(2)} ${c.toFixed(2)} ${h})`
+        if (isDarkMode) {
+          previewToken(tokenName, undefined, adjusted)
+        } else {
+          previewToken(tokenName, adjusted)
+        }
+      })
+    },
+    [getCurrentTokens, previewToken, isDarkMode]
+  )
+
+  const handleGlobalSliderChange = useCallback(
+    (type: "hue" | "saturation" | "lightness", value: number[]) => {
+      const val = value[0]
+      if (type === "hue") setHueShift(val)
+      else if (type === "saturation") setSaturationMult(val)
+      else setLightnessMult(val)
+
+      if (globalAdjustTimeoutRef.current) clearTimeout(globalAdjustTimeoutRef.current)
+      globalAdjustTimeoutRef.current = setTimeout(() => {
+        const h = type === "hue" ? val : hueShift
+        const s = type === "saturation" ? val : saturationMult
+        const l = type === "lightness" ? val : lightnessMult
+        applyGlobalAdjustments(h, s, l)
+      }, 100)
+    },
+    [hueShift, saturationMult, lightnessMult, applyGlobalAdjustments]
+  )
+
+  // Data
+  const coreColorPairs = [
+    { token: "--background", foreground: "--foreground", label: "Background" },
+    { token: "--card", foreground: "--card-foreground", label: "Card" },
+    { token: "--popover", foreground: "--popover-foreground", label: "Popover" },
+    { token: "--primary", foreground: "--primary-foreground", label: "Primary" },
+    { token: "--secondary", foreground: "--secondary-foreground", label: "Secondary" },
+    { token: "--muted", foreground: "--muted-foreground", label: "Muted" },
+    { token: "--accent", foreground: "--accent-foreground", label: "Accent" },
+    { token: "--destructive", foreground: "--destructive-foreground", label: "Destructive" },
+  ]
+
+  const borderTokens = [
+    { token: "--border", label: "Border" },
+    { token: "--input", label: "Input" },
+    { token: "--ring", label: "Ring" },
+  ]
+
+  const chartTokens = [
+    { token: "--chart-1", label: "Chart 1" },
+    { token: "--chart-2", label: "Chart 2" },
+    { token: "--chart-3", label: "Chart 3" },
+    { token: "--chart-4", label: "Chart 4" },
+    { token: "--chart-5", label: "Chart 5" },
+  ]
+
+  const sidebarColorPairs = [
+    { token: "--sidebar", foreground: "--sidebar-foreground", label: "Sidebar" },
+    {
+      token: "--sidebar-primary",
+      foreground: "--sidebar-primary-foreground",
+      label: "Sidebar Primary",
+    },
+    {
+      token: "--sidebar-accent",
+      foreground: "--sidebar-accent-foreground",
+      label: "Sidebar Accent",
+    },
+  ]
+
+  const sidebarBorderTokens = [
+    { token: "--sidebar-border", label: "Sidebar Border" },
+    { token: "--sidebar-ring", label: "Sidebar Ring" },
+  ]
+
+  const radiusItems = [
+    { radiusClass: "rounded-sm", label: "Small (sm)" },
+    { radiusClass: "rounded-md", label: "Medium (md)" },
+    { radiusClass: "rounded-lg", label: "Large (lg)" },
+    { radiusClass: "rounded-xl", label: "Extra Large (xl)" },
+    { radiusClass: "rounded-full", label: "Full" },
+  ]
+
+  const shadowItems = [
+    { shadowClass: "shadow-2xs", label: "2XS" },
+    { shadowClass: "shadow-xs", label: "XS" },
+    { shadowClass: "shadow-sm", label: "Small" },
+    { shadowClass: "shadow-md", label: "Medium" },
+    { shadowClass: "shadow-lg", label: "Large" },
+    { shadowClass: "shadow-xl", label: "XL" },
+    { shadowClass: "shadow-2xl", label: "2XL" },
+  ]
 
   return (
     <PageContent>
@@ -153,450 +536,256 @@ export default function TweakPage(): React.ReactElement {
         description="Passe Design-Tokens live an und speichere sie als neues Theme"
       />
 
-      {/* Save/Reset Toolbar */}
-      {isDirty && (
-        <div className="bg-muted/50 flex items-center justify-between rounded-lg p-4">
-          <span className="text-muted-foreground text-sm">Ungespeicherte Änderungen</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={resetPreview}>
-              <RotateCcw className="mr-2 size-4" />
-              Zurücksetzen
-            </Button>
-            <Button size="sm" onClick={() => setIsSaveDialogOpen(true)}>
-              <Save className="mr-2 size-4" />
-              Als neues Theme speichern
+      <div className="space-y-12 pb-24">
+        {/* Core Theme Colors */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Core Theme Colors</h2>
+          <div className="space-y-2">
+            {coreColorPairs.map((pair) => (
+              <ColorPairSwatch
+                key={pair.token}
+                tokenName={pair.token}
+                foregroundTokenName={pair.foreground}
+                label={pair.label}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Borders */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Borders</h2>
+          <div className="space-y-2">
+            {borderTokens.map((token) => (
+              <BorderSwatch key={token.token} tokenName={token.token} label={token.label} />
+            ))}
+          </div>
+        </section>
+
+        {/* Chart Colors */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Chart Colors</h2>
+          <div className="mb-4">
+            <Button variant="outline" size="sm" onClick={handleHarmonize}>
+              <Palette className="mr-2 size-4" />
+              Harmonize (72° Spacing)
             </Button>
           </div>
-        </div>
-      )}
+          <div className="space-y-2">
+            {chartTokens.map((token) => (
+              <ChartSwatch key={token.token} tokenName={token.token} label={token.label} />
+            ))}
+          </div>
+        </section>
 
-      <div className="space-y-8">
-        {/* Farbsystem */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Farbsystem</CardTitle>
-            <CardDescription>Alle Design-Tokens des aktiven Themes im Überblick</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* Hauptfarben als Kreise */}
-            <div className="flex flex-wrap gap-6">
-              <ColorTokenPopover tokenName="--primary" label="Primary">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Primary</span>
-                </div>
-              </ColorTokenPopover>
-              <ColorTokenPopover tokenName="--foreground" label="Foreground">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-foreground hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Foreground</span>
-                </div>
-              </ColorTokenPopover>
-              <ColorTokenPopover tokenName="--muted-foreground" label="Muted Foreground">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-muted-foreground hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Muted FG</span>
-                </div>
-              </ColorTokenPopover>
-              <ColorTokenPopover tokenName="--border" label="Border">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-border hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Border</span>
-                </div>
-              </ColorTokenPopover>
-              <ColorTokenPopover tokenName="--background" label="Background">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-background hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Background</span>
-                </div>
-              </ColorTokenPopover>
-              <ColorTokenPopover tokenName="--destructive" label="Destructive">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-destructive hover:ring-ring size-12 cursor-pointer rounded-full border shadow-sm transition-all hover:ring-2" />
-                  <span className="text-muted-foreground text-xs">Destructive</span>
-                </div>
-              </ColorTokenPopover>
+        {/* Sidebar Colors */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Sidebar Colors</h2>
+          <div className="space-y-2">
+            {sidebarColorPairs.map((pair) => (
+              <ColorPairSwatch
+                key={pair.token}
+                tokenName={pair.token}
+                foregroundTokenName={pair.foreground}
+                label={pair.label}
+              />
+            ))}
+          </div>
+          <div className="mt-4 space-y-2">
+            {sidebarBorderTokens.map((token) => (
+              <BorderSwatch key={token.token} tokenName={token.token} label={token.label} />
+            ))}
+          </div>
+        </section>
+
+        {/* Radius & Spacing */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Radius & Spacing</h2>
+
+          {/* Radius Slider */}
+          <div className="mb-6 w-96 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">--radius</Label>
+              <span className="text-muted-foreground font-mono text-xs">
+                {radiusValue.toFixed(2)}rem ({Math.round(radiusValue * 16)}px)
+              </span>
             </div>
+            <Slider
+              value={[radiusValue]}
+              onValueChange={handleRadiusChange}
+              min={0}
+              max={2}
+              step={0.125}
+            />
+          </div>
 
-            {/* Farbpaletten mit Verläufen */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-              {/* Brand/Primary */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Brand</h4>
-                <div className="space-y-1">
-                  <ColorTokenPopover tokenName="--primary" label="Primary">
-                    <div className="bg-primary text-primary-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Primary</span>
-                      <span className="text-xs opacity-70">FG</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <div className="bg-primary/80 text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">80%</span>
-                  </div>
-                  <div className="bg-primary/60 text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">60%</span>
-                  </div>
-                  <div className="bg-primary/40 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">40%</span>
-                  </div>
-                  <div className="bg-primary/20 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">20%</span>
-                  </div>
-                </div>
-              </div>
+          {/* Radius Previews */}
+          <div className="space-y-2">
+            {radiusItems.map((item) => (
+              <RadiusSwatch
+                key={item.radiusClass}
+                radiusClass={item.radiusClass}
+                label={item.label}
+              />
+            ))}
+          </div>
 
-              {/* Neutral */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Neutral</h4>
-                <div className="space-y-1">
-                  <ColorTokenPopover tokenName="--foreground" label="Foreground">
-                    <div className="bg-foreground text-background hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Foreground</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--muted-foreground" label="Muted Foreground">
-                    <div className="bg-muted-foreground text-background hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs">Muted FG</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--border" label="Border">
-                    <div className="bg-border hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs">Border</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--muted" label="Muted">
-                    <div className="bg-muted text-muted-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs">Muted</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--background" label="Background">
-                    <div className="bg-background text-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs">Background</span>
-                    </div>
-                  </ColorTokenPopover>
-                </div>
-              </div>
+          {/* Spacing Slider */}
+          <div className="mt-8 w-96 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">--spacing</Label>
+              <span className="text-muted-foreground font-mono text-xs">
+                {spacingValue.toFixed(2)}rem
+              </span>
+            </div>
+            <Slider
+              value={[spacingValue]}
+              onValueChange={handleSpacingChange}
+              min={0}
+              max={1}
+              step={0.01}
+            />
+          </div>
+        </section>
 
-              {/* Status - Destructive */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Status</h4>
-                <div className="space-y-1">
-                  <ColorTokenPopover tokenName="--destructive" label="Destructive">
-                    <div className="bg-destructive text-destructive-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Destructive</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <div className="bg-destructive/80 text-destructive-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">80%</span>
-                  </div>
-                  <div className="bg-destructive/60 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">60%</span>
-                  </div>
-                  <div className="bg-destructive/40 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">40%</span>
-                  </div>
-                  <div className="bg-destructive/20 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">20%</span>
-                  </div>
-                  <ColorTokenPopover tokenName="--success" label="Success">
-                    <div className="bg-success text-success-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Success</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <div className="bg-success/80 text-success-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">80%</span>
-                  </div>
-                  <div className="bg-success/60 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">60%</span>
-                  </div>
-                  <div className="bg-success/40 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">40%</span>
-                  </div>
-                  <div className="bg-success/20 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">20%</span>
-                  </div>
-                  <ColorTokenPopover tokenName="--warning" label="Warning">
-                    <div className="bg-warning text-warning-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Warning</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <div className="bg-warning/80 text-warning-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">80%</span>
-                  </div>
-                  <div className="bg-warning/60 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">60%</span>
-                  </div>
-                  <div className="bg-warning/40 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">40%</span>
-                  </div>
-                  <div className="bg-warning/20 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">20%</span>
-                  </div>
-                  <ColorTokenPopover tokenName="--info" label="Info">
-                    <div className="bg-info text-info-foreground hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Info</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <div className="bg-info/80 text-info-foreground flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">80%</span>
-                  </div>
-                  <div className="bg-info/60 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">60%</span>
-                  </div>
-                  <div className="bg-info/40 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">40%</span>
-                  </div>
-                  <div className="bg-info/20 flex items-center justify-between rounded-md px-3 py-2">
-                    <span className="text-xs">20%</span>
-                  </div>
-                </div>
-              </div>
+        {/* Typography */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Typografie</h2>
 
-              {/* Charts */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Charts</h4>
-                <div className="space-y-1">
-                  <ColorTokenPopover tokenName="--chart-1" label="Chart 1">
-                    <div className="bg-chart-1 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
-                      <span className="text-xs font-medium">Chart 1</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--chart-2" label="Chart 2">
-                    <div className="bg-chart-2 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
-                      <span className="text-xs">Chart 2</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--chart-3" label="Chart 3">
-                    <div className="bg-chart-3 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
-                      <span className="text-xs">Chart 3</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--chart-4" label="Chart 4">
-                    <div className="bg-chart-4 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
-                      <span className="text-xs">Chart 4</span>
-                    </div>
-                  </ColorTokenPopover>
-                  <ColorTokenPopover tokenName="--chart-5" label="Chart 5">
-                    <div className="bg-chart-5 hover:ring-ring flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-white transition-all hover:ring-2">
-                      <span className="text-xs">Chart 5</span>
-                    </div>
-                  </ColorTokenPopover>
-                </div>
+          {/* Letter Spacing Slider (für alle Fonts) */}
+          <div className="mb-6 w-96 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Letter Spacing</Label>
+              <span className="text-muted-foreground font-mono text-xs">
+                {letterSpacing > 0 ? "+" : ""}
+                {letterSpacing.toFixed(2)}em
+              </span>
+            </div>
+            <Slider
+              value={[letterSpacing]}
+              onValueChange={(v) => setLetterSpacing(v[0])}
+              min={-0.1}
+              max={0.2}
+              step={0.01}
+            />
+          </div>
+
+          {/* Font Previews */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground w-32 shrink-0 text-sm">
+                Sans ({fontNames.sans})
+              </span>
+              <div
+                className="h-16 w-64 font-sans text-2xl leading-[64px] font-semibold"
+                style={{ letterSpacing: `${letterSpacing}em` }}
+              >
+                Aa Bb Cc Dd Ee
               </div>
             </div>
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground w-32 shrink-0 text-sm">
+                Mono ({fontNames.mono})
+              </span>
+              <div
+                className="h-16 w-64 font-mono text-2xl leading-[64px] font-semibold"
+                style={{ letterSpacing: `${letterSpacing}em` }}
+              >
+                Aa Bb Cc Dd Ee
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground w-32 shrink-0 text-sm">
+                Serif ({fontNames.serif})
+              </span>
+              <div
+                className="h-16 w-64 text-2xl leading-[64px] font-semibold"
+                style={{ fontFamily: "var(--font-serif)", letterSpacing: `${letterSpacing}em` }}
+              >
+                Aa Bb Cc Dd Ee
+              </div>
+            </div>
+          </div>
+        </section>
 
-            {/* Interaktive Farben */}
+        {/* Shadows */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Schatten</h2>
+          <div className="space-y-2">
+            {shadowItems.map((item) => (
+              <ShadowSwatch
+                key={item.shadowClass}
+                shadowClass={item.shadowClass}
+                label={item.label}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Global Adjustments */}
+        <section>
+          <h2 className="text-foreground mb-6 text-xl font-semibold">Global Adjustments</h2>
+          <p className="text-muted-foreground mb-6 text-sm">
+            Master-Slider für alle Farben gleichzeitig
+          </p>
+
+          <div className="w-96 space-y-6">
+            {/* Hue Shift */}
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Interaktiv</h4>
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <ColorTokenPopover tokenName="--secondary" label="Secondary">
-                  <div className="bg-secondary text-secondary-foreground hover:ring-ring cursor-pointer rounded-md px-3 py-2 text-center transition-all hover:ring-2">
-                    <span className="text-xs">Secondary</span>
-                  </div>
-                </ColorTokenPopover>
-                <ColorTokenPopover tokenName="--accent" label="Accent">
-                  <div className="bg-accent text-accent-foreground hover:ring-ring cursor-pointer rounded-md px-3 py-2 text-center transition-all hover:ring-2">
-                    <span className="text-xs">Accent</span>
-                  </div>
-                </ColorTokenPopover>
-                <ColorTokenPopover tokenName="--card" label="Card">
-                  <div className="bg-card text-card-foreground hover:ring-ring cursor-pointer rounded-md border px-3 py-2 text-center transition-all hover:ring-2">
-                    <span className="text-xs">Card</span>
-                  </div>
-                </ColorTokenPopover>
-                <ColorTokenPopover tokenName="--popover" label="Popover">
-                  <div className="bg-popover text-popover-foreground hover:ring-ring cursor-pointer rounded-md border px-3 py-2 text-center transition-all hover:ring-2">
-                    <span className="text-xs">Popover</span>
-                  </div>
-                </ColorTokenPopover>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Hue-Shift</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {hueShift > 0 ? "+" : ""}
+                  {hueShift}°
+                </span>
               </div>
+              <Slider
+                value={[hueShift]}
+                onValueChange={(v) => handleGlobalSliderChange("hue", v)}
+                min={-180}
+                max={180}
+                step={1}
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Typografie */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Typografie</CardTitle>
-            <CardDescription>Die Schriftarten des aktiven Themes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* Sans */}
-              <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                    Sans
-                  </span>
-                  {fontNames.sans.isFallback ? (
-                    <span className="text-destructive truncate text-sm font-semibold line-through">
-                      {fontNames.sans.name || "..."}
-                    </span>
-                  ) : (
-                    <span className="text-foreground truncate text-sm font-semibold">
-                      {fontNames.sans.name || "..."}
-                    </span>
-                  )}
-                </div>
-                <div className="font-sans text-2xl font-semibold">Aa Bb Cc Dd</div>
-                <div className="font-sans text-sm">ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
-                <div className="font-sans text-sm">abcdefghijklmnopqrstuvwxyz</div>
-                <div className="font-sans text-sm">0123456789</div>
-                <div className="text-muted-foreground mt-2 text-xs">
-                  Hauptschrift für Fließtext und UI-Elemente
-                </div>
+            {/* Saturation */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Saturation</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {saturationMult.toFixed(2)}x
+                </span>
               </div>
-
-              {/* Mono */}
-              <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                    Mono
-                  </span>
-                  {fontNames.mono.isFallback ? (
-                    <span className="text-destructive truncate text-sm font-semibold line-through">
-                      {fontNames.mono.name || "..."}
-                    </span>
-                  ) : (
-                    <span className="text-foreground truncate text-sm font-semibold">
-                      {fontNames.mono.name || "..."}
-                    </span>
-                  )}
-                </div>
-                <div className="font-mono text-2xl font-semibold">Aa Bb Cc Dd</div>
-                <div className="font-mono text-sm">ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
-                <div className="font-mono text-sm">abcdefghijklmnopqrstuvwxyz</div>
-                <div className="font-mono text-sm">0123456789</div>
-                <div className="text-muted-foreground mt-2 text-xs">
-                  Code, technische Daten, Terminals
-                </div>
-              </div>
-
-              {/* Serif */}
-              <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                    Serif
-                  </span>
-                  {fontNames.serif.isFallback ? (
-                    <span className="text-destructive truncate text-sm font-semibold line-through">
-                      {fontNames.serif.name || "..."}
-                    </span>
-                  ) : (
-                    <span className="text-foreground truncate text-sm font-semibold">
-                      {fontNames.serif.name || "..."}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontFamily: "var(--font-serif)" }} className="text-2xl font-semibold">
-                  Aa Bb Cc Dd
-                </div>
-                <div style={{ fontFamily: "var(--font-serif)" }} className="text-sm">
-                  ABCDEFGHIJKLMNOPQRSTUVWXYZ
-                </div>
-                <div style={{ fontFamily: "var(--font-serif)" }} className="text-sm">
-                  abcdefghijklmnopqrstuvwxyz
-                </div>
-                <div style={{ fontFamily: "var(--font-serif)" }} className="text-sm">
-                  0123456789
-                </div>
-                <div className="text-muted-foreground mt-2 text-xs">
-                  Überschriften, Editorial, Akzente
-                </div>
-              </div>
+              <Slider
+                value={[saturationMult]}
+                onValueChange={(v) => handleGlobalSliderChange("saturation", v)}
+                min={0}
+                max={2}
+                step={0.01}
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Rundungen */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Rundungen</CardTitle>
-            <CardDescription>Border Radius Varianten basierend auf --radius</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">--radius</Label>
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {radiusValue.toFixed(2)}rem ({Math.round(radiusValue * 16)}px)
-                  </span>
-                </div>
-                <Slider
-                  value={[radiusValue]}
-                  onValueChange={handleRadiusChange}
-                  min={0}
-                  max={2}
-                  step={0.125}
-                  className="w-full"
-                />
+            {/* Lightness */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Lightness</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {lightnessMult.toFixed(2)}x
+                </span>
               </div>
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary size-16 rounded-sm" />
-                  <span className="text-muted-foreground text-xs">sm</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary size-16 rounded-md" />
-                  <span className="text-muted-foreground text-xs">md</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary size-16 rounded-lg" />
-                  <span className="text-muted-foreground text-xs">lg</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary size-16 rounded-xl" />
-                  <span className="text-muted-foreground text-xs">xl</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-primary size-16 rounded-full" />
-                  <span className="text-muted-foreground text-xs">full</span>
-                </div>
-              </div>
+              <Slider
+                value={[lightnessMult]}
+                onValueChange={(v) => handleGlobalSliderChange("lightness", v)}
+                min={0.5}
+                max={1.5}
+                step={0.01}
+              />
             </div>
-            <p className="text-muted-foreground text-xs">
-              Basis: <code className="bg-muted rounded px-1 py-0.5">--radius</code> · Die Stufen
-              werden automatisch berechnet (sm = radius-4px, md = radius-2px, lg = radius)
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Schatten */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Schatten</CardTitle>
-            <CardDescription>Shadow-Varianten für Tiefeneffekte</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-xs">
-                <span className="text-muted-foreground text-xs">xs</span>
-              </div>
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-sm">
-                <span className="text-muted-foreground text-xs">sm</span>
-              </div>
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-md">
-                <span className="text-muted-foreground text-xs">md</span>
-              </div>
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-lg">
-                <span className="text-muted-foreground text-xs">lg</span>
-              </div>
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-xl">
-                <span className="text-muted-foreground text-xs">xl</span>
-              </div>
-              <div className="bg-card flex h-24 items-center justify-center rounded-lg shadow-2xl">
-                <span className="text-muted-foreground text-xs">2xl</span>
-              </div>
-            </div>
-            <p className="text-muted-foreground text-xs">
-              Schatten passen sich automatisch an Light/Dark Mode an
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
 
-      <SaveThemeDialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen} />
+      <FloatingToolbar isDirty={isDirty} onReset={resetPreview} />
     </PageContent>
   )
 }

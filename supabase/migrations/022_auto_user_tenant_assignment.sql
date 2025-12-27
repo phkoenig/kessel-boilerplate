@@ -127,3 +127,5 @@ ON CONFLICT (user_id, tenant_id) DO NOTHING;
 -- 3. Alle existierenden Profile nachträglich synchronisiert werden
 -- ============================================
 
+
+

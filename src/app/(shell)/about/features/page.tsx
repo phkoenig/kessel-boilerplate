@@ -304,10 +304,10 @@ export default function FeaturesPage(): React.ReactElement {
   }
 
   const statusColors: Record<string, string> = {
-    planned: "bg-info/10 text-info hover:bg-info/20 border-info/20",
-    "in-progress": "bg-warning/10 text-warning hover:bg-warning/20 border-warning/20",
+    planned: "bg-chart-3/10 text-chart-3 hover:bg-chart-3/20 border-chart-3/20",
+    "in-progress": "bg-chart-2/10 text-chart-2 hover:bg-chart-2/20 border-chart-2/20",
     "under-review": "bg-primary/10 text-primary hover:bg-primary/20 border-primary/20",
-    released: "bg-success/10 text-success hover:bg-success/20 border-success/20",
+    released: "bg-chart-1/10 text-chart-1 hover:bg-chart-1/20 border-chart-1/20",
   }
 
   const statusLabels: Record<string, string> = {

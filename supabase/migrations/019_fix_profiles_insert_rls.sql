@@ -26,3 +26,5 @@ CREATE POLICY "admins_can_insert_profiles"
 COMMENT ON POLICY "admins_can_insert_profiles" ON public.profiles IS 
   'Erlaubt Admins, neue Profile anzulegen (z.B. via AI Tool-Calling)';
 
+
+

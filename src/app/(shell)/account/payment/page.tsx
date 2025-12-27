@@ -117,7 +117,7 @@ export default function PaymentPage(): React.ReactElement {
               {invoices.map((invoice, index) => (
                 <div key={index} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-4">
-                    <CheckCircle className="text-success size-4" />
+                    <CheckCircle className="text-chart-1 size-4" />
                     <div>
                       <p className="text-sm font-medium">{invoice.date}</p>
                       <p className="text-muted-foreground text-xs">{invoice.status}</p>

@@ -216,7 +216,7 @@ export default function ProfilePage(): React.ReactElement {
           </div>
         )}
         {success && (
-          <div className="bg-success/10 text-success border-success/20 rounded-md border p-3 text-sm">
+          <div className="bg-chart-1/10 text-chart-1 border-chart-1/20 rounded-md border p-3 text-sm">
             {success}
           </div>
         )}

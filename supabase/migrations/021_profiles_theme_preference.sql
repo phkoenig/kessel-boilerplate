@@ -52,3 +52,5 @@ CREATE INDEX IF NOT EXISTS idx_profiles_theme_preference
 -- Beispielwerte: 'default', 'dark-ocean', 'light-modern'
 -- ============================================
 
+
+

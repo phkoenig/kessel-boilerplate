@@ -21,9 +21,9 @@ export default function AppStatusPage(): React.ReactElement {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "operational":
-        return <CheckCircle className="text-success size-5" />
+        return <CheckCircle className="text-chart-1 size-5" />
       case "degraded":
-        return <AlertCircle className="text-warning size-5" />
+        return <AlertCircle className="text-chart-2 size-5" />
       case "down":
         return <XCircle className="text-destructive size-5" />
       default:
@@ -34,9 +34,9 @@ export default function AppStatusPage(): React.ReactElement {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "operational":
-        return <Badge className="bg-success/10 text-success">Operational</Badge>
+        return <Badge className="bg-chart-1/10 text-chart-1">Operational</Badge>
       case "degraded":
-        return <Badge className="bg-warning/10 text-warning">Degraded</Badge>
+        return <Badge className="bg-chart-2/10 text-chart-2">Degraded</Badge>
       case "down":
         return <Badge className="bg-destructive/10 text-destructive">Down</Badge>
       default:
@@ -63,7 +63,7 @@ export default function AppStatusPage(): React.ReactElement {
                 {getStatusIcon("operational")}
                 <span className="text-2xl font-bold">Alle Systeme operational</span>
               </div>
-              <Badge className="bg-success/10 text-success px-3 py-1 text-lg">99.7% Uptime</Badge>
+              <Badge className="bg-chart-1/10 text-chart-1 px-3 py-1 text-lg">99.7% Uptime</Badge>
             </div>
           </CardContent>
         </Card>

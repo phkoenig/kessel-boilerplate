@@ -56,3 +56,5 @@ CREATE TRIGGER trigger_role_deletion_fallback
 -- Rolle automatisch auf die 'user' Rolle gesetzt.
 -- ============================================
 
+
+

@@ -138,7 +138,7 @@ const ThreadSuggestions: FC = () => {
 const Composer: FC = () => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone border-input bg-card has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 shadow-composer flex w-full flex-col rounded-lg border px-1 pt-2 outline-none has-[textarea:focus-visible]:ring-2 data-[dragging=true]:border-dashed">
+      <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone border-input bg-card has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 flex w-full flex-col rounded-lg border px-1 pt-2 shadow-xl outline-none has-[textarea:focus-visible]:ring-2 data-[dragging=true]:border-dashed">
         <ComposerAttachments />
         <ComposerPrimitive.Input
           placeholder="Nachricht eingeben..."

@@ -125,7 +125,7 @@ export function SaveableInput({
           variant="ghost"
           className={cn(
             "absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 transition-colors",
-            saved && "bg-success text-success-foreground hover:bg-success/90"
+            saved && "bg-chart-1 text-chart-1 hover:bg-chart-1/90"
           )}
         >
           {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}

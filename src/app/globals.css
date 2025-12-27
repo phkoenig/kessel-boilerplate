@@ -32,14 +32,6 @@
   --destructive: oklch(0.5 0.2 25);
   --destructive-foreground: oklch(1 0 0);
 
-  /* Status-Farben für Feedback */
-  --success: oklch(0.55 0.15 145);
-  --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.7 0.15 85);
-  --warning-foreground: oklch(0.2 0 0);
-  --info: oklch(0.55 0.15 250);
-  --info-foreground: oklch(1 0 0);
-
   --border: oklch(0.9 0 0);
   --input: oklch(0.9 0 0);
   --ring: oklch(0.2 0 0);
@@ -75,13 +67,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-
-  /* Panel Shadow - Vertikale Trennung zwischen Spalten (Theme-customizable)
-     Inset shadow auf der linken Seite, da overflow:hidden den normalen Schatten abschneidet */
-  --shadow-panel: inset 8px 0 12px -8px rgb(0 0 0 / 0.06);
-
-  /* Composer Shadow - Floating Effekt für Chat-Eingabefeld */
-  --shadow-composer: 4px 4px 12px 4px rgb(0 0 0 / 0.25);
 }
 
 .dark {
@@ -102,14 +87,6 @@
   --accent-foreground: oklch(0.95 0 0);
   --destructive: oklch(0.5 0.2 25);
   --destructive-foreground: oklch(1 0 0);
-
-  /* Status-Farben für Feedback - Dark Mode */
-  --success: oklch(0.6 0.15 145);
-  --success-foreground: oklch(0.15 0 0);
-  --warning: oklch(0.75 0.15 85);
-  --warning-foreground: oklch(0.15 0 0);
-  --info: oklch(0.6 0.15 250);
-  --info-foreground: oklch(0.15 0 0);
 
   --border: oklch(0.35 0 0);
   --input: oklch(0.35 0 0);
@@ -139,12 +116,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.2), 0 8px 10px -6px rgb(0 0 0 / 0.2);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
-
-  /* Panel Shadow - Dark Mode (stärker für bessere Sichtbarkeit) */
-  --shadow-panel: inset 8px 0 16px -8px rgb(0 0 0 / 0.2);
-
-  /* Composer Shadow - Dark Mode */
-  --shadow-composer: 4px 4px 12px 4px rgb(0 0 0 / 0.4);
 }
 
 @theme inline {
@@ -173,14 +144,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-
-  /* Status-Farben für Tailwind Utilities */
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
 
   --color-border: var(--border);
   --color-input: var(--input);
@@ -227,12 +190,6 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
-
-  /* Panel Shadow - für vertikale Spalten-Trennung (Theme-customizable) */
-  --shadow-panel: var(--shadow-panel);
-
-  /* Composer Shadow - Floating Effekt für Chat-Eingabefeld */
-  --shadow-composer: var(--shadow-composer);
 
   /* 6. Animationen (ShadCN Standard) */
   --animate-accordion-down: accordion-down 0.2s ease-out;

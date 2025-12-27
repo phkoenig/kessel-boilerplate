@@ -36,7 +36,7 @@ export default function DashboardTemplatePage(): React.ReactElement {
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
                   <p className="text-muted-foreground text-xs">
-                    <span className="text-success">{stat.change}</span> vom letzten Monat
+                    <span className="text-chart-1">{stat.change}</span> vom letzten Monat
                   </p>
                 </CardContent>
               </Card>

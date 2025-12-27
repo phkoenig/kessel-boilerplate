@@ -179,4 +179,3 @@ AI: "Dein neues Theme 'Sunset' wurde erstellt und ist jetzt aktiv."
 2. Wählt "Ocean" als Basis
 3. Ändert Farben via Color-Picker
 4. Klickt "Speichern als..."
-5. Gibt "Mein Ocean" ein
