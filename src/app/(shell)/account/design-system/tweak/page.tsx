@@ -51,8 +51,6 @@ function hexToRgb(hex: string): string {
 
 /**
  * SingleColorSwatch - Einzelne Farbe (Border, Chart, etc.)
- * Layout: Rechteck LINKS, Beschreibung RECHTS
- * Verwendet ColorPicker für die Farbauswahl.
  */
 function SingleColorSwatch({
   tokenName,
@@ -146,7 +144,6 @@ function SingleColorSwatch({
 
   return (
     <div className="flex items-start gap-6">
-      {/* Swatch - LINKS */}
       <div className="group relative h-16 w-64 shrink-0">
         <ColorPicker value={hex} onChange={handleChange}>
           <div
@@ -164,8 +161,6 @@ function SingleColorSwatch({
           <RotateCcw className="text-muted-foreground size-3" />
         </Button>
       </div>
-
-      {/* Beschreibung - RECHTS (3 Zeilen) */}
       <div className="flex min-w-0 flex-1 flex-col py-1">
         <span className="text-foreground text-sm font-medium">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{description}</span>
@@ -180,8 +175,7 @@ function SingleColorSwatch({
 }
 
 /**
- * DisplaySwatch - Nur Anzeige (Radius, Shadow) ohne Farbpicker
- * Layout: Rechteck LINKS, Beschreibung RECHTS
+ * DisplaySwatch - Nur Anzeige (Radius, Shadow)
  */
 function DisplaySwatch({
   name,
@@ -198,10 +192,7 @@ function DisplaySwatch({
 }): React.ReactElement {
   return (
     <div className="flex items-start gap-6">
-      {/* Swatch - LINKS */}
       <div className={`bg-card h-16 w-64 shrink-0 border ${className || ""}`} style={style} />
-
-      {/* Beschreibung - RECHTS */}
       <div className="flex min-w-0 flex-1 flex-col py-1">
         <span className="text-foreground text-sm font-medium">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{description}</span>
@@ -210,6 +201,42 @@ function DisplaySwatch({
     </div>
   )
 }
+
+// Farb-Tokens die von globalen Adjustments betroffen sind
+const COLOR_TOKENS = [
+  "--primary",
+  "--primary-foreground",
+  "--secondary",
+  "--secondary-foreground",
+  "--background",
+  "--foreground",
+  "--card",
+  "--card-foreground",
+  "--popover",
+  "--popover-foreground",
+  "--muted",
+  "--muted-foreground",
+  "--accent",
+  "--accent-foreground",
+  "--destructive",
+  "--destructive-foreground",
+  "--border",
+  "--input",
+  "--ring",
+  "--chart-1",
+  "--chart-2",
+  "--chart-3",
+  "--chart-4",
+  "--chart-5",
+  "--sidebar",
+  "--sidebar-foreground",
+  "--sidebar-primary",
+  "--sidebar-primary-foreground",
+  "--sidebar-accent",
+  "--sidebar-accent-foreground",
+  "--sidebar-border",
+  "--sidebar-ring",
+]
 
 /**
  * Tweak the UI Seite
@@ -226,19 +253,53 @@ export default function TweakPage(): React.ReactElement {
   const [radiusValue, setRadiusValue] = useState(0.5)
   const [spacingValue, setSpacingValue] = useState(0.25)
   const [letterSpacing, setLetterSpacing] = useState(0)
+
+  // Shadow sliders
+  const [shadowOpacity, setShadowOpacity] = useState(0.1)
+  const [shadowBlur, setShadowBlur] = useState(1.0)
+  const [shadowSpread, setShadowSpread] = useState(0)
+  const [shadowOffsetY, setShadowOffsetY] = useState(1.0)
+
+  // Global adjustments
   const [hueShift, setHueShift] = useState(0)
   const [saturationMult, setSaturationMult] = useState(1.0)
   const [lightnessMult, setLightnessMult] = useState(1.0)
 
-  // Debounce refs
-  const globalAdjustTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // WICHTIG: Original-Werte speichern für reproduzierbare globale Anpassungen
+  const originalColorsRef = useRef<Record<string, { light: string; dark: string }>>({})
+  const hasLoadedOriginals = useRef(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setExplorerOpen(false), 50)
     return () => clearTimeout(timer)
   }, [setExplorerOpen])
 
-  // Lade aktuelle Werte
+  // Lade Original-Werte beim ersten Mount
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (hasLoadedOriginals.current) return
+
+    const loadOriginals = () => {
+      const tokens = getCurrentTokens()
+      const originals: Record<string, { light: string; dark: string }> = {}
+
+      COLOR_TOKENS.forEach((tokenName) => {
+        const token = tokens[tokenName]
+        if (token) {
+          originals[tokenName] = { light: token.light, dark: token.dark }
+        }
+      })
+
+      originalColorsRef.current = originals
+      hasLoadedOriginals.current = true
+    }
+
+    const timeout = setTimeout(loadOriginals, 100)
+    return () => clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Lade aktuelle Slider-Werte
   useEffect(() => {
     if (typeof window === "undefined") return
     const updateValues = () => {
@@ -262,11 +323,11 @@ export default function TweakPage(): React.ReactElement {
   }, [currentThemeId])
 
   // Font-Namen
-  const [fontNames, setFontNames] = useState<{
-    sans: string
-    mono: string
-    serif: string
-  }>({ sans: "", mono: "", serif: "" })
+  const [fontNames, setFontNames] = useState<{ sans: string; mono: string; serif: string }>({
+    sans: "",
+    mono: "",
+    serif: "",
+  })
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -334,60 +395,34 @@ export default function TweakPage(): React.ReactElement {
     })
   }, [getCurrentTokens, previewToken, isDarkMode])
 
-  // Global Adjustments
+  // Global Adjustments - WICHTIG: Immer von ORIGINAL-Werten ausgehen!
   const applyGlobalAdjustments = useCallback(
     (hue: number, sat: number, light: number) => {
       if (typeof window === "undefined") return
+      if (!hasLoadedOriginals.current) return
 
-      const tokens = getCurrentTokens()
-      const colorTokens = [
-        "--primary",
-        "--primary-foreground",
-        "--secondary",
-        "--secondary-foreground",
-        "--background",
-        "--foreground",
-        "--card",
-        "--card-foreground",
-        "--popover",
-        "--popover-foreground",
-        "--muted",
-        "--muted-foreground",
-        "--accent",
-        "--accent-foreground",
-        "--destructive",
-        "--destructive-foreground",
-        "--border",
-        "--input",
-        "--ring",
-        "--chart-1",
-        "--chart-2",
-        "--chart-3",
-        "--chart-4",
-        "--chart-5",
-        "--sidebar",
-        "--sidebar-foreground",
-        "--sidebar-primary",
-        "--sidebar-primary-foreground",
-        "--sidebar-accent",
-        "--sidebar-accent-foreground",
-        "--sidebar-border",
-        "--sidebar-ring",
-      ]
+      const originals = originalColorsRef.current
 
-      colorTokens.forEach((tokenName) => {
-        const tokenValue = tokens[tokenName]
-        if (!tokenValue) return
+      COLOR_TOKENS.forEach((tokenName) => {
+        const originalToken = originals[tokenName]
+        if (!originalToken) return
 
-        const currentValue = isDarkMode ? tokenValue.dark : tokenValue.light
-        const match = currentValue.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
+        // IMMER vom ORIGINAL ausgehen, nicht vom aktuellen Wert!
+        const originalValue = isDarkMode ? originalToken.dark : originalToken.light
+        const match = originalValue.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
         if (!match) return
 
-        const l = Math.max(0, Math.min(1, parseFloat(match[1]) * light))
-        const c = Math.max(0, Math.min(0.4, parseFloat(match[2]) * sat))
-        const h = (((parseFloat(match[3]) + hue) % 360) + 360) % 360
+        const originalL = parseFloat(match[1])
+        const originalC = parseFloat(match[2])
+        const originalH = parseFloat(match[3])
 
-        const adjusted = `oklch(${l.toFixed(2)} ${c.toFixed(2)} ${h})`
+        // Anpassungen anwenden
+        const newL = Math.max(0, Math.min(1, originalL * light))
+        const newC = Math.max(0, Math.min(0.4, originalC * sat))
+        const newH = (((originalH + hue) % 360) + 360) % 360
+
+        const adjusted = `oklch(${newL.toFixed(3)} ${newC.toFixed(3)} ${newH.toFixed(1)})`
+
         if (isDarkMode) {
           previewToken(tokenName, undefined, adjusted)
         } else {
@@ -395,28 +430,43 @@ export default function TweakPage(): React.ReactElement {
         }
       })
     },
-    [getCurrentTokens, previewToken, isDarkMode]
+    [previewToken, isDarkMode]
   )
+
+  // Debounced global slider handler
+  const globalAdjustTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleGlobalSliderChange = useCallback(
     (type: "hue" | "saturation" | "lightness", value: number[]) => {
       const val = value[0]
+
+      // State sofort setzen für UI-Feedback
       if (type === "hue") setHueShift(val)
       else if (type === "saturation") setSaturationMult(val)
       else setLightnessMult(val)
 
+      // Debounce die tatsächliche Anwendung
       if (globalAdjustTimeoutRef.current) clearTimeout(globalAdjustTimeoutRef.current)
       globalAdjustTimeoutRef.current = setTimeout(() => {
         const h = type === "hue" ? val : hueShift
         const s = type === "saturation" ? val : saturationMult
         const l = type === "lightness" ? val : lightnessMult
         applyGlobalAdjustments(h, s, l)
-      }, 100)
+      }, 50)
     },
     [hueShift, saturationMult, lightnessMult, applyGlobalAdjustments]
   )
 
-  // Token-Daten mit Beschreibungen
+  // Reset Global Adjustments
+  const handleResetGlobalAdjustments = useCallback(() => {
+    setHueShift(0)
+    setSaturationMult(1.0)
+    setLightnessMult(1.0)
+    // Mit Neutralwerten anwenden → stellt Originale wieder her
+    applyGlobalAdjustments(0, 1.0, 1.0)
+  }, [applyGlobalAdjustments])
+
+  // Token-Daten
   const coreColorPairs = [
     {
       token: "--background",
@@ -605,8 +655,9 @@ export default function TweakPage(): React.ReactElement {
 
         {/* Chart Colors */}
         <section>
-          <h2 className="text-foreground mb-6 text-xl font-semibold">Chart Colors</h2>
-          <div className="mb-4">
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Chart Colors</h2>
+          {/* Slider/Button OBEN */}
+          <div className="mb-6">
             <Button variant="outline" size="sm" onClick={handleHarmonize}>
               <Palette className="mr-2 size-4" />
               Harmonize (72° Spacing)
@@ -654,26 +705,41 @@ export default function TweakPage(): React.ReactElement {
 
         {/* Radius & Spacing */}
         <section>
-          <h2 className="text-foreground mb-6 text-xl font-semibold">Radius & Spacing</h2>
-
-          {/* Radius Slider */}
-          <div className="mb-6 w-96 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">--radius</Label>
-              <span className="text-muted-foreground font-mono text-xs">
-                {radiusValue.toFixed(2)}rem ({Math.round(radiusValue * 16)}px)
-              </span>
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Radius & Spacing</h2>
+          {/* Slider OBEN */}
+          <div className="mb-6 space-y-4">
+            <div className="w-96 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">--radius</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {radiusValue.toFixed(2)}rem ({Math.round(radiusValue * 16)}px)
+                </span>
+              </div>
+              <Slider
+                value={[radiusValue]}
+                onValueChange={handleRadiusChange}
+                min={0}
+                max={2}
+                step={0.125}
+              />
             </div>
-            <Slider
-              value={[radiusValue]}
-              onValueChange={handleRadiusChange}
-              min={0}
-              max={2}
-              step={0.125}
-            />
+            <div className="w-96 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">--spacing</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {spacingValue.toFixed(2)}rem
+                </span>
+              </div>
+              <Slider
+                value={[spacingValue]}
+                onValueChange={handleSpacingChange}
+                min={0}
+                max={1}
+                step={0.01}
+              />
+            </div>
           </div>
-
-          {/* Radius Previews */}
+          {/* Elemente */}
           <div className="space-y-4">
             {radiusItems.map((item) => (
               <DisplaySwatch
@@ -685,30 +751,12 @@ export default function TweakPage(): React.ReactElement {
               />
             ))}
           </div>
-
-          {/* Spacing Slider */}
-          <div className="mt-8 w-96 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">--spacing</Label>
-              <span className="text-muted-foreground font-mono text-xs">
-                {spacingValue.toFixed(2)}rem
-              </span>
-            </div>
-            <Slider
-              value={[spacingValue]}
-              onValueChange={handleSpacingChange}
-              min={0}
-              max={1}
-              step={0.01}
-            />
-          </div>
         </section>
 
         {/* Typography */}
         <section>
-          <h2 className="text-foreground mb-6 text-xl font-semibold">Typografie</h2>
-
-          {/* Letter Spacing Slider */}
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Typografie</h2>
+          {/* Slider OBEN */}
           <div className="mb-6 w-96 space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Letter Spacing</Label>
@@ -725,8 +773,7 @@ export default function TweakPage(): React.ReactElement {
               step={0.01}
             />
           </div>
-
-          {/* Font Previews */}
+          {/* Elemente */}
           <div className="space-y-4">
             <div className="flex items-start gap-6">
               <div
@@ -780,29 +827,112 @@ export default function TweakPage(): React.ReactElement {
 
         {/* Shadows */}
         <section>
-          <h2 className="text-foreground mb-6 text-xl font-semibold">Schatten</h2>
-          <div className="space-y-4">
-            {shadowItems.map((item) => (
-              <DisplaySwatch
-                key={item.class}
-                name={item.name}
-                description={item.description}
-                value={item.class}
-                className={`rounded-lg ${item.class}`}
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Schatten</h2>
+          {/* Slider OBEN */}
+          <div className="mb-6 grid w-full grid-cols-2 gap-4 lg:w-2/3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Opacity</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {(shadowOpacity * 100).toFixed(0)}%
+                </span>
+              </div>
+              <Slider
+                value={[shadowOpacity]}
+                onValueChange={(v) => setShadowOpacity(v[0])}
+                min={0}
+                max={0.5}
+                step={0.01}
               />
-            ))}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Blur</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {shadowBlur.toFixed(1)}x
+                </span>
+              </div>
+              <Slider
+                value={[shadowBlur]}
+                onValueChange={(v) => setShadowBlur(v[0])}
+                min={0}
+                max={3}
+                step={0.1}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Spread</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {shadowSpread.toFixed(0)}px
+                </span>
+              </div>
+              <Slider
+                value={[shadowSpread]}
+                onValueChange={(v) => setShadowSpread(v[0])}
+                min={-10}
+                max={10}
+                step={1}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Offset Y</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {shadowOffsetY.toFixed(1)}x
+                </span>
+              </div>
+              <Slider
+                value={[shadowOffsetY]}
+                onValueChange={(v) => setShadowOffsetY(v[0])}
+                min={0}
+                max={3}
+                step={0.1}
+              />
+            </div>
+          </div>
+          <p className="text-muted-foreground mb-4 text-xs">
+            Hinweis: Shadow-Slider beeinflussen aktuell nur die Vorschau. Für persistente Änderungen
+            müssen Shadows im Theme-CSS definiert werden.
+          </p>
+          {/* Elemente mit dynamischen Schatten */}
+          <div className="space-y-4">
+            {shadowItems.map((item, index) => {
+              // Dynamische Shadow-Berechnung basierend auf Slider-Werten
+              const baseBlur = [1, 2, 4, 6, 10, 15, 25][index] || 6
+              const baseOffsetY = [1, 1, 2, 4, 8, 12, 25][index] || 4
+              const dynamicShadow = `0 ${Math.round(baseOffsetY * shadowOffsetY)}px ${Math.round(baseBlur * shadowBlur)}px ${shadowSpread}px rgba(0,0,0,${shadowOpacity})`
+
+              return (
+                <DisplaySwatch
+                  key={item.class}
+                  name={item.name}
+                  description={item.description}
+                  value={item.class}
+                  className="rounded-lg"
+                  style={{ boxShadow: dynamicShadow }}
+                />
+              )
+            })}
           </div>
         </section>
 
         {/* Global Adjustments */}
         <section>
-          <h2 className="text-foreground mb-6 text-xl font-semibold">Global Adjustments</h2>
-          <p className="text-muted-foreground mb-6 text-sm">
-            Master-Slider für alle Farben gleichzeitig
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Global Adjustments</h2>
+          <p className="text-muted-foreground mb-2 text-sm">
+            Master-Slider für alle Farben gleichzeitig. Änderungen werden von den Original-Werten
+            berechnet.
           </p>
-
+          {/* Reset Button */}
+          <div className="mb-4">
+            <Button variant="outline" size="sm" onClick={handleResetGlobalAdjustments}>
+              <RotateCcw className="mr-2 size-4" />
+              Auf Neutral zurücksetzen
+            </Button>
+          </div>
+          {/* Slider */}
           <div className="w-96 space-y-6">
-            {/* Hue Shift */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Hue-Shift</Label>
@@ -819,8 +949,6 @@ export default function TweakPage(): React.ReactElement {
                 step={1}
               />
             </div>
-
-            {/* Saturation */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Saturation</Label>
@@ -836,8 +964,6 @@ export default function TweakPage(): React.ReactElement {
                 step={0.01}
               />
             </div>
-
-            {/* Lightness */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Lightness</Label>
