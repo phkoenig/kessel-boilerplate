@@ -68,16 +68,16 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 | Token                          | TweakCN | Codebase | Editierbar | Beschreibung             |
 | ------------------------------ | ------- | -------- | ---------- | ------------------------ |
-| `--sidebar`                    | ❌      | ✅       | ❌         | Sidebar-Hintergrund      |
-| `--sidebar-foreground`         | ❌      | ✅       | ❌         | Sidebar-Textfarbe        |
-| `--sidebar-primary`            | ❌      | ✅       | ❌         | Sidebar-Primärfarbe      |
-| `--sidebar-primary-foreground` | ❌      | ✅       | ❌         | Text auf Sidebar-Primary |
-| `--sidebar-accent`             | ❌      | ✅       | ❌         | Sidebar-Akzentfarbe      |
-| `--sidebar-accent-foreground`  | ❌      | ✅       | ❌         | Text auf Sidebar-Accent  |
-| `--sidebar-border`             | ❌      | ✅       | ❌         | Sidebar-Border           |
-| `--sidebar-ring`               | ❌      | ✅       | ❌         | Sidebar-Focus-Ring       |
+| `--sidebar`                    | ✅      | ✅       | ❌         | Sidebar-Hintergrund      |
+| `--sidebar-foreground`         | ✅      | ✅       | ❌         | Sidebar-Textfarbe        |
+| `--sidebar-primary`            | ✅      | ✅       | ❌         | Sidebar-Primärfarbe      |
+| `--sidebar-primary-foreground` | ✅      | ✅       | ❌         | Text auf Sidebar-Primary |
+| `--sidebar-accent`             | ✅      | ✅       | ❌         | Sidebar-Akzentfarbe      |
+| `--sidebar-accent-foreground`  | ✅      | ✅       | ❌         | Text auf Sidebar-Accent  |
+| `--sidebar-border`             | ✅      | ✅       | ❌         | Sidebar-Border           |
+| `--sidebar-ring`               | ✅      | ✅       | ❌         | Sidebar-Focus-Ring       |
 
-**Hinweis**: Sidebar-Farben sind **nicht** Teil des Standard-TweakCN-Exports und werden aktuell **nicht** im Editor angezeigt.
+**Hinweis**: Sidebar-Farben können von TweakCN kommen, werden aber aktuell **nicht** im Editor angezeigt.
 
 ---
 
@@ -99,14 +99,15 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 | Token          | TweakCN | Codebase | Editierbar | Beschreibung                            |
 | -------------- | ------- | -------- | ---------- | --------------------------------------- |
-| `--font-sans`  | ❌      | ✅       | ❌         | Sans-Serif Schrift (z.B. Inter)         |
-| `--font-mono`  | ❌      | ✅       | ❌         | Monospace Schrift (z.B. JetBrains Mono) |
-| `--font-serif` | ❌      | ✅       | ❌         | Serif Schrift                           |
+| `--font-sans`  | ✅      | ✅       | ❌         | Sans-Serif Schrift (z.B. Inter)         |
+| `--font-mono`  | ✅      | ✅       | ❌         | Monospace Schrift (z.B. JetBrains Mono) |
+| `--font-serif` | ✅      | ✅       | ❌         | Serif Schrift                           |
 
 **Hinweis**:
 
-- Font-Tokens werden in `layout.tsx` via `next/font` registriert
-- Sie werden im Editor **nur angezeigt**, aber aktuell **nicht editierbar**
+- Font-Tokens **können von TweakCN kommen** und werden beim Import automatisch konvertiert
+- Der Importer konvertiert rohe Font-Namen zu CSS-Variablen (`var(--font-*)`) oder lädt dynamische Fonts
+- Font-Tokens werden im Editor **nur angezeigt**, aber aktuell **nicht editierbar**
 - Fonts müssen über das zentrale Font-System (`src/lib/fonts/`) verwaltet werden
 
 ---
@@ -137,9 +138,12 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 | Token       | TweakCN | Codebase | Editierbar | Beschreibung                              |
 | ----------- | ------- | -------- | ---------- | ----------------------------------------- |
-| `--spacing` | ❌      | ✅       | ❌         | Basis-Spacing-Einheit (aktuell `0.25rem`) |
+| `--spacing` | ✅      | ✅       | ❌         | Basis-Spacing-Einheit (aktuell `0.25rem`) |
 
-**Hinweis**: Spacing wird aktuell nicht über Themes verwaltet, sondern über Tailwind's Standard-Spacing-Skala (`0, 1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64`).
+**Hinweis**:
+
+- `--spacing` **kann von TweakCN kommen**, wird aber aktuell nicht im Editor angezeigt
+- Spacing wird primär über Tailwind's Standard-Spacing-Skala (`0, 1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64`) verwaltet
 
 ---
 
@@ -147,8 +151,19 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 ### Nach Herkunft
 
-- **TweakCN-Standard**: ~30 Tokens (hauptsächlich Core Colors, Chart Colors, Shadows, Radius)
-- **Codebase-spezifisch**: ~20 Tokens (Status-Farben, Sidebar-Farben, Custom Shadows, Fonts)
+- **TweakCN kann liefern**: ~50 Tokens
+  - Core Colors (background, foreground, card, popover, primary, secondary, muted, accent, destructive + alle `*-foreground` Varianten)
+  - Chart Colors (chart-1 bis chart-5)
+  - Sidebar Colors (sidebar, sidebar-foreground, sidebar-primary, etc.)
+  - Border & Input (border, input, ring)
+  - Radius (`--radius`)
+  - Spacing (`--spacing`)
+  - Fonts (`--font-sans`, `--font-mono`, `--font-serif`)
+  - Shadows (`--shadow-2xs` bis `--shadow-2xl`)
+- **Codebase-spezifisch**: ~10 Tokens
+  - Status-Farben (`success`, `warning`, `info` + `*-foreground` Varianten)
+  - Custom Shadows (`shadow-panel`, `shadow-composer`)
+  - Abgeleitete Radius-Werte (`radius-sm`, `radius-md`, `radius-lg`, `radius-xl`)
 
 ### Nach Editierbarkeit
 
@@ -195,7 +210,53 @@ Dies ermöglicht die Verwendung von Tailwind-Klassen wie `bg-primary`, `text-for
    - Metadaten werden in `public.themes` Tabelle gespeichert
 5. **Anwendung**: Theme wird via `[data-theme="..."]` Selektoren aktiviert
 
-**Wichtig**: TweakCN-Exports enthalten **alle** CSS-Variablen, die im TweakCN-Editor definiert wurden. Nicht alle davon sind Teil des Standard-Schemas.
+### Was TweakCN liefern kann
+
+Der Importer (`src/app/api/themes/import/route.ts`) erkennt und verarbeitet folgende Token-Kategorien:
+
+#### 1. Farben (✅ vollständig unterstützt)
+
+- Core Colors: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`
+- Alle `*-foreground` Varianten
+- Chart Colors: `chart-1` bis `chart-5`
+- Sidebar Colors: `sidebar`, `sidebar-foreground`, `sidebar-primary`, etc.
+- Border & Input: `border`, `input`, `ring`
+
+#### 2. Typografie (✅ mit automatischer Konvertierung)
+
+- `--font-sans`, `--font-mono`, `--font-serif`
+- **Font-Konvertierung**: Rohe Font-Namen (z.B. `"Inter"`) werden automatisch zu CSS-Variablen (`var(--font-inter)`) konvertiert
+- **Dynamische Fonts**: Nicht-registrierte Fonts werden als `dynamic_fonts` in der Datenbank gespeichert und zur Laufzeit geladen
+
+#### 3. Radius (✅ vollständig unterstützt)
+
+- `--radius`: Basis-Radius-Wert
+
+#### 4. Spacing (✅ vollständig unterstützt)
+
+- `--spacing`: Basis-Spacing-Einheit
+
+#### 5. Shadows (✅ vollständig unterstützt)
+
+- `--shadow-2xs`, `--shadow-xs`, `--shadow-sm`, `--shadow`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`, `--shadow-2xl`
+
+### Import-Statistiken
+
+Nach dem Import werden detaillierte Statistiken zurückgegeben:
+
+- **Colors**: Anzahl importierter Farb-Tokens
+- **Radius**: Ob `--radius` vorhanden war und dessen Wert
+- **Spacing**: Ob `--spacing` vorhanden war und dessen Wert
+- **Shadows**: Anzahl importierter Shadow-Tokens
+- **Fonts**: Für jede Font-Variable: angeforderter Wert, aufgelöster Wert, Erfolgsstatus
+- **Warnungen**: Font-Konvertierungsprobleme, fehlende Fonts, etc.
+
+**Wichtig**:
+
+- TweakCN-Exports enthalten **alle** CSS-Variablen, die im TweakCN-Editor definiert wurden
+- Der Importer parst **alle** CSS-Variablen aus `:root` und `.dark` Blöcken (via Regex: `--([a-z0-9-]+):\s*([^;]+);`)
+- Standard-Variablen werden erkannt und validiert
+- Nicht-Standard-Variablen werden ebenfalls importiert, aber möglicherweise nicht verwendet
 
 ---
 
