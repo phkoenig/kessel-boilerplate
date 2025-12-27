@@ -133,32 +133,26 @@ export function Breadcrumbs({
   }
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className={cn(
-        "bg-foreground text-background flex items-center gap-1 rounded-full px-3 py-1.5 text-sm",
-        className
-      )}
-    >
+    <nav aria-label="Breadcrumb" className={cn("flex items-center gap-1 text-sm", className)}>
       <ol className="flex items-center gap-1">
         {displayItems.map((item, index) => (
           <Fragment key={item.href + index}>
             {index > 0 && (
               <li aria-hidden="true">
-                <ChevronRight className="text-background/70 size-4" />
+                <ChevronRight className="text-muted-foreground size-4" />
               </li>
             )}
             <li>
               {item.isLast ? (
-                <span className="text-background font-medium" aria-current="page">
+                <span className="text-foreground font-medium" aria-current="page">
                   {index === 0 && showHomeIcon ? <Home className="size-4" /> : item.label}
                 </span>
               ) : item.label === "..." ? (
-                <span className="text-background/70">...</span>
+                <span className="text-muted-foreground">...</span>
               ) : (
                 <Link
                   href={item.href}
-                  className="text-background/70 hover:text-background transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {index === 0 && showHomeIcon ? <Home className="size-4" /> : item.label}
                 </Link>

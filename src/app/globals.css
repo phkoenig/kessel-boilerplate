@@ -308,27 +308,27 @@
   }
 
   .react-colorful__saturation {
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--radius);
   }
 
   .react-colorful__hue,
   .react-colorful__alpha {
     height: 12px;
-    border-radius: 6px;
+    border-radius: var(--radius);
     margin-top: 8px;
   }
 
   .react-colorful__pointer {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
     border: 2px solid white;
     box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.2),
+      0 1px 3px rgba(0, 0, 0, 0.2),
       inset 0 0 2px rgba(0, 0, 0, 0.2);
   }
 
   .react-colorful__saturation-pointer {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
   }
 }

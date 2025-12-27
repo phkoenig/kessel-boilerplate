@@ -1,11 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { RotateCcw } from "lucide-react"
+import { useEffect, useCallback, useRef, useState } from "react"
 import { useTheme as useColorMode } from "next-themes"
 import Color from "color"
-import { Button } from "@/components/ui/button"
-import { ColorPicker } from "@/components/ui/color-picker"
+import { cn } from "@/lib/utils"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 
 interface ColorPairSwatchProps {
@@ -59,7 +57,7 @@ function hexToRgb(hex: string): string {
  *
  * Layout: Rechteck LINKS, Beschreibung RECHTS (3 Zeilen)
  *
- * Verwendet ColorPicker für die Farbauswahl.
+ * Bei Klick wird das Element im Detail-Panel ausgewählt.
  */
 export function ColorPairSwatch({
   tokenName,
@@ -67,19 +65,24 @@ export function ColorPairSwatch({
   name,
   description,
 }: ColorPairSwatchProps): React.ReactElement {
-  const { previewToken, getCurrentTokens } = useThemeEditor()
+  const { getCurrentTokens, setSelectedElement, selectedElement } = useThemeEditor()
   const { theme: colorMode, resolvedTheme } = useColorMode()
 
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
-  // Aktuelle Werte
-  const [bgHex, setBgHex] = useState("#808080")
-  const [fgHex, setFgHex] = useState("#808080")
-  const [bgOklch, setBgOklch] = useState("")
+  // Prüfe ob dieses Element ausgewählt ist
+  const isSelected =
+    selectedElement?.type === "colorPair" &&
+    selectedElement.tokenName === tokenName &&
+    selectedElement.foregroundTokenName === foregroundTokenName
 
-  // Original-Werte (für Reset)
+  // Original-Werte (für Selection)
   const originalBgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
   const originalFgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
+
+  // Anzeige-Werte (erst nach Mount geladen, um Hydration-Mismatch zu vermeiden)
+  const [bgOklch, setBgOklch] = useState("")
+  const [bgHex, setBgHex] = useState("#808080")
 
   // Track ob wir schon geladen haben
   const hasLoaded = useRef(false)
@@ -94,17 +97,14 @@ export function ColorPairSwatch({
       const bgToken = tokens[tokenName] || { light: "", dark: "" }
       const fgToken = tokens[foregroundTokenName] || { light: "", dark: "" }
 
-      const currentBgValue = isDarkMode ? bgToken.dark : bgToken.light
-      const currentFgValue = isDarkMode ? fgToken.dark : fgToken.light
+      originalBgRef.current = { light: bgToken.light, dark: bgToken.dark }
+      originalFgRef.current = { light: fgToken.light, dark: fgToken.dark }
 
+      // Anzeige-Werte setzen
+      const currentBgValue = isDarkMode ? bgToken.dark : bgToken.light
       if (currentBgValue) {
-        setBgHex(oklchToHex(currentBgValue))
         setBgOklch(currentBgValue)
-        originalBgRef.current = { light: bgToken.light, dark: bgToken.dark }
-      }
-      if (currentFgValue) {
-        setFgHex(oklchToHex(currentFgValue))
-        originalFgRef.current = { light: fgToken.light, dark: fgToken.dark }
+        setBgHex(oklchToHex(currentBgValue))
       }
 
       hasLoaded.current = true
@@ -115,55 +115,37 @@ export function ColorPairSwatch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenName, foregroundTokenName, isDarkMode])
 
-  const handleBgChange = useCallback(
-    (hex: string) => {
-      setBgHex(hex)
-      if (isDarkMode) {
-        previewToken(tokenName, undefined, hex)
-      } else {
-        previewToken(tokenName, hex)
-      }
-    },
-    [tokenName, previewToken, isDarkMode]
-  )
+  const handleBgClick = useCallback(() => {
+    const tokens = getCurrentTokens()
+    const bgToken = tokens[tokenName] || { light: "", dark: "" }
+    const currentBgValue = isDarkMode ? bgToken.dark : bgToken.light
+    const originalBgValue = isDarkMode ? originalBgRef.current.dark : originalBgRef.current.light
 
-  const handleFgChange = useCallback(
-    (hex: string) => {
-      setFgHex(hex)
-      if (isDarkMode) {
-        previewToken(foregroundTokenName, undefined, hex)
-      } else {
-        previewToken(foregroundTokenName, hex)
-      }
-    },
-    [foregroundTokenName, previewToken, isDarkMode]
-  )
+    setSelectedElement({
+      type: "colorPair",
+      tokenName,
+      foregroundTokenName,
+      subType: "background",
+      originalValue: originalBgValue || currentBgValue || "",
+      originalDarkValue: originalBgRef.current.dark || "",
+    })
+  }, [tokenName, foregroundTokenName, setSelectedElement, isDarkMode, getCurrentTokens])
 
-  const handleReset = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const bgOriginal = isDarkMode ? originalBgRef.current.dark : originalBgRef.current.light
-      const fgOriginal = isDarkMode ? originalFgRef.current.dark : originalFgRef.current.light
+  const handleFgClick = useCallback(() => {
+    const tokens = getCurrentTokens()
+    const fgToken = tokens[foregroundTokenName] || { light: "", dark: "" }
+    const currentFgValue = isDarkMode ? fgToken.dark : fgToken.light
+    const originalFgValue = isDarkMode ? originalFgRef.current.dark : originalFgRef.current.light
 
-      if (bgOriginal) {
-        setBgHex(oklchToHex(bgOriginal))
-        if (isDarkMode) {
-          previewToken(tokenName, undefined, bgOriginal)
-        } else {
-          previewToken(tokenName, bgOriginal, undefined)
-        }
-      }
-      if (fgOriginal) {
-        setFgHex(oklchToHex(fgOriginal))
-        if (isDarkMode) {
-          previewToken(foregroundTokenName, undefined, fgOriginal)
-        } else {
-          previewToken(foregroundTokenName, fgOriginal, undefined)
-        }
-      }
-    },
-    [tokenName, foregroundTokenName, previewToken, isDarkMode]
-  )
+    setSelectedElement({
+      type: "colorPair",
+      tokenName,
+      foregroundTokenName,
+      subType: "foreground",
+      originalValue: originalFgValue || currentFgValue || "",
+      originalDarkValue: originalFgRef.current.dark || "",
+    })
+  }, [tokenName, foregroundTokenName, setSelectedElement, isDarkMode, getCurrentTokens])
 
   // Inneres Rechteck: 90×26px
   const innerPadding = 12
@@ -175,42 +157,39 @@ export function ColorPairSwatch({
       {/* Swatch Container - LINKS */}
       <div className="group relative h-16 w-64 shrink-0">
         {/* Background Farbe - äußeres Rechteck */}
-        <ColorPicker value={bgHex} onChange={handleBgChange}>
-          <div
-            className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
-            style={{
-              backgroundColor: `var(${tokenName})`,
-              borderRadius: "var(--radius)",
-            }}
-          />
-        </ColorPicker>
+        <div
+          className={cn(
+            "absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2",
+            isSelected && selectedElement?.subType === "background"
+              ? "ring-ring ring-2"
+              : "hover:ring-ring"
+          )}
+          style={{
+            backgroundColor: `var(${tokenName})`,
+            borderRadius: "var(--radius)",
+          }}
+          onClick={handleBgClick}
+        />
 
         {/* Foreground Farbe - inneres Rechteck (links zentriert) */}
-        <ColorPicker value={fgHex} onChange={handleFgChange}>
-          <div
-            className="hover:ring-ring absolute z-10 cursor-pointer rounded-sm transition-all hover:ring-2"
-            style={{
-              backgroundColor: `var(${foregroundTokenName})`,
-              width: innerWidth,
-              height: innerHeight,
-              left: innerPadding,
-              top: "50%",
-              transform: "translateY(-50%)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          />
-        </ColorPicker>
-
-        {/* Reset-Icon oben rechts */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleReset}
-          className="bg-background/80 hover:bg-background absolute top-2 right-2 z-20 size-6 rounded-full opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-          title="Auf Original zurücksetzen"
-        >
-          <RotateCcw className="text-muted-foreground size-3" />
-        </Button>
+        <div
+          className={cn(
+            "absolute z-10 cursor-pointer rounded-sm transition-all hover:ring-2",
+            isSelected && selectedElement?.subType === "foreground"
+              ? "ring-ring ring-2"
+              : "hover:ring-ring"
+          )}
+          style={{
+            backgroundColor: `var(${foregroundTokenName})`,
+            width: innerWidth,
+            height: innerHeight,
+            left: innerPadding,
+            top: "50%",
+            transform: "translateY(-50%)",
+            borderRadius: "var(--radius-sm)",
+          }}
+          onClick={handleFgClick}
+        />
       </div>
 
       {/* Beschreibung - RECHTS (3 Zeilen) */}
@@ -221,7 +200,7 @@ export function ColorPairSwatch({
         <span className="text-muted-foreground truncate text-xs">{description}</span>
         {/* Zeile 3: Farbwerte */}
         <div className="text-muted-foreground flex gap-4 font-mono text-xs">
-          <span title={bgOklch}>{bgOklch.substring(0, 25) || bgHex}</span>
+          <span title={bgOklch}>{bgOklch ? bgOklch.substring(0, 25) : bgHex}</span>
           <span className="opacity-50">|</span>
           <span>{hexToRgb(bgHex)}</span>
         </div>

@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { PageContent, PageHeader } from "@/components/shell"
-import { useExplorer } from "@/components/shell"
+import { useExplorer, useShell } from "@/components/shell"
 import { useTheme as useColorMode } from "next-themes"
 import Color from "color"
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { ColorPicker } from "@/components/ui/color-picker"
-import { RotateCcw, Palette } from "lucide-react"
+import { Palette, RotateCcw } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { ColorPairSwatch } from "@/components/theme/ColorPairSwatch"
-import { FloatingToolbar } from "@/components/theme/FloatingToolbar"
 
 /**
  * Konvertiert OKLCH zu Hex
@@ -63,14 +63,16 @@ function SingleColorSwatch({
   description: string
   variant?: "filled" | "border" | "gradient"
 }): React.ReactElement {
-  const { previewToken, getCurrentTokens } = useThemeEditor()
+  const { getCurrentTokens, setSelectedElement, selectedElement } = useThemeEditor()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
-  const [hex, setHex] = useState("#808080")
-  const [oklch, setOklch] = useState("")
-  const originalValueRef = useRef("")
+  const originalValueRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
   const hasLoaded = useRef(false)
+
+  // Anzeige-Werte (erst nach Mount geladen, um Hydration-Mismatch zu vermeiden)
+  const [oklch, setOklch] = useState("")
+  const [hex, setHex] = useState("#808080")
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -79,46 +81,40 @@ function SingleColorSwatch({
     const loadValue = () => {
       const tokens = getCurrentTokens()
       const token = tokens[tokenName] || { light: "", dark: "" }
+      originalValueRef.current = { light: token.light, dark: token.dark }
+
+      // Anzeige-Werte setzen
       const currentValue = isDarkMode ? token.dark : token.light
       if (currentValue) {
-        setHex(oklchToHex(currentValue))
         setOklch(currentValue)
-        originalValueRef.current = currentValue
-        hasLoaded.current = true
+        setHex(oklchToHex(currentValue))
       }
+
+      hasLoaded.current = true
     }
     const timeout = setTimeout(loadValue, 50)
     return () => clearTimeout(timeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenName, isDarkMode])
 
-  const handleChange = useCallback(
-    (newHex: string) => {
-      setHex(newHex)
-      if (isDarkMode) {
-        previewToken(tokenName, undefined, newHex)
-      } else {
-        previewToken(tokenName, newHex)
-      }
-    },
-    [tokenName, previewToken, isDarkMode]
-  )
+  const handleClick = useCallback(() => {
+    const tokens = getCurrentTokens()
+    const token = tokens[tokenName] || { light: "", dark: "" }
+    const currentValue = isDarkMode ? token.dark : token.light
+    const originalValue = isDarkMode
+      ? originalValueRef.current.dark
+      : originalValueRef.current.light
 
-  const handleReset = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const original = originalValueRef.current
-      if (original) {
-        setHex(oklchToHex(original))
-        if (isDarkMode) {
-          previewToken(tokenName, undefined, original)
-        } else {
-          previewToken(tokenName, original)
-        }
-      }
-    },
-    [tokenName, previewToken, isDarkMode]
-  )
+    setSelectedElement({
+      type: "color",
+      tokenName,
+      originalValue: originalValue || currentValue || "",
+      originalDarkValue: originalValueRef.current.dark || "",
+    })
+  }, [tokenName, setSelectedElement, isDarkMode, getCurrentTokens])
+
+  // Prüfe ob dieses Element ausgewählt ist
+  const isSelected = selectedElement?.type === "color" && selectedElement.tokenName === tokenName
 
   const getSwatchStyle = (): React.CSSProperties => {
     switch (variant) {
@@ -145,27 +141,20 @@ function SingleColorSwatch({
   return (
     <div className="flex items-start gap-6">
       <div className="group relative h-16 w-64 shrink-0">
-        <ColorPicker value={hex} onChange={handleChange}>
-          <div
-            className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
-            style={getSwatchStyle()}
-          />
-        </ColorPicker>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleReset}
-          className="bg-background/80 hover:bg-background absolute top-2 right-2 z-20 size-6 rounded-full opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-          title="Auf Original zurücksetzen"
-        >
-          <RotateCcw className="text-muted-foreground size-3" />
-        </Button>
+        <div
+          className={cn(
+            "absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2",
+            isSelected ? "ring-ring ring-2" : "hover:ring-ring"
+          )}
+          style={getSwatchStyle()}
+          onClick={handleClick}
+        />
       </div>
       <div className="flex min-w-0 flex-1 flex-col py-1">
         <span className="text-foreground text-sm font-medium">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{description}</span>
         <div className="text-muted-foreground flex gap-4 font-mono text-xs">
-          <span title={oklch}>{oklch.substring(0, 25) || hex}</span>
+          <span title={oklch}>{oklch ? oklch.substring(0, 25) : hex}</span>
           <span className="opacity-50">|</span>
           <span>{hexToRgb(hex)}</span>
         </div>
@@ -245,9 +234,23 @@ export default function TweakPage(): React.ReactElement {
   const { theme: currentThemeId } = useTheme()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const { setOpen: setExplorerOpen } = useExplorer()
-  const { isDirty, resetPreview, previewToken, getCurrentTokens } = useThemeEditor()
+  const { setAssistOpen, assistOpen } = useShell()
+
+  // Assist-Panel automatisch öffnen wenn auf Tweak-Seite
+  useEffect(() => {
+    if (!assistOpen) {
+      setAssistOpen(true)
+    }
+  }, [assistOpen, setAssistOpen])
+  const { previewToken, getCurrentTokens } = useThemeEditor()
 
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
+
+  // Client-only Flag für Hydration-Safety
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // State
   const [radiusValue, setRadiusValue] = useState(0.5)
@@ -912,15 +915,25 @@ export default function TweakPage(): React.ReactElement {
           {/* Schattenfarbe */}
           <div className="mb-6 flex items-start gap-6">
             <div className="group relative h-16 w-64 shrink-0">
-              <ColorPicker value={shadowColor} onChange={setShadowColor}>
+              {isMounted ? (
+                <ColorPicker value={shadowColor} onChange={setShadowColor}>
+                  <div
+                    className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
+                    style={{
+                      backgroundColor: shadowColor,
+                      borderRadius: "var(--radius)",
+                    }}
+                  />
+                </ColorPicker>
+              ) : (
                 <div
-                  className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
+                  className="absolute inset-0 rounded-lg border shadow-sm"
                   style={{
                     backgroundColor: shadowColor,
                     borderRadius: "var(--radius)",
                   }}
                 />
-              </ColorPicker>
+              )}
             </div>
             <div className="flex min-w-0 flex-1 flex-col py-1">
               <span className="text-foreground text-sm font-medium">Schattenfarbe</span>
@@ -1029,8 +1042,6 @@ export default function TweakPage(): React.ReactElement {
           </div>
         </section>
       </div>
-
-      <FloatingToolbar isDirty={isDirty} onReset={resetPreview} />
     </PageContent>
   )
 }
