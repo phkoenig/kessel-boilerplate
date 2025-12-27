@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { HexColorPicker, HexColorInput } from "react-colorful"
 import Color from "color"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
@@ -28,9 +28,8 @@ interface ColorPickerProps {
  */
 function toHex(colorValue: string): string {
   try {
-    // Versuche OKLCH zu parsen
+    // Versuche OKLCH zu parsen via Canvas
     if (colorValue.startsWith("oklch")) {
-      // Canvas-basierte Konvertierung für OKLCH
       if (typeof document !== "undefined") {
         const canvas = document.createElement("canvas")
         canvas.width = 1
@@ -71,9 +70,7 @@ function toRgb(hex: string): string {
 function toOklch(hex: string): string {
   try {
     const c = Color(hex)
-    // Konvertiere zu Lab als Annäherung
     const lab = c.lab().array()
-    // Approximation: L → 0-1, C basierend auf a,b, H basierend auf a,b
     const l = (lab[0] / 100).toFixed(2)
     const chroma = (Math.sqrt(lab[1] * lab[1] + lab[2] * lab[2]) / 100).toFixed(2)
     const hue = Math.round(((Math.atan2(lab[2], lab[1]) * 180) / Math.PI + 360) % 360)
@@ -86,8 +83,8 @@ function toOklch(hex: string): string {
 /**
  * ColorPicker - Farbauswahl-Komponente
  *
- * Zeigt einen nativen Color-Picker in einem Popover mit
- * verschiedenen Farbformat-Anzeigen.
+ * Zeigt einen schönen Color-Picker (react-colorful) direkt im Popover.
+ * Kein Zwischenschritt - Picker öffnet sich sofort!
  */
 export function ColorPicker({
   value,
@@ -99,26 +96,14 @@ export function ColorPicker({
 }: ColorPickerProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false)
   const [hexValue, setHexValue] = useState(() => toHex(value))
-  const inputRef = useRef<HTMLInputElement>(null)
 
   // Sync mit externem Wert
   useEffect(() => {
     setHexValue(toHex(value))
   }, [value])
 
-  // Öffne Color-Picker automatisch
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      const timeout = setTimeout(() => {
-        inputRef.current?.click()
-      }, 100)
-      return () => clearTimeout(timeout)
-    }
-  }, [isOpen])
-
   const handleColorChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const hex = e.target.value
+    (hex: string) => {
       setHexValue(hex)
 
       // Konvertiere zum gewünschten Format
@@ -138,14 +123,6 @@ export function ColorPicker({
     [onChange, format]
   )
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      onChange(newValue)
-    },
-    [onChange]
-  )
-
   const rgbValue = toRgb(hexValue)
   const oklchValue = toOklch(hexValue)
 
@@ -162,37 +139,36 @@ export function ColorPicker({
           />
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-64 space-y-4" align="start">
-        {/* Native Color Picker */}
-        <div className="flex items-center gap-2">
-          {}
-          <input
-            ref={inputRef}
-            type="color"
-            value={hexValue}
+      <PopoverContent className="w-auto p-4" align="start" sideOffset={8}>
+        {/* react-colorful Picker - öffnet sich sofort! */}
+        <div className="space-y-4">
+          <HexColorPicker
+            color={hexValue}
             onChange={handleColorChange}
-            className="size-12 cursor-pointer rounded border-0 bg-transparent p-0"
+            style={{ width: "200px", height: "160px" }}
           />
-          <div className="flex-1 space-y-1">
-            <Label className="text-muted-foreground text-xs">Hex</Label>
-            <Input
-              type="text"
-              value={hexValue}
-              onChange={handleInputChange}
-              className="h-7 font-mono text-xs"
+
+          {/* Hex Input */}
+          <div className="flex items-center gap-2">
+            <Label className="text-muted-foreground w-12 text-xs">Hex</Label>
+            <HexColorInput
+              color={hexValue}
+              onChange={handleColorChange}
+              prefixed
+              className="border-input bg-background h-8 flex-1 rounded-md border px-2 font-mono text-sm uppercase"
             />
           </div>
-        </div>
 
-        {/* Farbformate */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-muted-foreground text-xs">RGB</Label>
-            <span className="font-mono text-xs">{rgbValue}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-muted-foreground text-xs">OKLCH</Label>
-            <span className="font-mono text-xs">{oklchValue}</span>
+          {/* Farbformate (nur Anzeige) */}
+          <div className="border-border space-y-1 border-t pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground text-xs">RGB</Label>
+              <span className="text-muted-foreground font-mono text-xs">{rgbValue}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-muted-foreground text-xs">OKLCH</Label>
+              <span className="text-muted-foreground font-mono text-xs">{oklchValue}</span>
+            </div>
           </div>
         </div>
       </PopoverContent>

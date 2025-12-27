@@ -296,4 +296,39 @@
       flex-grow 200ms ease-out,
       flex-shrink 200ms ease-out !important;
   }
+
+  /* ========================================
+   * REACT-COLORFUL Styling
+   *
+   * Anpassung des Color-Pickers an unser Design-System.
+   * ======================================== */
+
+  .react-colorful {
+    border-radius: var(--radius);
+  }
+
+  .react-colorful__saturation {
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .react-colorful__hue,
+  .react-colorful__alpha {
+    height: 12px;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+
+  .react-colorful__pointer {
+    width: 20px;
+    height: 20px;
+    border: 2px solid white;
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.2),
+      inset 0 0 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .react-colorful__saturation-pointer {
+    width: 20px;
+    height: 20px;
+  }
 }
