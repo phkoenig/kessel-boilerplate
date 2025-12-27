@@ -32,6 +32,7 @@ Diese Ebene bewahrt Erfahrungswissen und technische Learnings. Sie ist der "Ged�
 
 - **`supabase-themes-setup.md`**: Supabase-Konfiguration für dynamische Themes
 - **`TweakCN Tokenisierung und Theme-Entwicklung.md`**: Token-Governance und TweakCN-Workflow
+- **`design-tokens-overview.md`**: Vollständige Übersicht aller Design Tokens (Herkunft, Editierbarkeit)
 
 ### Konfiguration & Setup
 
