@@ -71,21 +71,28 @@ function SingleColorSwatch({
 
   const [hex, setHex] = useState("#808080")
   const [oklch, setOklch] = useState("")
-  const [originalValue, setOriginalValue] = useState("")
+  const originalValueRef = useRef("")
+  const hasLoaded = useRef(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    if (hasLoaded.current) return
+
     const loadValue = () => {
       const tokens = getCurrentTokens()
       const token = tokens[tokenName] || { light: "", dark: "" }
       const currentValue = isDarkMode ? token.dark : token.light
-      setHex(oklchToHex(currentValue))
-      setOklch(currentValue)
-      if (!originalValue) setOriginalValue(currentValue)
+      if (currentValue) {
+        setHex(oklchToHex(currentValue))
+        setOklch(currentValue)
+        originalValueRef.current = currentValue
+        hasLoaded.current = true
+      }
     }
     const timeout = setTimeout(loadValue, 50)
     return () => clearTimeout(timeout)
-  }, [tokenName, getCurrentTokens, isDarkMode, originalValue])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenName, isDarkMode])
 
   const handleChange = useCallback(
     (newHex: string) => {
@@ -102,16 +109,17 @@ function SingleColorSwatch({
   const handleReset = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      if (originalValue) {
-        setHex(oklchToHex(originalValue))
+      const original = originalValueRef.current
+      if (original) {
+        setHex(oklchToHex(original))
         if (isDarkMode) {
-          previewToken(tokenName, undefined, originalValue)
+          previewToken(tokenName, undefined, original)
         } else {
-          previewToken(tokenName, originalValue)
+          previewToken(tokenName, original)
         }
       }
     },
-    [tokenName, originalValue, previewToken, isDarkMode]
+    [tokenName, previewToken, isDarkMode]
   )
 
   const getSwatchStyle = (): React.CSSProperties => {

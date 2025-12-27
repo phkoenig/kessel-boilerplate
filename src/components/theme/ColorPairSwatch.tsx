@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { RotateCcw } from "lucide-react"
 import { useTheme as useColorMode } from "next-themes"
 import Color from "color"
@@ -78,18 +78,16 @@ export function ColorPairSwatch({
   const [bgOklch, setBgOklch] = useState("")
 
   // Original-Werte (für Reset)
-  const [originalBg, setOriginalBg] = useState<{ light: string; dark: string }>({
-    light: "",
-    dark: "",
-  })
-  const [originalFg, setOriginalFg] = useState<{ light: string; dark: string }>({
-    light: "",
-    dark: "",
-  })
+  const originalBgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
+  const originalFgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
 
-  // Lade initiale Werte
+  // Track ob wir schon geladen haben
+  const hasLoaded = useRef(false)
+
+  // Lade initiale Werte - nur einmal beim Mount
   useEffect(() => {
     if (typeof window === "undefined") return
+    if (hasLoaded.current) return
 
     const loadValues = () => {
       const tokens = getCurrentTokens()
@@ -99,29 +97,23 @@ export function ColorPairSwatch({
       const currentBgValue = isDarkMode ? bgToken.dark : bgToken.light
       const currentFgValue = isDarkMode ? fgToken.dark : fgToken.light
 
-      setBgHex(oklchToHex(currentBgValue))
-      setFgHex(oklchToHex(currentFgValue))
-      setBgOklch(currentBgValue)
+      if (currentBgValue) {
+        setBgHex(oklchToHex(currentBgValue))
+        setBgOklch(currentBgValue)
+        originalBgRef.current = { light: bgToken.light, dark: bgToken.dark }
+      }
+      if (currentFgValue) {
+        setFgHex(oklchToHex(currentFgValue))
+        originalFgRef.current = { light: fgToken.light, dark: fgToken.dark }
+      }
 
-      setOriginalBg((prev) => {
-        if (isDarkMode) {
-          return { light: prev.light, dark: currentBgValue || prev.dark }
-        } else {
-          return { light: currentBgValue || prev.light, dark: prev.dark }
-        }
-      })
-      setOriginalFg((prev) => {
-        if (isDarkMode) {
-          return { light: prev.light, dark: currentFgValue || prev.dark }
-        } else {
-          return { light: currentFgValue || prev.light, dark: prev.dark }
-        }
-      })
+      hasLoaded.current = true
     }
 
     const timeout = setTimeout(loadValues, 50)
     return () => clearTimeout(timeout)
-  }, [tokenName, foregroundTokenName, getCurrentTokens, isDarkMode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenName, foregroundTokenName, isDarkMode])
 
   const handleBgChange = useCallback(
     (hex: string) => {
@@ -150,8 +142,8 @@ export function ColorPairSwatch({
   const handleReset = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      const bgOriginal = isDarkMode ? originalBg.dark : originalBg.light
-      const fgOriginal = isDarkMode ? originalFg.dark : originalFg.light
+      const bgOriginal = isDarkMode ? originalBgRef.current.dark : originalBgRef.current.light
+      const fgOriginal = isDarkMode ? originalFgRef.current.dark : originalFgRef.current.light
 
       if (bgOriginal) {
         setBgHex(oklchToHex(bgOriginal))
@@ -170,7 +162,7 @@ export function ColorPairSwatch({
         }
       }
     },
-    [tokenName, foregroundTokenName, originalBg, originalFg, previewToken, isDarkMode]
+    [tokenName, foregroundTokenName, previewToken, isDarkMode]
   )
 
   // Inneres Rechteck: 90×26px

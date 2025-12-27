@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useRef } from "react"
 import { HexColorPicker, HexColorInput } from "react-colorful"
 import Color from "color"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,9 @@ interface ColorPickerProps {
  * Konvertiert einen Farbwert zu Hex
  */
 function toHex(colorValue: string): string {
+  if (!colorValue) return "#808080"
+  if (colorValue.startsWith("#")) return colorValue.toUpperCase()
+
   try {
     // Versuche OKLCH zu parsen via Canvas
     if (colorValue.startsWith("oklch")) {
@@ -39,13 +42,13 @@ function toHex(colorValue: string): string {
           ctx.fillStyle = colorValue
           ctx.fillRect(0, 0, 1, 1)
           const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-          return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
+          return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase()
         }
       }
       return "#808080"
     }
     // Andere Formate via color-Bibliothek
-    return Color(colorValue).hex()
+    return Color(colorValue).hex().toUpperCase()
   } catch {
     return "#808080"
   }
@@ -95,28 +98,37 @@ export function ColorPicker({
   disabled = false,
 }: ColorPickerProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false)
+  // Initialisiere mit lazy initializer (wird nur beim Mount aufgerufen)
   const [hexValue, setHexValue] = useState(() => toHex(value))
 
-  // Sync mit externem Wert
-  useEffect(() => {
-    setHexValue(toHex(value))
-  }, [value])
+  // Sync nur wenn sich der externe Wert WIRKLICH ändert (beim Öffnen)
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setIsOpen(open)
+      if (open) {
+        // Beim Öffnen: Sync mit aktuellem externen Wert
+        setHexValue(toHex(value))
+      }
+    },
+    [value]
+  )
 
   const handleColorChange = useCallback(
     (hex: string) => {
-      setHexValue(hex)
+      const normalizedHex = hex.toUpperCase()
+      setHexValue(normalizedHex)
 
       // Konvertiere zum gewünschten Format
       let outputValue: string
       switch (format) {
         case "rgb":
-          outputValue = toRgb(hex)
+          outputValue = toRgb(normalizedHex)
           break
         case "oklch":
-          outputValue = toOklch(hex)
+          outputValue = toOklch(normalizedHex)
           break
         default:
-          outputValue = hex
+          outputValue = normalizedHex
       }
       onChange(outputValue)
     },
@@ -127,7 +139,7 @@ export function ColorPicker({
   const oklchValue = toOklch(hexValue)
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild disabled={disabled}>
         {children || (
           <Button
