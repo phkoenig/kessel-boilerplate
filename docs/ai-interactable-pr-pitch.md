@@ -73,11 +73,14 @@ export function AIInteractable({ id, action, target, description, keywords, cate
       "action": "toggle",
       "keywords": ["dark mode", "light mode", "theme"],
       "category": "settings",
-      "requiredRole": "public"
+      "requiredRole": "public",
+      "route": "/account/design-system/theme-management"
     }
   ]
 }
 ```
+
+Das `route`-Feld ermöglicht **Cross-Page-Navigation**: KI kann Aktionen auf anderen Seiten ausführen!
 
 ### 3. ESLint Rules
 
@@ -112,12 +115,27 @@ Runtime:
 ```
 User: "Schalte den Dark Mode ein"
 
-AI: → search_ui_components({ query: "dark mode" })
-    ← Found: theme-dark-mode-toggle (score: 63)
-
 AI: → execute_ui_action({ action_id: "theme-dark-mode-toggle" })
-    ← Success: "Dark Mode aktiviert"
+
+# Cross-Page-Navigation (wenn User nicht auf der Theme-Seite ist):
+1. handleToolCall() erkennt Action
+2. Prüft: Action lokal verfügbar? → NEIN
+3. Lädt route aus Manifest: "/account/design-system/theme-management"
+4. Navigiert SOFORT (vor Text-Streaming!)
+5. Pollt bis AIInteractable registriert ist
+6. Führt executeAction() aus
+7. Text-Streaming zeigt: "Dark Mode aktiviert"
+
+← Success: Dark Mode sichtbar BEVOR die Nachricht erscheint!
 ```
+
+### Timing ist entscheidend
+
+Die Navigation passiert in `handleToolCall()` (nicht `handleFinish()`), damit:
+
+- ✅ Visueller Effekt erscheint **vor** der Textnachricht
+- ✅ User sieht die Änderung sofort
+- ❌ Nicht: Text zuerst, dann erst die Änderung (schlechte UX)
 
 ## Exemption-Strategien
 
@@ -161,12 +179,37 @@ npx shadcn@latest add button --with-ai
 }
 ```
 
+## Integration mit assistant-ui
+
+Das System wurde mit [assistant-ui](https://www.assistant-ui.com/) getestet und funktioniert nahtlos:
+
+```typescript
+// useChatRuntime mit onToolCall für sofortige Navigation
+const runtime = useChatRuntime({
+  transport: chatTransport,
+  onToolCall: handleToolCall, // Hier passiert die Navigation!
+  onFinish: handleFinish, // Hier nur noch Cleanup
+})
+```
+
+**Wichtig**: assistant-ui sendet `toolCall.input`, nicht `toolCall.args`:
+
+```typescript
+// ❌ Funktioniert nicht
+const args = toolCall.args as { action_id?: string }
+
+// ✅ Richtig
+const inputData = (toolCall.input ?? toolCall.args) as { action_id?: string }
+```
+
 ## Open Questions
 
 1. Soll `AIInteractable` Teil von ShadCN/UI sein oder separates Package?
 2. Wie umgehen mit Accessibility-Überschneidungen (aria-label vs. description)?
 3. Sollte das Manifest-Format standardisiert werden (JSON Schema)?
 4. Wie integriert sich das mit bestehenden AI-Frameworks (Vercel AI SDK, LangChain)?
+5. **NEU**: Sollte `route` automatisch aus dem Dateipfad inferiert werden?
+6. **NEU**: Wie handhabt man dynamische Routen (`/users/[id]`)?
 
 ## Links
 

@@ -136,7 +136,8 @@ Das Manifest ist die Single Source of Truth für alle KI-interaktiven Komponente
       "target": "color-mode",
       "category": "settings",
       "keywords": ["dark mode", "light mode", "theme", "dunkel", "hell"],
-      "requiredRole": "public"
+      "requiredRole": "public",
+      "route": "/account/design-system/theme-management"
     }
   ]
 }
@@ -144,15 +145,43 @@ Das Manifest ist die Single Source of Truth für alle KI-interaktiven Komponente
 
 ### Manifest-Felder
 
-| Feld           | Typ        | Pflicht | Beschreibung              |
-| -------------- | ---------- | ------- | ------------------------- |
-| `id`           | `string`   | ✅      | Eindeutige Komponenten-ID |
-| `description`  | `string`   | ✅      | KI-lesbare Beschreibung   |
-| `action`       | `string`   | ✅      | Aktionstyp                |
-| `target`       | `string`   | ❌      | Aktionsziel               |
-| `category`     | `string`   | ✅      | Komponenten-Kategorie     |
-| `keywords`     | `string[]` | ✅      | Suchbegriffe (mind. 1)    |
-| `requiredRole` | `string`   | ✅      | Benötigte Benutzerrolle   |
+| Feld           | Typ        | Pflicht | Beschreibung                                                      |
+| -------------- | ---------- | ------- | ----------------------------------------------------------------- |
+| `id`           | `string`   | ✅      | Eindeutige Komponenten-ID                                         |
+| `description`  | `string`   | ✅      | KI-lesbare Beschreibung                                           |
+| `action`       | `string`   | ✅      | Aktionstyp                                                        |
+| `target`       | `string`   | ❌      | Aktionsziel                                                       |
+| `category`     | `string`   | ✅      | Komponenten-Kategorie                                             |
+| `keywords`     | `string[]` | ✅      | Suchbegriffe (mind. 1)                                            |
+| `requiredRole` | `string`   | ✅      | Benötigte Benutzerrolle                                           |
+| `route`        | `string`   | ❌      | Seite, auf der die Komponente verfügbar ist (`"global"` oder URL) |
+
+### Route-Feld
+
+Das `route`-Feld ermöglicht **Cross-Page-Navigation**: Wenn eine Aktion auf einer anderen Seite liegt als der aktuellen, navigiert der AI-Chatbot automatisch dorthin, bevor die Aktion ausgeführt wird.
+
+```json
+// Global verfügbar (auf jeder Seite)
+{ "id": "toggle-navbar", "route": "global" }
+
+// Nur auf einer spezifischen Seite
+{ "id": "theme-dark-mode-toggle", "route": "/account/design-system/theme-management" }
+```
+
+### Manifest-Speicherorte
+
+> ⚠️ **WICHTIG**: Das Manifest existiert an zwei Orten und muss synchron gehalten werden!
+
+| Ort                       | Verwendung                                   |
+| ------------------------- | -------------------------------------------- |
+| `ai-manifest.json` (Root) | Quelle für Entwicklung und Build-Validierung |
+| `public/ai-manifest.json` | Wird vom Browser zur Runtime geladen         |
+
+Nach Änderungen am Root-Manifest:
+
+```bash
+cp ai-manifest.json public/ai-manifest.json
+```
 
 ## ESLint Regeln
 
@@ -260,12 +289,59 @@ const tools = generateUIActionTool(availableActions)
 // → execute_ui_action Tool mit allen verfügbaren Actions
 ```
 
-### 4. Tool Execution
+### 4. Tool Execution (mit Cross-Page-Navigation)
 
 ```typescript
-// Bei Tool-Call wird Action auf Client ausgeführt
-window.aiRegistry.executeAction(actionId)
+// Bei Tool-Call wird geprüft, ob Navigation nötig ist
+// Dies passiert in handleToolCall() - VOR dem Text-Streaming!
+
+// Fall 1: Action ist lokal verfügbar
+if (localActions.includes(actionId)) {
+  window.aiRegistry.executeAction(actionId)
+}
+
+// Fall 2: Action ist auf anderer Seite (route im Manifest)
+if (manifestAction.route !== currentPath) {
+  // 1. Speichere pending action in sessionStorage
+  sessionStorage.setItem("pendingUIAction", JSON.stringify({ actionId, timestamp }))
+
+  // 2. Navigiere sofort (vor Text-Streaming!)
+  router.push(manifestAction.route)
+
+  // 3. Nach Navigation: Polling bis Komponente registriert ist
+  // → Dann wird executeAction aufgerufen
+}
 ```
+
+### 5. Cross-Page-Navigation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ User: "Aktiviere Dark Mode"                                     │
+├─────────────────────────────────────────────────────────────────┤
+│ 1. handleToolCall() wird aufgerufen (vor Text-Streaming!)       │
+│    └─► Action "theme-dark-mode-toggle" erkannt                  │
+│                                                                  │
+│ 2. Prüfe: Ist Action lokal verfügbar?                           │
+│    └─► NEIN (User ist auf "/" aber Action ist auf "/theme")     │
+│                                                                  │
+│ 3. Lade Route aus Manifest                                       │
+│    └─► route: "/account/design-system/theme-management"         │
+│                                                                  │
+│ 4. Speichere pending action + Navigiere SOFORT                  │
+│    └─► sessionStorage.setItem("pendingUIAction", ...)           │
+│    └─► router.push("/account/design-system/theme-management")   │
+│                                                                  │
+│ 5. Nach Navigation: Polling (max 5 Sekunden)                    │
+│    └─► Warte bis AIInteractable sich registriert hat            │
+│    └─► Führe executeAction() aus                                │
+│                                                                  │
+│ 6. Text-Streaming zeigt Erfolgsmeldung                          │
+│    └─► "Dark Mode wurde aktiviert" (NACH dem visuellen Effekt!) │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> **Wichtig**: Die Navigation passiert in `handleToolCall()` (nicht in `handleFinish()`), damit der visuelle Effekt **vor** der Textnachricht erscheint.
 
 ## Best Practices
 
@@ -369,6 +445,45 @@ function isDemoOrAboutPage(filename) {
 1. Prüfe ob Komponente gerendert ist (DevTools)
 2. Prüfe Registry: `window.aiRegistry.getAvailableActions()`
 3. Prüfe Network-Request: `availableActions` sollte die ID enthalten
+
+### Cross-Page-Navigation funktioniert nicht
+
+1. **Prüfe `route` im Manifest**: Ist die Route korrekt gesetzt?
+
+   ```bash
+   cat ai-manifest.json | grep -A 5 "theme-dark-mode-toggle"
+   ```
+
+2. **Prüfe `public/ai-manifest.json`**: Ist es synchron mit dem Root-Manifest?
+
+   ```bash
+   diff ai-manifest.json public/ai-manifest.json
+   # Wenn unterschiedlich:
+   cp ai-manifest.json public/ai-manifest.json
+   ```
+
+3. **Prüfe Console-Logs**: Suche nach `[AIChatPanel]` Logs
+   - `✅ UI-Action detected in tool call!` → Action erkannt
+   - `Action not locally available, checking manifest...` → Suche im Manifest
+   - `Found manifestAction: {...}` → Manifest-Eintrag gefunden (mit `route`?)
+   - `🚀 Immediate navigation to:` → Navigation wird ausgelöst
+   - `⚠️ Action not found in manifest` → Route fehlt!
+
+4. **Prüfe Polling nach Navigation**:
+   - `Action found in registry after X polls` → Erfolgreich
+   - `Timeout waiting for action` → Komponente rendert nicht
+
+### Aktion wird erst nach Text-Streaming ausgeführt
+
+→ Prüfe, dass die Navigation in `handleToolCall()` passiert, nicht in `handleFinish()`.
+
+Console-Log-Reihenfolge sollte sein:
+
+1. `[AIChatPanel] ===== handleToolCall CALLED =====`
+2. `[AIChatPanel] 🚀 Immediate navigation to: ...`
+3. `[AIChatPanel] ===== handleFinish CALLED =====` (danach)
+
+Falls Navigation in `handleFinish` passiert, ist das `route`-Feld nicht im geladenen Manifest.
 
 ## Referenzen
 
