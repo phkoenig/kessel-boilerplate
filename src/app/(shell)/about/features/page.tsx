@@ -55,10 +55,25 @@ interface Feature {
   description: string | null
   status: FeatureStatus
   proposer_id: string | null
+  proposer_name: string | null
   created_at: string
   updated_at: string
   votes: number
   hasVoted: boolean
+}
+
+/**
+ * Formatiert ein Datum zu Datum + Uhrzeit (z.B. "28.12.2025, 09:45")
+ */
+function formatDateTime(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 /**
@@ -85,7 +100,7 @@ export default function FeaturesPage(): React.ReactElement {
 
   const supabase = createClient()
 
-  // Lade Features mit Vote-Count und User-Vote-Status
+  // Lade Features mit Vote-Count, User-Vote-Status und Proposer-Namen
   async function loadFeatures() {
     if (!user) return
 
@@ -128,7 +143,28 @@ export default function FeaturesPage(): React.ReactElement {
 
       const userVotedFeatureIds = new Set((userVotesData || []).map((v) => v.feature_id))
 
-      // Kombiniere Features mit Vote-Counts
+      // Lade Proposer-Namen via separater Query
+      const proposerIds = [...new Set(featuresData.map((f) => f.proposer_id).filter(Boolean))]
+      let profilesMap: Record<string, string> = {}
+
+      if (proposerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, display_name, email")
+          .in("id", proposerIds)
+
+        if (profilesData) {
+          profilesMap = profilesData.reduce(
+            (acc, profile) => {
+              acc[profile.id] = profile.display_name || profile.email || "Unbekannt"
+              return acc
+            },
+            {} as Record<string, string>
+          )
+        }
+      }
+
+      // Kombiniere Features mit Vote-Counts und Proposer-Namen
       const featuresWithVotes: Feature[] = featuresData.map((feature) => {
         const voteCount = votesData?.filter((v) => v.feature_id === feature.id).length || 0
         const hasVoted = userVotedFeatureIds.has(feature.id)
@@ -137,6 +173,7 @@ export default function FeaturesPage(): React.ReactElement {
           ...feature,
           votes: voteCount,
           hasVoted,
+          proposer_name: feature.proposer_id ? profilesMap[feature.proposer_id] || null : null,
         } as Feature
       })
 
@@ -185,11 +222,12 @@ export default function FeaturesPage(): React.ReactElement {
         throw new Error(insertError.message)
       }
 
-      // Erfolgreich erstellt - Feature zur Liste hinzufügen
+      // Erfolgreich erstellt - Feature zur Liste hinzufügen mit Proposer-Name
       const newFeature: Feature = {
         ...data,
         votes: 0,
         hasVoted: false,
+        proposer_name: user.email || null,
       } as Feature
 
       setFeatures((prev) => [newFeature, ...prev])
@@ -358,6 +396,8 @@ export default function FeaturesPage(): React.ReactElement {
                 <TableRow>
                   <TableHead className="w-24 text-center">Votes</TableHead>
                   <TableHead>Feature</TableHead>
+                  <TableHead>Vorgeschlagen von</TableHead>
+                  <TableHead>Datum / Uhrzeit</TableHead>
                   <TableHead className="w-32 text-center">Status</TableHead>
                   <TableHead className="w-24 text-right">Aktion</TableHead>
                   {isAdmin && <TableHead className="w-12"></TableHead>}
@@ -366,7 +406,7 @@ export default function FeaturesPage(): React.ReactElement {
               <TableBody>
                 {filteredFeatures.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                    <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
                       Keine Features gefunden.
                     </TableCell>
                   </TableRow>
@@ -400,6 +440,12 @@ export default function FeaturesPage(): React.ReactElement {
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {feature.proposer_name || "Unbekannt"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {formatDateTime(feature.created_at)}
                       </TableCell>
                       <TableCell className="text-center">
                         {isAdmin ? (

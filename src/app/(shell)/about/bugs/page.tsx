@@ -65,36 +65,23 @@ interface BugReport {
   status: BugStatus
   browser_info: string | null
   reporter_id: string | null
+  reporter_name: string | null
   created_at: string
   updated_at: string
 }
 
 /**
- * Formatiert ein Datum zu "vor X Tagen/Stunden"
+ * Formatiert ein Datum zu Datum + Uhrzeit (z.B. "28.12.2025, 09:45")
  */
-function formatRelativeDate(dateString: string): string {
+function formatDateTime(dateString: string): string {
   const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-
-  if (diffDays === 0) {
-    if (diffHours === 0) {
-      return "gerade eben"
-    }
-    return `vor ${diffHours} ${diffHours === 1 ? "Stunde" : "Stunden"}`
-  } else if (diffDays === 1) {
-    return "vor 1 Tag"
-  } else if (diffDays < 7) {
-    return `vor ${diffDays} Tagen`
-  } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7)
-    return `vor ${weeks} ${weeks === 1 ? "Woche" : "Wochen"}`
-  } else {
-    const months = Math.floor(diffDays / 30)
-    return `vor ${months} ${months === 1 ? "Monat" : "Monaten"}`
-  }
+  return date.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 /**
@@ -123,13 +110,14 @@ export default function BugsPage(): React.ReactElement {
 
   const supabase = createClient()
 
-  // Lade Bugs aus Supabase
+  // Lade Bugs aus Supabase mit Reporter-Namen via separater Query
   async function loadBugs() {
     setIsLoading(true)
     setError(null)
 
     try {
-      const { data, error: fetchError } = await supabase
+      // 1. Bugs laden
+      const { data: bugsData, error: fetchError } = await supabase
         .from("bugs")
         .select("*")
         .order("created_at", { ascending: false })
@@ -139,7 +127,40 @@ export default function BugsPage(): React.ReactElement {
         return
       }
 
-      setBugs((data || []) as BugReport[])
+      if (!bugsData || bugsData.length === 0) {
+        setBugs([])
+        return
+      }
+
+      // 2. Reporter-IDs sammeln und Profile laden
+      const reporterIds = [...new Set(bugsData.map((b) => b.reporter_id).filter(Boolean))]
+
+      let profilesMap: Record<string, string> = {}
+
+      if (reporterIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, display_name, email")
+          .in("id", reporterIds)
+
+        if (profilesData) {
+          profilesMap = profilesData.reduce(
+            (acc, profile) => {
+              acc[profile.id] = profile.display_name || profile.email || "Unbekannt"
+              return acc
+            },
+            {} as Record<string, string>
+          )
+        }
+      }
+
+      // 3. Bugs mit Reporter-Namen kombinieren
+      const bugsWithReporter = bugsData.map((bug) => ({
+        ...bug,
+        reporter_name: bug.reporter_id ? profilesMap[bug.reporter_id] || null : null,
+      })) as BugReport[]
+
+      setBugs(bugsWithReporter)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden der Bugs")
     } finally {
@@ -186,8 +207,12 @@ export default function BugsPage(): React.ReactElement {
         throw new Error(insertError.message)
       }
 
-      // Erfolgreich erstellt
-      setBugs((prev) => [data as BugReport, ...prev])
+      // Erfolgreich erstellt - mit Reporter-Name ergänzen
+      const newBug: BugReport = {
+        ...(data as BugReport),
+        reporter_name: user.email || null,
+      }
+      setBugs((prev) => [newBug, ...prev])
       setIsAddDialogOpen(false)
       // Form zurücksetzen
       setNewBugTitle("")
@@ -317,7 +342,8 @@ export default function BugsPage(): React.ReactElement {
                 <TableRow>
                   <TableHead>Bug</TableHead>
                   <TableHead>Schweregrad</TableHead>
-                  <TableHead>Datum</TableHead>
+                  <TableHead>Gemeldet von</TableHead>
+                  <TableHead>Datum / Uhrzeit</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                   {isAdmin && <TableHead className="w-12"></TableHead>}
                 </TableRow>
@@ -325,7 +351,7 @@ export default function BugsPage(): React.ReactElement {
               <TableBody>
                 {filteredBugs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                    <TableCell colSpan={isAdmin ? 6 : 5} className="h-24 text-center">
                       Keine offenen Bugs gefunden.
                     </TableCell>
                   </TableRow>
@@ -339,7 +365,10 @@ export default function BugsPage(): React.ReactElement {
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {formatRelativeDate(bug.created_at)}
+                        {bug.reporter_name || "Unbekannt"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {formatDateTime(bug.created_at)}
                       </TableCell>
                       <TableCell className="text-right">
                         {isAdmin ? (
