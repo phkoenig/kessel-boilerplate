@@ -38,7 +38,7 @@ export const Thread: FC = () => {
     >
       {/* Scrollbarer Bereich für Messages - nimmt verfügbaren Platz ein */}
       <ThreadPrimitive.Viewport
-        turnAnchor="end"
+        turnAnchor="bottom"
         className="aui-thread-viewport min-h-0 flex-1 overflow-y-auto scroll-smooth px-4 pt-4"
       >
         <ThreadPrimitive.If empty>
