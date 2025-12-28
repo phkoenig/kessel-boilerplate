@@ -250,8 +250,16 @@ export async function POST(req: Request) {
 
     // 3. Request parsen
     const body: ChatRequestBody = await req.json()
-    const { messages, screenshot, htmlDump, route, interactions, availableActions, model, dryRun } =
-      body
+    const {
+      messages,
+      screenshot,
+      htmlDump,
+      route,
+      interactions,
+      availableActions: _availableActions,
+      model,
+      dryRun,
+    } = body
 
     if (!messages || messages.length === 0) {
       return Response.json({ error: "No messages provided" }, { status: 400 })
@@ -401,6 +409,16 @@ export async function POST(req: Request) {
         "X-Model-Used": selectedModel,
         "X-Router-Reason": routerDecision.reason,
         "X-Tools-Enabled": String(routerDecision.needsTools),
+      },
+      // Usage-Daten für Kostenanzeige mitsenden (kostenlos, da Teil des Streams)
+      messageMetadata: ({ part }) => {
+        if (part.type === "finish") {
+          return {
+            model: selectedModel,
+            usage: part.totalUsage,
+          }
+        }
+        return undefined
       },
     })
   } catch (error) {

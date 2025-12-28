@@ -4,6 +4,7 @@ import {
   UserMessageAttachments,
 } from "@/components/attachment"
 import { MarkdownText } from "@/components/markdown-text"
+import { MessageCost } from "@/components/message-cost"
 import { ToolFallback } from "@/components/tool-fallback"
 import { TooltipIconButton } from "@/components/tooltip-icon-button"
 import { Button } from "@/components/ui/button"
@@ -219,9 +220,12 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-1 ml-2 flex">
-        <BranchPicker />
-        <AssistantActionBar />
+      <div className="aui-assistant-message-footer mt-1 ml-2 flex items-center justify-between">
+        <div className="flex items-center">
+          <BranchPicker />
+          <AssistantActionBar />
+        </div>
+        <MessageCost />
       </div>
     </MessagePrimitive.Root>
   )

@@ -14,7 +14,7 @@ import type { ToolExecutionContext } from "./tool-executor"
  *
  * @param ctx - Execution Context (userId, sessionId, dryRun)
  */
-export function generateThemeTools(ctx: ToolExecutionContext): ToolSet {
+export function generateThemeTools(_ctx: ToolExecutionContext): ToolSet {
   return {
     get_theme_tokens: tool({
       description: `Liest die aktuellen Token-Werte des aktivierten Themes.
@@ -43,8 +43,12 @@ Der User kann die Änderungen dann bestätigen oder ablehnen.
 OKLCH Format: oklch(lightness chroma hue)
 - lightness: 0-1 (0=schwarz, 1=weiß)
 - chroma: 0-0.4 (Sättigung)
-- hue: 0-360 (Farbton, z.B. 0=rot, 120=grün, 240=blau)`,
+- hue: 0-360 (Farbton, z.B. 0=rot, 120=grün, 240=blau)
+
+WICHTIG: Generiere die Felder EXAKT in dieser Reihenfolge: description ZUERST, dann tokens.`,
       inputSchema: z.object({
+        // WICHTIG: description MUSS vor tokens kommen für stabiles Streaming!
+        description: z.string().describe("Kurze Beschreibung der Änderung (ZUERST generieren!)"),
         tokens: z
           .array(
             z.object({
@@ -53,8 +57,7 @@ OKLCH Format: oklch(lightness chroma hue)
               dark_value: z.string().optional().describe("Dark-Mode Wert (OKLCH Format)"),
             })
           )
-          .describe("Liste der zu ändernden Tokens"),
-        description: z.string().describe("Kurze Beschreibung der Änderung"),
+          .describe("Liste der zu ändernden Tokens (NACH description generieren!)"),
       }),
       execute: async ({ tokens, description }) => {
         return {
