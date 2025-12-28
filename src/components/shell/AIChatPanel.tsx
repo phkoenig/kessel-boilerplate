@@ -493,8 +493,11 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
         // Kurze Verzögerung für DB-Konsistenz, dann Seite refreshen
         console.warn("[AIChatPanel] 🔄 Triggering page refresh after DB modification...")
         setTimeout(() => {
-          router.refresh()
-        }, 300)
+          // router.refresh() invalidiert nur den Cache, lädt aber keine Server Components neu
+          // Verwende stattdessen window.location.reload() für echte Daten-Aktualisierung
+          // Dies ist robuster, da es die Seite wirklich neu lädt
+          window.location.reload()
+        }, 500)
       }
     },
     [router]
