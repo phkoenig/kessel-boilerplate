@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { RotateCcw, Save, Pipette } from "lucide-react"
 import { useTheme as useColorMode } from "next-themes"
-import Color from "color"
+import { parse, formatHex, converter } from "culori"
 import { HexColorPicker, HexColorInput } from "react-colorful"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -11,51 +11,39 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { SaveThemeDialog } from "@/components/theme/SaveThemeDialog"
 
+// Culori Converter für OKLCH
+const toOklch = converter("oklch")
+
 /**
- * Konvertiert OKLCH zu Hex
+ * Konvertiert OKLCH zu Hex (mit culori)
  */
 function oklchToHex(oklch: string): string {
   if (!oklch) return "#808080"
   if (oklch.startsWith("#")) return oklch
-  if (typeof document !== "undefined") {
-    const canvas = document.createElement("canvas")
-    canvas.width = 1
-    canvas.height = 1
-    const ctx = canvas.getContext("2d")
-    if (ctx) {
-      ctx.fillStyle = oklch
-      ctx.fillRect(0, 0, 1, 1)
-      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-      return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase()
-    }
-  }
-  return "#808080"
-}
-
-/**
- * Konvertiert Hex zu RGB-String
- */
-function hexToRgb(hex: string): string {
   try {
-    const c = Color(hex)
-    const rgb = c.rgb().array()
-    return `rgb(${Math.round(rgb[0])}, ${Math.round(rgb[1])}, ${Math.round(rgb[2])})`
+    const color = parse(oklch)
+    if (!color) return "#808080"
+    const hex = formatHex(color)
+    return hex ? hex.toUpperCase() : "#808080"
   } catch {
-    return "rgb(128, 128, 128)"
+    return "#808080"
   }
 }
 
 /**
- * Konvertiert Hex zu OKLCH-String (approximiert)
+ * Konvertiert Hex zu OKLCH-String (mit culori - akkurate Konvertierung)
  */
 function hexToOklch(hex: string): string {
   try {
-    const c = Color(hex)
-    const lab = c.lab().array()
-    const l = (lab[0] / 100).toFixed(2)
-    const chroma = (Math.sqrt(lab[1] * lab[1] + lab[2] * lab[2]) / 100).toFixed(2)
-    const hue = Math.round(((Math.atan2(lab[2], lab[1]) * 180) / Math.PI + 360) % 360)
-    return `oklch(${l} ${chroma} ${hue})`
+    const color = parse(hex)
+    if (!color) return "oklch(0.5 0 0)"
+    const oklch = toOklch(color)
+    if (!oklch) return "oklch(0.5 0 0)"
+    // L: 0-1, C: 0-0.4 (typisch), H: 0-360
+    const l = oklch.l?.toFixed(2) ?? "0.5"
+    const c = oklch.c?.toFixed(3) ?? "0"
+    const h = oklch.h !== undefined && !isNaN(oklch.h) ? Math.round(oklch.h) : 0
+    return `oklch(${l} ${c} ${h})`
   } catch {
     return "oklch(0.5 0 0)"
   }
@@ -68,7 +56,7 @@ function hexToOklch(hex: string): string {
  * Immer sichtbar: Reset + Save Buttons oben.
  */
 export function ThemeDetailPanel(): React.ReactElement {
-  const { selectedElement, previewToken, resetPreview, getCurrentTokens } = useThemeEditor()
+  const { selectedElement, previewToken, getCurrentTokens } = useThemeEditor()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -145,6 +133,11 @@ export function ThemeDetailPanel(): React.ReactElement {
       } else {
         previewToken(tokenNameToUse, originalValue)
       }
+
+      // Auch die lokalen States zurücksetzen, damit der Color Picker springt
+      const hex = oklchToHex(originalValue)
+      setCurrentHex(hex)
+      setCurrentOklch(originalValue)
     }
   }, [selectedElement, previewToken, isDarkMode])
 
@@ -167,23 +160,6 @@ export function ThemeDetailPanel(): React.ReactElement {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header: Immer sichtbar - Reset + Save Buttons */}
-      <div className="border-border flex items-center justify-between gap-2 border-b p-4">
-        <Button variant="outline" size="sm" onClick={resetPreview} className="flex-1">
-          <RotateCcw className="mr-2 size-4" />
-          Zurücksetzen
-        </Button>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => setSaveDialogOpen(true)}
-          className="flex-1"
-        >
-          <Save className="mr-2 size-4" />
-          Neues Theme speichern
-        </Button>
-      </div>
-
       {/* Content: Kontextabhängig */}
       <ScrollArea className="flex-1">
         <div className="p-6">
@@ -213,13 +189,11 @@ export function ThemeDetailPanel(): React.ReactElement {
               {/* Color Picker - Inline ohne Popover */}
               <div className="space-y-4">
                 {/* Picker */}
-                <div className="custom-colorful overflow-hidden rounded-md shadow-md">
-                  <HexColorPicker
-                    color={currentHex}
-                    onChange={handleColorChange}
-                    style={{ width: "100%" }}
-                  />
-                </div>
+                <HexColorPicker
+                  color={currentHex}
+                  onChange={handleColorChange}
+                  className="color-picker-clean"
+                />
 
                 {/* Hex Input mit Pipette */}
                 <div className="relative w-full">
@@ -230,7 +204,7 @@ export function ThemeDetailPanel(): React.ReactElement {
                     color={currentHex}
                     onChange={handleColorChange}
                     prefixed={false}
-                    className="border-input bg-background text-foreground focus-visible:ring-ring h-10 w-full rounded-md border py-2 pr-10 pl-7 font-mono text-sm uppercase shadow-sm focus-visible:ring-1 focus-visible:outline-hidden"
+                    className="border-input bg-background text-foreground focus-visible:ring-ring color-picker-input h-10 w-full border py-2 pr-10 pl-7 font-mono text-sm uppercase focus-visible:ring-1 focus-visible:outline-hidden"
                   />
                   {/* Pipette im Input-Feld */}
                   {typeof window !== "undefined" && "EyeDropper" in window && (
@@ -243,18 +217,6 @@ export function ThemeDetailPanel(): React.ReactElement {
                       <Pipette className="size-4" />
                     </button>
                   )}
-                </div>
-
-                {/* Farbwerte - kompakt, ohne Rahmen */}
-                <div className="text-muted-foreground space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span>RGB</span>
-                    <span className="font-mono">{hexToRgb(currentHex)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>OKLCH</span>
-                    <span className="font-mono">{currentOklch || "—"}</span>
-                  </div>
                 </div>
 
                 {/* Reset Button */}
@@ -298,5 +260,27 @@ export function ThemeDetailPanel(): React.ReactElement {
       {/* Save Dialog */}
       <SaveThemeDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen} />
     </div>
+  )
+}
+
+/**
+ * ThemeDetailPanel Save Button - Wird von DetailDrawer gerendert
+ */
+export function ThemeDetailPanelSaveButton(): React.ReactElement {
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        variant="default"
+        size="sm"
+        onClick={() => setSaveDialogOpen(true)}
+        className="mx-4 mb-6 w-[calc(100%-2rem)] whitespace-nowrap"
+      >
+        <Save className="mr-2 size-4 shrink-0" />
+        Theme speichern
+      </Button>
+      <SaveThemeDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen} />
+    </>
   )
 }
