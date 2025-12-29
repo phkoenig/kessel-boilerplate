@@ -30,7 +30,7 @@ export function FloatingChatButton(): React.ReactElement {
   const chatbotAvatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(chatbotAvatarSeed)}`
 
   return (
-    <div className="fixed right-6 bottom-6 z-50">
+    <div className="fixed right-6 bottom-6 z-50" suppressHydrationWarning>
       <AIInteractable
         id="floating-chat-button"
         action="toggle"

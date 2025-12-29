@@ -146,7 +146,7 @@ export function PageContent({
     pagination || navigation || floatingFooterLeft || floatingFooterRight ? "pb-16" : ""
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative flex h-full flex-col" suppressHydrationWarning>
       {/* Schwebende Elemente - Oben */}
       {showBreadcrumbs && <FloatingBreadcrumbs />}
 

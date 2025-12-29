@@ -89,6 +89,7 @@ export function UserAvatar(): React.ReactElement {
         <Button
           variant="ghost"
           size="icon"
+          suppressHydrationWarning
           className={cn(
             "relative size-12 shrink-0 rounded-full p-0 transition-opacity hover:opacity-80",
             "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none"

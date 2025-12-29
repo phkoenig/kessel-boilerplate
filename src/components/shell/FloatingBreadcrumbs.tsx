@@ -163,6 +163,7 @@ export function FloatingBreadcrumbs({
 
   return (
     <div
+      suppressHydrationWarning
       className={cn(
         // Position: Schwebt oben links
         "absolute top-4 left-4 z-20",
@@ -172,8 +173,12 @@ export function FloatingBreadcrumbs({
       )}
     >
       {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
-        <ol className="flex items-center gap-1">
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-1 text-sm"
+        suppressHydrationWarning
+      >
+        <ol className="flex items-center gap-1" suppressHydrationWarning>
           {displayItems.map((item, index) => (
             <Fragment key={item.href + index}>
               {index > 0 && (
