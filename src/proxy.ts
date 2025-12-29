@@ -29,6 +29,8 @@ const AUTH_ROUTES = ["/login", "/signup", "/verify"]
  * Local Dev Bypass:
  * - Setze NEXT_PUBLIC_AUTH_BYPASS=true in .env.local
  * - Funktioniert NUR wenn NODE_ENV=development (doppelte Absicherung)
+ * - Auch mit Bypass: Auth-Check wird durchgeführt, aber Login-Seite zeigt DevUserSelector
+ * - Ohne eingeloggten User → Redirect zu /login (mit DevUserSelector statt normalem Formular)
  */
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -37,18 +39,13 @@ export default async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request })
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOCAL DEV BYPASS - Überspringt Auth-Checks für schnellere Entwicklung
+  // LOCAL DEV BYPASS - Aktiviert DevUserSelector auf Login-Seite
   // ═══════════════════════════════════════════════════════════════════════════
   const isDev = process.env.NODE_ENV === "development"
   const bypassEnabled = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true"
   const shouldBypassAuth = isDev && bypassEnabled
-
-  if (shouldBypassAuth) {
-    // Im Dev-Bypass: Alle Routen erlaubt (inkl. Auth-Routen für Login)
-    // Der User kann sich einloggen wenn er DB-Zugriff braucht
-    // Nach Login: Echte Supabase-Session für RLS-geschützte Queries
-    return response
-  }
+  // Hinweis: Auch mit Bypass wird der Auth-Check durchgeführt
+  // Der Unterschied: Auf /login wird DevUserSelector statt normalem Formular angezeigt
   // ═══════════════════════════════════════════════════════════════════════════
 
   const supabase = createServerClient(

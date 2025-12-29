@@ -82,7 +82,7 @@ NEXT_PUBLIC_AUTH_BYPASS=true
 
 - Wird **automatisch generiert** von `pnpm pull-env`
 - Enthält alle Secrets aus dem KESSEL-Vault
-- **Local Dev Bypass** ist standardmäßig aktiviert (DevUserSelector statt Login-Form)
+- **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo der DevUserSelector (User-Liste) statt des normalen Login-Formulars angezeigt wird
 - In `.gitignore` → wird niemals committed
 
 ---

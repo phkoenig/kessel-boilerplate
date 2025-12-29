@@ -80,7 +80,7 @@ pnpm dev
 **Wichtig:**
 
 - Vor jedem `pnpm dev` sollte `pnpm pull-env` ausgeführt werden, um aktuelle Secrets zu laden
-- **Local Dev Bypass** ist standardmäßig aktiviert - auf der Login-Seite erscheint ein User-Selector statt der normalen Auth-Form
+- **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo ein User-Selector statt der normalen Auth-Form angezeigt wird
 
 → [kessel-cli Installation & Workflow](docs/04_knowledge/cli-workflow.md)
 

@@ -199,19 +199,8 @@ const isProtectedRoute = pathname.startsWith('/app'); // anpassen nach Bedarf
 const isDev = process.env.NODE_ENV === 'development';
 const bypass = process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true';
 const shouldBypassAuth = isDev && bypass;
-
-if (shouldBypassAuth) {
-// Im Dev-Modus: keine echten Auth-Checks
-// Optional: Auth-Routen direkt auf /app umleiten
-if (isAuthRoute) {
-const appUrl = new URL('/app', request.url);
-return NextResponse.redirect(appUrl);
-}
-
-    // Alle anderen Routen passieren einfach
-    return res;
-
-}
+// Hinweis: Auch mit Bypass wird der Auth-Check durchgeführt
+// Der Unterschied: Auf /login wird DevUserSelector statt normalem Formular angezeigt
 // ------------------------------------------------------------------
 
 // --- Echter Supabase-Auth-Check -----------------------------------
@@ -236,19 +225,40 @@ const {
 data: { user },
 } = await supabase.auth.getUser();
 
-// Unauthentifizierte User auf geschützten Routen -> Login
-if (!user && isProtectedRoute) {
-const loginUrl = new URL('/auth/login', request.url);
+const isAuthenticated = !!user;
+
+// API-Routen: Session aktualisieren, keine Redirects
+if (pathname.startsWith('/api/')) {
+return res;
+}
+
+// Öffentliche Routen: Immer erlaubt
+if (PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'))) {
+return res;
+}
+
+// Auth-Routen Handling
+const isAuthRoute = AUTH_ROUTES.some(
+(route) => pathname === route || pathname.startsWith(route + '/')
+);
+
+if (isAuthRoute) {
+if (isAuthenticated) {
+// Eingeloggt + auf Auth-Route → Redirect zu Home
+return NextResponse.redirect(new URL('/', request.url));
+}
+// Nicht eingeloggt + auf Auth-Route → Erlaubt (zeigt DevUserSelector wenn Bypass aktiv)
+return res;
+}
+
+// Geschützte Routen: Auth erforderlich
+if (!isAuthenticated) {
+const loginUrl = new URL('/login', request.url);
+loginUrl.searchParams.set('redirect', pathname);
 return NextResponse.redirect(loginUrl);
 }
 
-// Eingeloggte User auf Auth-Seiten -> in die App
-if (user && isAuthRoute) {
-const appUrl = new URL('/app', request.url);
-return NextResponse.redirect(appUrl);
-}
-
-// WICHTIG: dieselbe Response zurückgeben, in der Cookies gesetzt wurden
+// Eingeloggt + geschützte Route → Erlaubt
 return res;
 }
 Wichtige Punkte / Stolperfallen:
@@ -257,13 +267,14 @@ Nur eine NextResponse‑Instanz (res) verwenden, damit Supabase‑Cookie‑Updat
 
 Im Dev‑Bypass:
 
-Supabase‑Auth nicht aufrufen (Performance + Klarheit).
-
-Kein Fake‑User in die DB schreiben.
+**WICHTIG:** Auch mit aktiviertem Bypass wird der Auth-Check durchgeführt.
+**Unterschied:** Auf `/login` wird automatisch der `DevUserSelector` angezeigt (User-Liste zum Klicken).
+**Ohne eingeloggten User:** Redirect zu `/login` erfolgt wie in Production.
+**Mit eingeloggten User:** Normale Navigation funktioniert.
 
 In Production:
 
-NEXT_PUBLIC_AUTH_BYPASS nicht setzen → Guard voll aktiv.
+NEXT_PUBLIC_AUTH_BYPASS nicht setzen → Guard voll aktiv, Login-Seite zeigt normales Formular.
 
 6. Supabase UI Auth Blocks (shadcn‑basiert)
    Ziel: Keine eigenen Auth‑Forms bauen, sondern fertige Supabase Auth UI nutzen, basierend auf shadcn/Tailwind.
@@ -330,7 +341,7 @@ Erzwingt Auth auf geschützten Routen.
 
 Hält eingeloggt/ausgeloggt sauber getrennt.
 
-Macht im Dev‑Bypass das Login optional.
+Zeigt im Dev‑Bypass automatisch den DevUserSelector auf der Login-Seite (User-Liste statt Formular).
 
 7. Nutzung in Server Components / Hooks
    In eigenen Server Components:
@@ -347,8 +358,7 @@ data: { user },
 
 // In Production ist user hier garantiert gesetzt,
 // weil /app per proxy.ts geschützt ist.
-// In Dev-Bypass kann es je nach Implementierung auch null sein;
-// ggf. Fallback einbauen.
+// Auch im Dev-Bypass ist user gesetzt, da der Auth-Check durchgeführt wird.
 
 return (
 
@@ -358,7 +368,7 @@ return (
 </div>
 );
 }
-Optional kann für Dev‑Bypass in einem eigenen Helper eine Fake‑User‑Rückgabe integriert werden, aber sauberer ist: Bypass nur im proxy.ts verwenden und im App‑Code so wenig Sonderfälle wie möglich einbauen.
+**WICHTIG:** Im Dev-Bypass wird kein Fake-User erstellt. Der Auth-Check läuft normal, nur die Login-Seite zeigt den DevUserSelector statt des normalen Formulars. Im App-Code keine Sonderfälle für Bypass nötig.
 
 8. Best Practices / Checkliste
    Env‑Variablen

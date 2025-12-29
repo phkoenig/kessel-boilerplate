@@ -113,20 +113,20 @@ app/
 
 ---
 
-## Dev Auto-Login
+## Dev Auth Bypass
 
 Für schnellere lokale Entwicklung:
 
 ```bash
 # .env.local
 NEXT_PUBLIC_AUTH_BYPASS=true
-NEXT_PUBLIC_DEV_ADMIN_EMAIL=admin@kessel.local
-NEXT_PUBLIC_DEV_ADMIN_PASSWORD=dein-passwort
 ```
 
-**Funktioniert NUR wenn:**
-- `NODE_ENV=development`
-- Alle drei Variablen gesetzt
+**Verhalten:**
+- `NODE_ENV=development` UND `NEXT_PUBLIC_AUTH_BYPASS=true` aktiviert
+- **Auch mit Bypass:** Auth-Check wird durchgeführt, ohne eingeloggten User → Redirect zu `/login`
+- **Unterschied:** Auf `/login` wird automatisch der `DevUserSelector` angezeigt (User-Liste zum Klicken) statt des normalen Login-Formulars
+- **Optional:** `NEXT_PUBLIC_DEV_ADMIN_EMAIL` und `NEXT_PUBLIC_DEV_ADMIN_PASSWORD` für automatisches Auto-Login beim ersten Load (wird im Auth-Context verwendet)
 
 ---
 
