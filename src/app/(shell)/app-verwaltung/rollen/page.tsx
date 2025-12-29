@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useAuth, usePermissions } from "@/components/auth"
-import { PageContent } from "@/components/shell"
+import { PageContent, PageHeader } from "@/components/shell"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 import { allNavigationConfig } from "@/config/navigation"
 import { RoleManagement, type Role } from "./_components/RoleManagement"
+import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 
 // Berechtigungstyp
 interface Permission {
@@ -43,6 +44,8 @@ interface Permission {
 export default function RolesPage(): React.ReactElement {
   const { role, isLoading: authLoading } = useAuth()
   const { reload: reloadPermissions } = usePermissions()
+  const currentNavItem = useCurrentNavItem()
+  const pageTitle = currentNavItem?.label ?? "Rollen & Berechtigungen"
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -386,10 +389,8 @@ export default function RolesPage(): React.ReactElement {
   // Warte auf Auth-Loading
   if (authLoading) {
     return (
-      <PageContent
-        title="Rollen & Berechtigungen"
-        description="Verwalte die Zugriffsrechte für jede Rolle"
-      >
+      <PageContent>
+        <PageHeader title={pageTitle} description="Verwalte die Zugriffsrechte für jede Rolle" />
         <div className="flex items-center justify-center p-8">
           <Loader2 className="text-muted-foreground size-8 animate-spin" />
         </div>
@@ -400,7 +401,8 @@ export default function RolesPage(): React.ReactElement {
   // Während Auth lädt: Spinner anzeigen
   if (authLoading) {
     return (
-      <PageContent title="Rollen & Berechtigungen" description="Lade Berechtigungen...">
+      <PageContent>
+        <PageHeader title={pageTitle} description="Lade Berechtigungen..." />
         <div className="flex items-center justify-center p-8">
           <Loader2 className="text-muted-foreground size-8 animate-spin" />
         </div>
@@ -411,10 +413,11 @@ export default function RolesPage(): React.ReactElement {
   // Nicht-Admin: Zugriff verweigert (nur prüfen wenn Auth geladen)
   if (role !== "admin" && role !== "super-user") {
     return (
-      <PageContent
-        title="Zugriff verweigert"
-        description="Diese Seite ist nur für Administratoren."
-      >
+      <PageContent>
+        <PageHeader
+          title="Zugriff verweigert"
+          description="Diese Seite ist nur für Administratoren."
+        />
         <div className="flex items-center justify-center p-8">
           <p className="text-muted-foreground">Du hast keine Berechtigung für diese Seite.</p>
         </div>
@@ -423,10 +426,8 @@ export default function RolesPage(): React.ReactElement {
   }
 
   return (
-    <PageContent
-      title="Rollen & Berechtigungen"
-      description="Verwalte die Zugriffsrechte für jede Rolle"
-    >
+    <PageContent>
+      <PageHeader title={pageTitle} description="Verwalte die Zugriffsrechte für jede Rolle" />
       {/* Rollen-Management */}
       <RoleManagement
         roles={roles}

@@ -6,49 +6,21 @@ import { usePathname } from "next/navigation"
 import { ChevronRight, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-
-/**
- * Breadcrumb Label Mappings
- *
- * Definiert lesbare Labels für Route-Segmente.
- * Kann erweitert werden für projektspezifische Pfade.
- */
-const labelMappings: Record<string, string> = {
-  // Über die App
-  about: "Über die App",
-  wiki: "App-Wiki",
-  features: "Feature-Wishlist",
-  bugs: "Bug-Report",
-  impressum: "Impressum",
-  // App-Verwaltung (admin)
-  admin: "App-Verwaltung",
-  dashboard: "App-Dashboard",
-  "ai-datasources": "Datenquellen",
-  "chat-logs": "KI-Chat-Logs",
-  "theme-management": "Theme Manager",
-  tweak: "Design System",
-  components: "UI-Komponenten",
-  // Account
-  account: "Account",
-  profile: "Profil",
-  language: "Sprache",
-  payment: "Warenkorb",
-  users: "Benutzer",
-  roles: "Rollen",
-  "design-system": "Design System",
-  // Content (Beispiel)
-  content: "Content",
-}
+import { allNavigationConfig } from "@/config/navigation"
+import { findNavItemBySlug } from "@/lib/navigation/utils"
 
 /**
  * Formatiert ein Route-Segment zu einem lesbaren Label.
+ *
+ * Verwendet die Navigation-Konfiguration als Single Source of Truth.
+ * Fällt zurück auf Title Case für unbekannte Slugs.
  */
 function formatSegment(segment: string): string {
-  // Prüfe auf bekannte Mappings
-  const mapped = labelMappings[segment.toLowerCase()]
-  if (mapped) return mapped
+  // 1. Suche in Navigation nach passendem Item
+  const navItem = findNavItemBySlug(segment, allNavigationConfig)
+  if (navItem) return navItem.label
 
-  // Formatiere: kebab-case → Title Case
+  // 2. Fallback: Slug → Title Case (kebab-case → Title Case)
   return segment
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

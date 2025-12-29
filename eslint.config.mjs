@@ -12,6 +12,7 @@ import useDesignSystemComponents from "./eslint/rules/use-design-system-componen
 import noMiddlewareFile from "./eslint/rules/no-middleware-file.js"
 import aiComponentCompliance from "./eslint/rules/ai-component-compliance.js"
 import requireAiWrapper from "./eslint/rules/require-ai-wrapper.js"
+import navigationRouteConsistency from "./eslint/rules/navigation-route-consistency.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -32,6 +33,7 @@ const localPlugin = {
     "no-middleware-file": noMiddlewareFile,
     "ai-component-compliance": aiComponentCompliance,
     "require-ai-wrapper": requireAiWrapper,
+    "navigation-route-consistency": navigationRouteConsistency,
   },
 }
 
@@ -150,6 +152,24 @@ const eslintConfig = defineConfig([
       // WARNUNG statt ERROR für sanfte Migration
       // Nach Migration auf "error" setzen!
       "local/require-ai-wrapper": "warn",
+    },
+  },
+  // Navigation Route Consistency: Prüft Konsistenz zwischen Routen und Navigation
+  {
+    files: ["src/app/**/*.tsx", "src/components/**/*.tsx", "src/lib/**/*.ts"],
+    ignores: [
+      "src/components/ui/**",
+      "**/__tests__/**",
+      "**/*.test.tsx",
+      "**/*.test.ts",
+      "**/*.spec.tsx",
+      "**/*.spec.ts",
+    ],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      "local/navigation-route-consistency": "warn", // Warnung für sanfte Migration
     },
   },
   // ESLint-Regel-Dateien ausschließen (dürfen require() verwenden)

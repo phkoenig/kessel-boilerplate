@@ -1,8 +1,8 @@
 /**
- * E2E Tests für Design System Tweak-Seite
+ * E2E Tests für Design System Seite
  *
  * Testet den vollständigen Flow:
- * 1. Navigiere zu /account/design-system/tweak
+ * 1. Navigiere zu /admin/design-system
  * 2. Verifiziere, dass das DetailPanel (4. Spalte) sichtbar ist
  * 3. Verifiziere ThemeDetailPanel-Elemente (Buttons, ColorPicker)
  * 4. Teste Farb-Auswahl und Reset-Funktionalität
@@ -10,7 +10,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Design System Tweak-Seite", () => {
+test.describe("Design System Seite", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to app (assumes dev server is running)
     await page.goto("http://localhost:3000")
@@ -22,17 +22,17 @@ test.describe("Design System Tweak-Seite", () => {
     // await page.click('button[type="submit"]')
   })
 
-  test("sollte zur Tweak-Seite navigieren können", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+  test("sollte zur Design System Seite navigieren können", async ({ page }) => {
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
 
     // Assert: Seite sollte geladen sein
-    await expect(page).toHaveURL(/.*design-system\/tweak/)
+    await expect(page).toHaveURL(/.*app-verwaltung\/design-system/)
   })
 
-  test("sollte DetailPanel (4. Spalte) anzeigen wenn auf Tweak-Seite", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+  test("sollte DetailPanel (4. Spalte) anzeigen wenn auf Design System Seite", async ({ page }) => {
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
 
     // Wait for page to load
     await page.waitForLoadState("networkidle")
@@ -44,8 +44,8 @@ test.describe("Design System Tweak-Seite", () => {
   })
 
   test("sollte ThemeDetailPanel-Elemente anzeigen", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
     // Assert: Reset-Button sollte vorhanden sein
@@ -62,8 +62,8 @@ test.describe("Design System Tweak-Seite", () => {
   })
 
   test("sollte Color Swatch auswählen können", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
     // Act: Klicke auf einen Color Swatch (z.B. Background)
@@ -86,12 +86,17 @@ test.describe("Design System Tweak-Seite", () => {
     await expect(hexInput).toBeVisible({ timeout: 5000 })
   })
 
-  test("sollte Reset-Button im DetailPanel funktionieren", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+  test("sollte Reset-Button im Color-Editor funktionieren", async ({ page }) => {
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
-    // Act: Klicke auf Reset-Button im DetailPanel
+    // Act: Wähle ein Element aus (öffnet Color-Editor mit Reset-Button)
+    const colorElement = page.locator('[data-theme-element-type="color"]').first()
+    await colorElement.click()
+    await page.waitForTimeout(500) // Warte auf Editor-Rendering
+
+    // Act: Klicke auf Reset-Button im Color-Editor
     const resetButton = page.locator('button:has-text("Zurücksetzen")').first()
     await resetButton.click()
 
@@ -100,12 +105,12 @@ test.describe("Design System Tweak-Seite", () => {
   })
 
   test("sollte Save-Dialog öffnen können", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
     // Act: Klicke auf Save-Button
-    const saveButton = page.locator('button:has-text("Neues Theme speichern")')
+    const saveButton = page.locator('button:has-text("Theme speichern")')
     await saveButton.click()
 
     // Assert: Dialog sollte geöffnet werden
@@ -121,8 +126,8 @@ test.describe("Design System Tweak-Seite", () => {
   })
 
   test("sollte DetailPanel beim Verlassen der Seite schließen", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
     // Assert: DetailPanel sollte sichtbar sein
@@ -137,8 +142,8 @@ test.describe("Design System Tweak-Seite", () => {
   })
 
   test("sollte ResizablePanel-Handle für DetailPanel haben", async ({ page }) => {
-    // Arrange: Navigate to Tweak page
-    await page.goto("http://localhost:3000/account/design-system/tweak")
+    // Arrange: Navigate to Design System page
+    await page.goto("http://localhost:3000/app-verwaltung/design-system")
     await page.waitForLoadState("networkidle")
 
     // Assert: ResizableHandle sollte vorhanden sein

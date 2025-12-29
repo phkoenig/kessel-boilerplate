@@ -6,7 +6,7 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 - **TweakCN**: Tokens, die typischerweise von TweakCN-Exports kommen
 - **Codebase**: Tokens, die in unserer Codebase definiert sind (Fallbacks in `globals.css`)
-- **Editierbar**: Tokens, die über den Live-Editor auf `/account/design-system/tweak` bearbeitet werden können
+- **Editierbar**: Tokens, die über den Live-Editor auf `/app-verwaltung/design-system` bearbeitet werden können
 
 ---
 

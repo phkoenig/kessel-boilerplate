@@ -1,0 +1,22 @@
+"use client"
+
+import { PageContent, PageHeader } from "@/components/shell"
+import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
+
+/**
+ * App-Dashboard Seite
+ */
+export default function DashboardPage(): React.ReactElement {
+  const currentNavItem = useCurrentNavItem()
+  const pageTitle = currentNavItem?.label ?? "App-Dashboard"
+
+  return (
+    <PageContent>
+      <PageHeader
+        title={pageTitle}
+        description="Übersicht über Benutzer, Rollen, GitHub Repo Info, Vercel autodeploy, App Version, Connected Db's AI Accessibility"
+      />
+      <div className="space-y-6">{/* Placeholder für zukünftigen Inhalt */}</div>
+    </PageContent>
+  )
+}

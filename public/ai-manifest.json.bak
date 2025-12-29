@@ -87,7 +87,7 @@
       "id": "nav-about-wiki",
       "description": "Öffnet die App-Wiki Dokumentation",
       "action": "navigate",
-      "target": "/ueber-die-app/app-wiki",
+      "target": "/about/wiki",
       "category": "navigation",
       "keywords": ["wiki", "dokumentation", "documentation", "hilfe", "help", "app-wiki"],
       "requiredRole": "public"
@@ -96,7 +96,7 @@
       "id": "nav-about-features",
       "description": "Öffnet die Feature-Wishlist",
       "action": "navigate",
-      "target": "/ueber-die-app/feature-wishlist",
+      "target": "/about/features",
       "category": "navigation",
       "keywords": ["features", "wishlist", "feature-wishlist", "feature-requests", "anfragen"],
       "requiredRole": "user"
@@ -105,7 +105,7 @@
       "id": "nav-about-cocoding",
       "description": "Öffnet die Co-Coding Request Seite",
       "action": "navigate",
-      "target": "/ueber-die-app/co-coding",
+      "target": "/about/co-coding",
       "category": "navigation",
       "keywords": ["co-coding", "coding", "entwicklung", "development", "request"],
       "requiredRole": "user"
@@ -114,7 +114,7 @@
       "id": "nav-about-bugs",
       "description": "Öffnet die Bug-Report Seite",
       "action": "navigate",
-      "target": "/ueber-die-app/bug-report",
+      "target": "/about/bugs",
       "category": "navigation",
       "keywords": ["bugs", "fehler", "bug-report", "fehler-melden", "report"],
       "requiredRole": "user"
@@ -123,7 +123,7 @@
       "id": "nav-about-impressum",
       "description": "Öffnet die Impressum / Kontakt Seite",
       "action": "navigate",
-      "target": "/ueber-die-app/impressum",
+      "target": "/about/impressum",
       "category": "navigation",
       "keywords": ["impressum", "kontakt", "contact", "legal", "rechtliches"],
       "requiredRole": "public"
@@ -132,7 +132,7 @@
       "id": "nav-account-profile",
       "description": "Öffnet die Benutzer-Profil Seite",
       "action": "navigate",
-      "target": "/benutzer-menue/profil",
+      "target": "/account/profile",
       "category": "navigation",
       "keywords": ["profil", "profile", "benutzer", "user", "account", "einstellungen", "settings"],
       "requiredRole": "user"
@@ -141,7 +141,7 @@
       "id": "nav-ds-theme",
       "description": "Öffnet das Theme Management",
       "action": "navigate",
-      "target": "/app-verwaltung/theme-manager",
+      "target": "/account/design-system/theme-management",
       "category": "navigation",
       "keywords": ["theme", "thema", "design", "farben", "colors", "theme-management"],
       "requiredRole": "admin"
@@ -150,7 +150,7 @@
       "id": "nav-ds-design-system",
       "description": "Öffnet die Design System Seite zum Live-Editing von Design-Tokens",
       "action": "navigate",
-      "target": "/app-verwaltung/design-system",
+      "target": "/account/design-system/design-system",
       "category": "navigation",
       "keywords": [
         "design-system",
@@ -170,7 +170,7 @@
       "id": "nav-ds-components",
       "description": "Öffnet die Komponenten-Verwaltung",
       "action": "navigate",
-      "target": "/app-verwaltung/ui-komponenten",
+      "target": "/account/design-system/components",
       "category": "navigation",
       "keywords": ["komponenten", "components", "ui", "interface"],
       "requiredRole": "admin"
@@ -179,7 +179,7 @@
       "id": "nav-lt-dashboard",
       "description": "Öffnet das Dashboard Layout Template",
       "action": "navigate",
-      "target": "/benutzer-menue/layout-templates/dashboard",
+      "target": "/account/layout-templates/dashboard",
       "category": "navigation",
       "keywords": ["dashboard", "layout", "template", "vorlage"],
       "requiredRole": "admin"
@@ -188,7 +188,7 @@
       "id": "nav-lt-table",
       "description": "Öffnet das Tabelle / Data Layout Template",
       "action": "navigate",
-      "target": "/benutzer-menue/layout-templates/table-data",
+      "target": "/account/layout-templates/table-data",
       "category": "navigation",
       "keywords": ["tabelle", "table", "data", "daten", "layout", "template"],
       "requiredRole": "admin"
@@ -197,7 +197,7 @@
       "id": "nav-lt-filebrowser",
       "description": "Öffnet das File-Browser Layout Template",
       "action": "navigate",
-      "target": "/benutzer-menue/layout-templates/file-browser",
+      "target": "/account/layout-templates/file-browser",
       "category": "navigation",
       "keywords": ["file-browser", "datei-browser", "files", "dateien", "browser"],
       "requiredRole": "admin"
@@ -206,7 +206,7 @@
       "id": "nav-lt-blog",
       "description": "Öffnet das Blog Layout Template",
       "action": "navigate",
-      "target": "/benutzer-menue/layout-templates/blog",
+      "target": "/account/layout-templates/blog",
       "category": "navigation",
       "keywords": ["blog", "artikel", "posts", "layout", "template"],
       "requiredRole": "admin"
@@ -215,7 +215,7 @@
       "id": "nav-account-app-status",
       "description": "Öffnet die App-Status Seite",
       "action": "navigate",
-      "target": "/benutzer-menue/app-status",
+      "target": "/account/app-status",
       "category": "navigation",
       "keywords": ["app-status", "status", "system", "health", "zustand"],
       "requiredRole": "admin"
@@ -224,7 +224,7 @@
       "id": "nav-account-users",
       "description": "Öffnet die Benutzer-Verwaltung",
       "action": "navigate",
-      "target": "/app-verwaltung/benutzer",
+      "target": "/account/users",
       "category": "navigation",
       "keywords": ["users", "benutzer", "nutzer", "user-verwaltung", "user-management"],
       "requiredRole": "admin"
@@ -233,7 +233,7 @@
       "id": "nav-account-roles",
       "description": "Öffnet die Rollen-Verwaltung",
       "action": "navigate",
-      "target": "/app-verwaltung/rollen",
+      "target": "/account/roles",
       "category": "navigation",
       "keywords": ["rollen", "roles", "berechtigungen", "permissions", "rechte"],
       "requiredRole": "admin"
@@ -242,7 +242,7 @@
       "id": "nav-admin-ai-datasources",
       "description": "Öffnet die AI Datasources Verwaltung",
       "action": "navigate",
-      "target": "/app-verwaltung/datenquellen",
+      "target": "/admin/ai-datasources",
       "category": "navigation",
       "keywords": ["ai-datasources", "datasources", "ai", "ki", "datenquellen"],
       "requiredRole": "admin"
@@ -345,7 +345,7 @@
         "light"
       ],
       "requiredRole": "public",
-      "route": "/app-verwaltung/theme-manager"
+      "route": "/account/design-system/theme-management"
     },
     {
       "id": "assist-panel-tabs",

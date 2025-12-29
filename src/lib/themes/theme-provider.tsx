@@ -11,9 +11,21 @@ import { loadGoogleFonts } from "@/lib/fonts"
 const THEME_STORAGE_KEY = "tweakcn-theme"
 
 /**
+ * LocalStorage Key für Corner-Style.
+ */
+const CORNER_STYLE_STORAGE_KEY = "corner-style"
+
+/**
  * Default Theme ID (Fallback).
  */
 const DEFAULT_THEME_ID = "default"
+
+/**
+ * Corner-Style Typ.
+ * - rounded: Standard border-radius
+ * - squircle: iOS-style Superellipse (wenn Browser unterstützt, sonst Fallback auf rounded)
+ */
+export type CornerStyle = "rounded" | "squircle"
 
 /**
  * Theme-Metadaten Interface.
@@ -44,6 +56,12 @@ export interface ThemeContextValue {
   refreshThemes: () => Promise<void>
   /** Lädt gerade Themes */
   isLoading: boolean
+  /** Aktueller Corner-Style (rounded | squircle) */
+  cornerStyle: CornerStyle
+  /** Corner-Style wechseln */
+  setCornerStyle: (style: CornerStyle) => void
+  /** Prüft ob Browser Squircle unterstützt */
+  supportsSquircle: boolean
 }
 
 /**
@@ -122,6 +140,8 @@ const CustomThemeProvider = ({
   const [themes, setThemes] = useState<ThemeMeta[]>([])
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [cornerStyle, setCornerStyleState] = useState<CornerStyle>("rounded")
+  const [supportsSquircle, setSupportsSquircle] = useState(false)
 
   /**
    * Lädt Themes aus der Supabase API.
@@ -181,6 +201,17 @@ const CustomThemeProvider = ({
       setThemeState(savedThemeId)
     }
 
+    // Gespeicherten Corner-Style laden
+    const savedCornerStyle = localStorage.getItem(CORNER_STYLE_STORAGE_KEY) as CornerStyle | null
+    if (savedCornerStyle && (savedCornerStyle === "rounded" || savedCornerStyle === "squircle")) {
+      setCornerStyleState(savedCornerStyle)
+    }
+
+    // Prüfe Browser-Support für Squircle (CSS corner-shape)
+    if (typeof CSS !== "undefined" && CSS.supports) {
+      setSupportsSquircle(CSS.supports("corner-shape", "squircle"))
+    }
+
     // Themes aus API laden
     refreshThemes()
   }, [refreshThemes])
@@ -210,6 +241,14 @@ const CustomThemeProvider = ({
     })
   }, [theme, themes, mounted])
 
+  // Corner-Style Attribut setzen
+  useEffect(() => {
+    if (!mounted) return
+
+    // Setze data-corner-style Attribut (für CSS @supports Regel)
+    document.documentElement.setAttribute("data-corner-style", cornerStyle)
+  }, [cornerStyle, mounted])
+
   const setTheme = useCallback(
     (id: string): void => {
       // Prüfe, ob Theme in der aktuellen Liste existiert
@@ -229,6 +268,11 @@ const CustomThemeProvider = ({
     [setNextTheme]
   )
 
+  const setCornerStyle = useCallback((style: CornerStyle): void => {
+    setCornerStyleState(style)
+    localStorage.setItem(CORNER_STYLE_STORAGE_KEY, style)
+  }, [])
+
   // Bestimme den aktuellen colorMode für den Context
   const colorMode = colorModeValue ?? "system"
 
@@ -240,6 +284,9 @@ const CustomThemeProvider = ({
     setColorMode,
     refreshThemes,
     isLoading,
+    cornerStyle,
+    setCornerStyle,
+    supportsSquircle,
   }
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>

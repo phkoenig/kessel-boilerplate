@@ -31,7 +31,7 @@ export default function ShellLayout({
   children: React.ReactNode
 }): React.ReactElement {
   const pathname = usePathname()
-  const isTweakPage = pathname?.includes("/design-system/tweak")
+  const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
 
   const content = (
     <AppShell
@@ -47,8 +47,8 @@ export default function ShellLayout({
     </AppShell>
   )
 
-  // ThemeEditorProvider nur auf der Tweak-Seite
-  if (isTweakPage) {
+  // ThemeEditorProvider nur auf der Design System Seite
+  if (isDesignSystemPage) {
     return <ThemeEditorProvider>{content}</ThemeEditorProvider>
   }
 

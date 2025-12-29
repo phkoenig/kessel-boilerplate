@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { ColorPairSwatch } from "@/components/theme/ColorPairSwatch"
+import { CornerStyleSwitch } from "@/components/theme/CornerStyleSwitch"
+import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 
 /**
  * Konvertiert OKLCH zu Hex
@@ -229,15 +231,21 @@ const COLOR_TOKENS = [
 ]
 
 /**
- * Tweak the UI Seite
+ * Design System Seite
+ *
+ * Titel wird dynamisch aus der Navigation-Konfiguration geladen.
  */
-export default function TweakPage(): React.ReactElement {
+export default function DesignSystemPage(): React.ReactElement {
   const { theme: currentThemeId } = useTheme()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const { setOpen: setExplorerOpen } = useExplorer()
   const { setContent } = useDetailDrawer()
+  const currentNavItem = useCurrentNavItem()
 
-  // Detail-Drawer mit ThemeDetailPanel öffnen wenn auf Tweak-Seite
+  // Titel aus Navigation oder Fallback
+  const pageTitle = currentNavItem?.label || "Design System"
+
+  // Detail-Drawer mit ThemeDetailPanel öffnen wenn auf Design System Seite
   useEffect(() => {
     setContent(<ThemeDetailPanel />)
     return () => {
@@ -647,7 +655,10 @@ export default function TweakPage(): React.ReactElement {
 
   return (
     <PageContent>
-      <PageHeader description="Passe Design-Tokens live an und speichere sie als neues Theme" />
+      <PageHeader
+        title={pageTitle}
+        description="Passe Design-Tokens live an und speichere sie als neues Theme"
+      />
 
       {}
       <div className="min-h-full space-y-12 pb-24" onClick={handleBackgroundClick}>
@@ -736,6 +747,12 @@ export default function TweakPage(): React.ReactElement {
         {/* Radius & Spacing */}
         <section>
           <h2 className="text-foreground mb-4 text-xl font-semibold">Radius & Spacing</h2>
+
+          {/* Corner Style Switch */}
+          <div className="mb-6">
+            <CornerStyleSwitch />
+          </div>
+
           {/* Slider OBEN */}
           <div className="mb-6 space-y-4">
             <div className="w-64 space-y-2">

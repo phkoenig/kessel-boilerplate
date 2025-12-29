@@ -87,7 +87,7 @@
       "id": "nav-about-wiki",
       "description": "Öffnet die App-Wiki Dokumentation",
       "action": "navigate",
-      "target": "/about/wiki",
+      "target": "/ueber-die-app/app-wiki",
       "category": "navigation",
       "keywords": ["wiki", "dokumentation", "documentation", "hilfe", "help", "app-wiki"],
       "requiredRole": "public"
@@ -96,7 +96,7 @@
       "id": "nav-about-features",
       "description": "Öffnet die Feature-Wishlist",
       "action": "navigate",
-      "target": "/about/features",
+      "target": "/ueber-die-app/feature-wishlist",
       "category": "navigation",
       "keywords": ["features", "wishlist", "feature-wishlist", "feature-requests", "anfragen"],
       "requiredRole": "user"
@@ -105,7 +105,7 @@
       "id": "nav-about-bugs",
       "description": "Öffnet die Bug-Report Seite",
       "action": "navigate",
-      "target": "/about/bugs",
+      "target": "/ueber-die-app/bug-report",
       "category": "navigation",
       "keywords": ["bugs", "fehler", "bug-report", "fehler-melden", "report"],
       "requiredRole": "user"
@@ -114,7 +114,7 @@
       "id": "nav-about-impressum",
       "description": "Öffnet die Impressum Seite",
       "action": "navigate",
-      "target": "/about/impressum",
+      "target": "/ueber-die-app/impressum",
       "category": "navigation",
       "keywords": ["impressum", "kontakt", "contact", "legal", "rechtliches"],
       "requiredRole": "public"
@@ -123,7 +123,7 @@
       "id": "nav-account-profile",
       "description": "Öffnet die Benutzer-Profil Seite",
       "action": "navigate",
-      "target": "/account/profile",
+      "target": "/benutzer-menue/profil",
       "category": "navigation",
       "keywords": ["profil", "profile", "benutzer", "user", "account", "einstellungen", "settings"],
       "requiredRole": "user"
@@ -132,28 +132,28 @@
       "id": "nav-ds-theme",
       "description": "Öffnet das Theme Management",
       "action": "navigate",
-      "target": "/account/design-system/theme-management",
+      "target": "/app-verwaltung/theme-manager",
       "category": "navigation",
       "keywords": ["theme", "thema", "design", "farben", "colors", "theme-management"],
       "requiredRole": "admin"
     },
     {
-      "id": "nav-ds-tweak",
-      "description": "Öffnet die UI-Anpassungsseite zum Live-Editing von Design-Tokens",
+      "id": "nav-ds-design-system",
+      "description": "Öffnet die Design System Seite zum Live-Editing von Design-Tokens",
       "action": "navigate",
-      "target": "/account/design-system/tweak",
+      "target": "/app-verwaltung/design-system",
       "category": "navigation",
       "keywords": [
-        "tweak",
-        "ui",
-        "anpassen",
+        "design-system",
         "design",
         "tokens",
         "farben",
         "colors",
         "typografie",
         "geometry",
-        "live-edit"
+        "live-edit",
+        "anpassen",
+        "ui"
       ],
       "requiredRole": "admin"
     },
@@ -161,7 +161,7 @@
       "id": "nav-ds-components",
       "description": "Öffnet die Komponenten-Verwaltung",
       "action": "navigate",
-      "target": "/account/design-system/components",
+      "target": "/app-verwaltung/ui-komponenten",
       "category": "navigation",
       "keywords": ["komponenten", "components", "ui", "interface"],
       "requiredRole": "admin"
@@ -170,7 +170,7 @@
       "id": "nav-account-app-status",
       "description": "Öffnet die App-Status Seite",
       "action": "navigate",
-      "target": "/account/app-status",
+      "target": "/benutzer-menue/app-status",
       "category": "navigation",
       "keywords": ["app-status", "status", "system", "health", "zustand"],
       "requiredRole": "admin"
@@ -179,7 +179,7 @@
       "id": "nav-admin-dashboard",
       "description": "Öffnet das App-Dashboard mit Übersicht über Benutzer, Rollen, GitHub Repo Info, Vercel autodeploy, App Version, Connected Db's AI Accessibility",
       "action": "navigate",
-      "target": "/admin/dashboard",
+      "target": "/app-verwaltung/app-dashboard",
       "category": "navigation",
       "keywords": ["dashboard", "app-dashboard", "übersicht", "admin", "app-status"],
       "requiredRole": "admin",
@@ -189,7 +189,7 @@
       "id": "nav-admin-datasources",
       "description": "Öffnet die Datenquellen Verwaltung",
       "action": "navigate",
-      "target": "/admin/ai-datasources",
+      "target": "/app-verwaltung/datenquellen",
       "category": "navigation",
       "keywords": ["datenquellen", "datasources", "ai", "ki", "ai-datasources"],
       "requiredRole": "admin",
@@ -199,7 +199,7 @@
       "id": "nav-admin-roles",
       "description": "Öffnet die Rollen-Verwaltung",
       "action": "navigate",
-      "target": "/account/roles",
+      "target": "/app-verwaltung/rollen",
       "category": "navigation",
       "keywords": ["rollen", "roles", "berechtigungen", "permissions", "rechte"],
       "requiredRole": "admin",
@@ -209,7 +209,7 @@
       "id": "nav-admin-users",
       "description": "Öffnet die Benutzer-Verwaltung",
       "action": "navigate",
-      "target": "/account/users",
+      "target": "/app-verwaltung/benutzer",
       "category": "navigation",
       "keywords": ["benutzer", "users", "nutzer", "user-verwaltung", "user-management"],
       "requiredRole": "admin",
@@ -219,7 +219,7 @@
       "id": "nav-admin-chat-logs",
       "description": "Öffnet die KI-Chat-Logs",
       "action": "navigate",
-      "target": "/admin/chat-logs",
+      "target": "/app-verwaltung/ki-chat-logs",
       "category": "navigation",
       "keywords": ["chat-logs", "ki-chat-logs", "logs", "protokoll", "chat-history"],
       "requiredRole": "admin",
@@ -229,7 +229,7 @@
       "id": "nav-admin-theme-manager",
       "description": "Öffnet das Theme Management",
       "action": "navigate",
-      "target": "/account/design-system/theme-management",
+      "target": "/app-verwaltung/theme-manager",
       "category": "navigation",
       "keywords": [
         "theme-manager",
@@ -245,19 +245,11 @@
     },
     {
       "id": "nav-admin-design-settings",
-      "description": "Öffnet die Design System Settings",
+      "description": "Öffnet die Design System Seite",
       "action": "navigate",
-      "target": "/account/design-system/tweak",
+      "target": "/app-verwaltung/design-system",
       "category": "navigation",
-      "keywords": [
-        "design-system-settings",
-        "design-settings",
-        "tweak",
-        "ui",
-        "anpassen",
-        "design",
-        "tokens"
-      ],
+      "keywords": ["design-system", "design-settings", "ui", "anpassen", "design", "tokens"],
       "requiredRole": "admin",
       "route": "global"
     },
@@ -265,7 +257,7 @@
       "id": "nav-admin-components",
       "description": "Öffnet die UI-Komponenten Verwaltung",
       "action": "navigate",
-      "target": "/account/design-system/components",
+      "target": "/app-verwaltung/ui-komponenten",
       "category": "navigation",
       "keywords": ["ui-komponenten", "komponenten", "components", "ui", "interface"],
       "requiredRole": "admin",
@@ -275,7 +267,7 @@
       "id": "nav-account-language",
       "description": "Öffnet die Spracheinstellungen",
       "action": "navigate",
-      "target": "/account/language",
+      "target": "/benutzer-menue/sprache",
       "category": "navigation",
       "keywords": ["sprache", "language", "spracheinstellungen", "locale", "localization"],
       "requiredRole": "user",
@@ -379,7 +371,7 @@
         "light"
       ],
       "requiredRole": "public",
-      "route": "/account/design-system/theme-management"
+      "route": "/app-verwaltung/theme-manager"
     },
     {
       "id": "user-avatar",
@@ -411,7 +403,7 @@
         "neues bild"
       ],
       "requiredRole": "user",
-      "route": "/account/profile"
+      "route": "/benutzer-menue/profile"
     },
     {
       "id": "avatar-save",
@@ -421,7 +413,7 @@
       "category": "settings",
       "keywords": ["avatar", "speichern", "save", "profilbild", "bild"],
       "requiredRole": "user",
-      "route": "/account/profile"
+      "route": "/benutzer-menue/profile"
     }
   ]
 }

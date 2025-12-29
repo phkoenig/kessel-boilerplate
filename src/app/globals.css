@@ -53,6 +53,7 @@
 
   /* Layout & Typography Fallbacks */
   --radius: 0.5rem;
+  --corner-style: rounded; /* rounded | squircle */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
   --font-serif: ui-serif, serif;
@@ -366,4 +367,37 @@
 nextjs-portal {
   left: unset !important;
   top: unset !important;
+}
+
+/* ========================================
+ * SQUIRCLE CORNER SUPPORT (Progressive Enhancement)
+ *
+ * Wenn --corner-style: squircle gesetzt ist UND der Browser
+ * corner-shape unterstützt (Chrome 139+), werden Squircle-Ecken
+ * aktiviert. Fallback ist immer normales border-radius.
+ *
+ * Usage:
+ *   :root { --corner-style: squircle; }  // Aktiviert Squircle
+ *   :root { --corner-style: rounded; }   // Standard (default)
+ * ======================================== */
+@supports (corner-shape: squircle) {
+  /* Nur aktivieren wenn --corner-style: squircle gesetzt ist */
+  :root:has([data-corner-style="squircle"]),
+  [data-corner-style="squircle"] {
+    /* Squircle benötigt größeren Radius für optisch ähnliches Ergebnis */
+    --radius-squircle-multiplier: 1.5;
+  }
+
+  /* Globale Squircle-Aktivierung für alle Elemente mit border-radius */
+  [data-corner-style="squircle"] *,
+  [data-corner-style="squircle"] {
+    corner-shape: squircle;
+  }
+}
+
+/* Utility-Klasse für manuelles Squircle (wenn Browser es unterstützt) */
+@supports (corner-shape: squircle) {
+  .squircle {
+    corner-shape: squircle;
+  }
 }

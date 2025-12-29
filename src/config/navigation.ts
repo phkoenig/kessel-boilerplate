@@ -21,6 +21,8 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+import { buildNavHref } from "@/lib/navigation/utils"
+
 /**
  * Navigations-Item Interface
  */
@@ -58,6 +60,16 @@ export interface NavSection {
 }
 
 /**
+ * Section-Titel als Konstanten (für dynamische Route-Generierung)
+ */
+const SECTION_TITLES = {
+  APP_CONTENT: "App Content",
+  ABOUT: "ÜBER DIE APP",
+  ADMIN: "APP-VERWALTUNG",
+  USER_MENU: "BENUTZER-MENÜ",
+} as const
+
+/**
  * App-Content Navigation (Hauptnavigation)
  *
  * Struktur:
@@ -69,7 +81,7 @@ export interface NavSection {
  */
 const appContentSection: NavSection = {
   id: "app-content",
-  title: "App Content", // Section Title - nicht klickbar
+  title: SECTION_TITLES.APP_CONTENT, // Section Title - nicht klickbar
   // Keine requiredRoles = für alle sichtbar (Navigation immer sichtbar)
   items: [
     // Modul 1 mit Sub-Modulen
@@ -116,14 +128,14 @@ const appContentSection: NavSection = {
  */
 const aboutSection: NavSection = {
   id: "about",
-  title: "ÜBER DIE APP", // Section Title - nicht klickbar
+  title: SECTION_TITLES.ABOUT, // Section Title - nicht klickbar
   items: [
     // Oeffentlich: App-Wiki fuer alle sichtbar
     {
       id: "about-wiki",
       label: "App-Wiki",
       icon: BookOpen,
-      href: "/about/wiki",
+      href: buildNavHref(SECTION_TITLES.ABOUT, "App-Wiki"),
       requiredRoles: ["NoUser", "user", "admin"], // Explizit oeffentlich
     },
     // Erfordern Login
@@ -131,21 +143,21 @@ const aboutSection: NavSection = {
       id: "about-features",
       label: "Feature-Wishlist",
       icon: Lightbulb,
-      href: "/about/features",
+      href: buildNavHref(SECTION_TITLES.ABOUT, "Feature-Wishlist"),
       requiredRoles: ["user", "admin"],
     },
     {
       id: "about-bugs",
       label: "Bug-Report",
       icon: Bug,
-      href: "/about/bugs",
+      href: buildNavHref(SECTION_TITLES.ABOUT, "Bug-Report"),
       requiredRoles: ["user", "admin"],
     },
     {
       id: "about-impressum",
       label: "Impressum",
       icon: Mail,
-      href: "/about/impressum",
+      href: buildNavHref(SECTION_TITLES.ABOUT, "Impressum"),
       requiredRoles: ["NoUser", "user", "admin"], // Oeffentlich
       alwaysVisible: true, // Rechtlich erforderlich - kann nicht deaktiviert werden
     },
@@ -159,63 +171,63 @@ const aboutSection: NavSection = {
  */
 const adminSection: NavSection = {
   id: "admin",
-  title: "APP-VERWALTUNG", // Section Title - nicht klickbar
+  title: SECTION_TITLES.ADMIN, // Section Title - nicht klickbar
   requiredRoles: ["admin"], // Nur für Admin sichtbar
   items: [
     {
       id: "admin-dashboard",
       label: "App-Dashboard",
       icon: Activity,
-      href: "/admin/dashboard",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "App-Dashboard"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-datasources",
       label: "Datenquellen",
       icon: Database,
-      href: "/admin/ai-datasources",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Datenquellen"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-roles",
       label: "Rollen",
       icon: Shield,
-      href: "/account/roles",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Rollen"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-users",
       label: "Benutzer",
       icon: Users,
-      href: "/account/users",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Benutzer"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-chat-logs",
       label: "KI-Chat-Logs",
       icon: MessageSquare,
-      href: "/admin/chat-logs",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "KI-Chat-Logs"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-theme-manager",
       label: "Theme Manager",
       icon: Palette,
-      href: "/account/design-system/theme-management",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Theme Manager"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-design-settings",
       label: "Design System",
       icon: Paintbrush,
-      href: "/account/design-system/tweak",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Design System"),
       requiredRoles: ["admin"],
     },
     {
       id: "admin-components",
       label: "UI-Komponenten",
       icon: Box,
-      href: "/account/design-system/components",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "UI-Komponenten"),
       requiredRoles: ["admin"],
     },
   ],
@@ -228,13 +240,13 @@ const adminSection: NavSection = {
  */
 const userMenuSection: NavSection = {
   id: "user-menu",
-  title: "BENUTZER-MENÜ",
+  title: SECTION_TITLES.USER_MENU,
   items: [
     {
       id: "user-profile",
       label: "Profil",
       icon: User,
-      href: "/account/profile",
+      href: buildNavHref(SECTION_TITLES.USER_MENU, "Profil"),
       requiredRoles: ["user", "admin"], // Alle eingeloggten User
       alwaysVisible: true, // Immer sichtbar - Grundfunktion
     },
@@ -242,21 +254,21 @@ const userMenuSection: NavSection = {
       id: "user-cart",
       label: "Warenkorb",
       icon: ShoppingCart,
-      href: "/account/payment",
+      href: buildNavHref(SECTION_TITLES.USER_MENU, "Warenkorb"),
       requiredRoles: ["user", "admin"], // Kann für bestimmte Rollen deaktiviert werden
     },
     {
       id: "user-display-settings",
       label: "Anzeige-Einstellungen",
       icon: Palette,
-      href: "/account/design-system/theme-management",
+      href: buildNavHref(SECTION_TITLES.ADMIN, "Theme Manager"), // Link zu Admin Theme Manager
       requiredRoles: ["user", "admin"], // Alle können Theme wechseln
     },
     {
       id: "user-language",
       label: "Sprache",
       icon: Languages,
-      href: "/account/language",
+      href: buildNavHref(SECTION_TITLES.USER_MENU, "Sprache"),
       requiredRoles: ["user", "admin"], // Alle können Sprache wechseln
     },
     {
