@@ -1,0 +1,89 @@
+---
+description: Regeln für die korrekte Zuordnung der Supabase-Projekte und CLI-Nutzung statt MCP.
+alwaysApply: true
+---
+
+# Supabase-Projekt-Zuordnung
+
+## ⚠️ KRITISCH: Zwei separate Projekte - NICHT verwechseln!
+
+| Projekt       | Ref                    | Enthält                                |
+| ------------- | ---------------------- | -------------------------------------- |
+| **Vault**     | `zedhieyjlfhygsfxzbze` | Secrets (`vault.secrets`)              |
+| **Kessel**    | `ufqlocxqizmiaozkashi` | `profiles`, `themes`, `roles`          |
+
+## MCP vs. CLI: Bevorzuge CLI!
+
+> **MCPs haben häufig Token-Probleme.** Bevorzuge die Supabase CLI für zuverlässigen Zugriff.
+
+### CLI-Befehle (BEVORZUGT)
+
+```bash
+# Projekt-Liste anzeigen
+npx supabase projects list
+
+# Projekt verlinken (einmalig pro Projekt)
+npx supabase link --project-ref <REF>
+# WICHTIG: Nach dem Link verwendet die CLI automatisch die gespeicherten Credentials!
+
+# Migrationen ausführen (NACH dem Link - KEIN Password nötig!)
+npx supabase db push --linked --include-all --yes
+# Die CLI authentifiziert sich automatisch über den Link!
+
+# Tabellen prüfen (zeigt Schema + Tabellennamen)
+npx supabase inspect db table-sizes --linked
+
+# Storage Buckets
+npx supabase storage ls --linked --experimental
+```
+
+### Migrationen ausführen
+
+**WICHTIG:** Nach `supabase link` funktioniert `db push` automatisch ohne Database-Password!
+
+```bash
+# 1. Projekt verlinken (einmalig)
+npx supabase link --project-ref ufqlocxqizmiaozkashi
+
+# 2. Migration erstellen
+cp scripts/meine_migration.sql supabase/migrations/012_meine_migration.sql
+
+# 3. Migration pushen (automatische Authentifizierung!)
+npx supabase db push --linked --include-all --yes
+```
+
+**Kein Database-Password nötig!** Die CLI verwendet die gespeicherten Credentials aus dem Link.
+
+### REST API (Alternative wenn CLI nicht funktioniert)
+
+```bash
+curl -s "https://<REF>.supabase.co/rest/v1/<TABLE>?select=*" \
+  -H "apikey: <ANON_KEY>" \
+  -H "Authorization: Bearer <ANON_KEY>"
+```
+
+## Schnell-Identifikation: In welchem Projekt bin ich?
+
+| Tabellen die du siehst                           | Projekt        |
+| ------------------------------------------------ | -------------- |
+| `profiles`, `themes`, `roles`, `role_permissions`| **Kessel** ✅  |
+| `vault.secrets`                                  | **Vault** ✅   |
+
+## Wann welches Projekt?
+
+| Aufgabe                          | Projekt       |
+| -------------------------------- | ------------- |
+| Secrets abrufen                  | **Vault**     |
+| User einloggen, Profil laden     | **Kessel**    |
+| Theme laden/speichern            | **Kessel**    |
+| Rollen/Berechtigungen prüfen     | **Kessel**    |
+
+## Vor jeder Datenbankoperation
+
+1. **PRÜFE** auf welches Projekt du zugreifst
+2. **VERWENDE** `npx supabase link --project-ref <REF>` um sicherzugehen
+3. **VERIFIZIERE** mit `npx supabase inspect db table-sizes --linked`
+
+## Dokumentation
+
+→ Vollständige Details: `docs/04_knowledge/supabase-migrationen.md`

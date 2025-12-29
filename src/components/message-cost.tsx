@@ -35,8 +35,23 @@ interface MessageMetadata {
 export const MessageCost: FC = () => {
   const message = useMessage()
 
-  // Metadaten aus der Message extrahieren
-  const metadata = message?.metadata as MessageMetadata | undefined
+  // assistant-ui speichert messageMetadata in metadata.custom
+  const msgMetadata = message?.metadata as
+    | {
+        custom?: MessageMetadata
+      }
+    | undefined
+
+  const metadata = msgMetadata?.custom
+
+  // Nur loggen wenn die Message "complete" ist, um Spam zu vermeiden
+  if (message?.status?.type === "complete" && !metadata?.usage) {
+    console.warn("[MessageCost] Complete message without usage data:", {
+      hasMetadata: !!msgMetadata,
+      hasCustom: !!msgMetadata?.custom,
+      custom: msgMetadata?.custom,
+    })
+  }
 
   // Keine Metadaten oder keine Usage-Daten
   if (!metadata?.usage || !metadata?.model) {

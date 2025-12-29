@@ -412,7 +412,12 @@ export async function POST(req: Request) {
       },
       // Usage-Daten für Kostenanzeige mitsenden (kostenlos, da Teil des Streams)
       messageMetadata: ({ part }) => {
+        console.log("[Chat API] messageMetadata called, part.type:", part.type)
         if (part.type === "finish") {
+          console.log("[Chat API] ✅ Sending usage metadata:", {
+            model: selectedModel,
+            usage: part.totalUsage,
+          })
           return {
             model: selectedModel,
             usage: part.totalUsage,
