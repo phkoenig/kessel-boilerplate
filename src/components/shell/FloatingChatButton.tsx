@@ -43,15 +43,16 @@ export function FloatingChatButton(): React.ReactElement {
           onClick={toggle}
           size="icon"
           className={cn(
-            "size-14 rounded-full shadow-lg transition-all",
+            "size-16 rounded-full p-0 shadow-lg transition-all",
             "hover:scale-110 hover:shadow-xl",
+            !isOpen && "bg-transparent hover:bg-transparent",
             isOpen && "bg-destructive hover:bg-destructive/90"
           )}
         >
           {isOpen ? (
-            <X className="size-6 transition-transform" />
+            <X className="size-7 transition-transform" />
           ) : (
-            <Avatar className="size-10">
+            <Avatar className="size-14">
               <AvatarImage src={chatbotAvatarUrl} alt="Chatbot" />
             </Avatar>
           )}

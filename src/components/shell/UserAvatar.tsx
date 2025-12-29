@@ -90,11 +90,11 @@ export function UserAvatar(): React.ReactElement {
           variant="ghost"
           size="icon"
           className={cn(
-            "relative size-10 shrink-0 rounded-full p-0 transition-opacity hover:opacity-80",
+            "relative size-12 shrink-0 rounded-full p-0 transition-opacity hover:opacity-80",
             "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none"
           )}
         >
-          <Avatar className="size-10">
+          <Avatar className="size-12">
             <AvatarImage src={avatarSrc} alt={displayName} />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
               {userInitials}
