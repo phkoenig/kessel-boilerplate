@@ -53,9 +53,9 @@ async function getDefaultThemeCSS(): Promise<string> {
     })
 
     if (!response.ok) {
-      // 404 ist erwartet, wenn default.css nicht existiert - kein Fehler
-      // Nur bei anderen Fehlern loggen (z.B. 500, 403)
-      if (response.status !== 404) {
+      // 400/404 sind erwartet, wenn default.css oder der Bucket nicht existiert
+      // Nur bei Server-Fehlern loggen (5xx)
+      if (response.status >= 500) {
         console.warn(
           `[Theme] Default-Theme CSS konnte nicht geladen werden: ${response.status}. Fallback-Werte werden verwendet.`
         )
