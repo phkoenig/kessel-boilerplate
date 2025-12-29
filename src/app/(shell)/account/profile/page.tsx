@@ -320,7 +320,6 @@ export default function ProfilePage(): React.ReactElement {
                   description="Generiert ein neues zufälliges Avatar-Bild"
                   keywords={["avatar", "profilbild", "zufällig", "random", "neu", "neues avatar"]}
                   category="settings"
-                  onAction={randomizeSeed}
                 >
                   <Button
                     variant="outline"
@@ -343,7 +342,6 @@ export default function ProfilePage(): React.ReactElement {
                       description="Speichert das aktuelle Avatar-Bild"
                       keywords={["avatar", "speichern", "save", "profilbild"]}
                       category="settings"
-                      onAction={handleSaveAvatar}
                     >
                       <Button
                         variant="default"
