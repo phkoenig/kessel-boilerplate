@@ -153,7 +153,7 @@ export function ColorPairSwatch({
   const innerHeight = 26
 
   return (
-    <div className="flex items-start gap-6">
+    <div className="flex items-start gap-6" data-swatch>
       {/* Swatch Container - LINKS */}
       <div className="group relative h-16 w-64 shrink-0">
         {/* Background Farbe - äußeres Rechteck */}

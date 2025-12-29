@@ -10,18 +10,19 @@ const STORAGE_KEYS = {
   explorerOpen: "shell-explorer-open",
   detailDrawerOpen: "shell-detail-drawer-open",
   chatOverlayOpen: "shell-chat-overlay-open",
-  panelWidths: "shell-panel-widths-px", // NEU: Pixel-basiert
+  panelWidths: "shell-panel-widths-px", // Pixel-basiert
 } as const
 
 /**
  * Default Panel-Breiten in PIXELN
  * Diese werden bei Hard Reload verwendet
+ * Alle optionalen Spalten: 15% der Fensterbreite (bei ~1600px ≈ 240px)
  */
 export const DEFAULT_PANEL_WIDTHS = {
-  navbar: 200, // Schmale aber lesbare Breite
+  navbar: 240, // 15% von ~1600px Fensterbreite
   navbarCollapsed: 48, // Icon-only
-  explorer: 250, // Moderate Breite für Explorer
-  assist: 320, // Komfortable Breite für Chat/Wiki
+  explorer: 240, // 15% von ~1600px Fensterbreite
+  assist: 240, // 15% von ~1600px Fensterbreite
 } as const
 
 /**
@@ -171,6 +172,41 @@ export function useChatOverlay() {
 }
 
 /**
+ * Validiert Panel-Breiten aus LocalStorage
+ * Prüft ob die Werte noch im erwarteten Bereich liegen (10-25% der typischen Fensterbreite)
+ *
+ * WICHTIG: assist (Spalte 4) wird IMMER auf den Default zurückgesetzt,
+ * um sicherzustellen dass sie immer bei 15% startet.
+ * User-Resizes werden während der Session gespeichert, aber beim nächsten Load zurückgesetzt.
+ */
+function validatePanelWidths(stored: PanelWidths | null): PanelWidths {
+  if (!stored) return defaultState.panelWidths
+
+  // Typische Fensterbreite für Validierung (~1600px)
+  const typicalWidth = 1600
+  const minPercent = 10 // 10% Minimum
+  const maxPercent = 25 // 25% Maximum
+  const minPx = Math.round((typicalWidth * minPercent) / 100)
+  const maxPx = Math.round((typicalWidth * maxPercent) / 100)
+
+  const validated: PanelWidths = {
+    navbar:
+      stored.navbar >= minPx && stored.navbar <= maxPx
+        ? stored.navbar
+        : DEFAULT_PANEL_WIDTHS.navbar,
+    explorer:
+      stored.explorer >= minPx && stored.explorer <= maxPx
+        ? stored.explorer
+        : DEFAULT_PANEL_WIDTHS.explorer,
+    // assist: IMMER auf Default zurücksetzen
+    // Dies stellt sicher, dass die Spalte immer bei 15% startet
+    assist: DEFAULT_PANEL_WIDTHS.assist,
+  }
+
+  return validated
+}
+
+/**
  * LocalStorage Helper
  */
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -178,6 +214,10 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
   try {
     const stored = localStorage.getItem(key)
     if (stored) {
+      // Spezielle Validierung für Panel-Breiten
+      if (key === STORAGE_KEYS.panelWidths) {
+        return validatePanelWidths(JSON.parse(stored)) as T
+      }
       return JSON.parse(stored)
     }
   } catch {
@@ -218,11 +258,15 @@ export function ShellProvider({ children, initialState }: ShellProviderProps): R
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting mounted state after hydration is intentional
     setMounted(true)
+
+    // Lade alle gespeicherten Werte
+    // WICHTIG: detailDrawerOpen wird NICHT aus LocalStorage geladen,
+    // da es dynamisch von der aktuellen Seite abhängt (z.B. Tweak-Seite setzt Content)
     setState((prev) => ({
       ...prev,
       navbarCollapsed: loadFromStorage(STORAGE_KEYS.navbarCollapsed, prev.navbarCollapsed),
       explorerOpen: loadFromStorage(STORAGE_KEYS.explorerOpen, prev.explorerOpen),
-      detailDrawerOpen: loadFromStorage(STORAGE_KEYS.detailDrawerOpen, prev.detailDrawerOpen),
+      // detailDrawerOpen wird nicht geladen - es hängt vom Content ab, nicht von User-Präferenz
       chatOverlayOpen: loadFromStorage(STORAGE_KEYS.chatOverlayOpen, prev.chatOverlayOpen),
       panelWidths: loadFromStorage(STORAGE_KEYS.panelWidths, prev.panelWidths),
     }))
@@ -239,10 +283,7 @@ export function ShellProvider({ children, initialState }: ShellProviderProps): R
     saveToStorage(STORAGE_KEYS.explorerOpen, state.explorerOpen)
   }, [state.explorerOpen, mounted])
 
-  useEffect(() => {
-    if (!mounted) return
-    saveToStorage(STORAGE_KEYS.detailDrawerOpen, state.detailDrawerOpen)
-  }, [state.detailDrawerOpen, mounted])
+  // detailDrawerOpen wird NICHT persistiert - es hängt vom Content ab
 
   useEffect(() => {
     if (!mounted) return

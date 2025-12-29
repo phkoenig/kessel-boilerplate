@@ -146,19 +146,19 @@ function ShellInner({ children, navbar, explorer, className }: AppShellProps): R
   )
 
   // SSR-sichere Default-Prozente (für konsistente Hydration)
-  // Hinweis: Konstante Werte, ändern sich nicht zur Laufzeit
+  // Alle optionalen Spalten (Navbar, Explorer, Assist) haben 15% als Standard
   const SSR_DEFAULTS = useMemo(
     () => ({
-      navbar: 11, // ~200px bei 1800px
+      navbar: 15, // 15% der Fensterbreite
       navbarCollapsed: 2.7, // ~48px bei 1800px
-      explorer: 14, // ~250px bei 1800px
-      assist: 18, // ~320px bei 1800px
+      explorer: 15, // 15% der Fensterbreite
+      assist: 15, // 15% der Fensterbreite
       navbarMin: 2.7,
       navbarMax: 22,
       explorerMin: 10,
-      explorerMax: 28,
-      assistMin: 14,
-      assistMax: 33,
+      explorerMax: 25,
+      assistMin: 10,
+      assistMax: 25,
     }),
     []
   )
@@ -359,8 +359,14 @@ function ShellInner({ children, navbar, explorer, className }: AppShellProps): R
         >
           <div className="relative flex h-full flex-col overflow-hidden">
             {/* Floating UserAvatar oben rechts */}
-            <div className="absolute top-4 right-4 z-20">
+            <div className="absolute top-6 right-6 z-20">
               <UserAvatar />
+            </div>
+            {/* Chat Overlay (innerhalb Spalte 3) */}
+            <ChatOverlay />
+            {/* Floating ChatButton unten rechts (innerhalb Spalte 3) */}
+            <div className="absolute right-6 bottom-6 z-20">
+              <FloatingChatButton />
             </div>
             {children}
           </div>
@@ -390,10 +396,6 @@ function ShellInner({ children, navbar, explorer, className }: AppShellProps): R
           </>
         )}
       </ResizablePanelGroup>
-
-      {/* Chat Overlay & FAB */}
-      <ChatOverlay />
-      <FloatingChatButton />
     </div>
   )
 }

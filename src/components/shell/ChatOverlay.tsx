@@ -37,11 +37,11 @@ export function ChatOverlay(): React.ReactElement | null {
 
   return (
     <>
-      {/* Transparenter Klick-Bereich zum Schließen (KEIN Blur) */}
-      <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
+      {/* Transparenter Klick-Bereich zum Schließen (innerhalb Spalte 3) */}
+      <div className="absolute inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
 
-      {/* Chat-Panel mit Glassmorphism */}
-      <div className="fixed right-6 bottom-24 z-50 h-[calc(100vh-12rem)] w-full max-w-md">
+      {/* Chat-Panel mit Glassmorphism (innerhalb Spalte 3) */}
+      <div className="absolute top-24 right-6 z-50 h-[calc(100%-6rem-5rem)] w-full max-w-md">
         <div
           className={cn(
             "flex h-full flex-col overflow-hidden rounded-xl",

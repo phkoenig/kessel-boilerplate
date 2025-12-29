@@ -140,7 +140,7 @@ function SingleColorSwatch({
   }
 
   return (
-    <div className="flex items-start gap-6">
+    <div className="flex items-start gap-6" data-swatch>
       <div className="group relative h-16 w-64 shrink-0">
         <div
           className={cn(
@@ -245,7 +245,31 @@ export default function TweakPage(): React.ReactElement {
       setContent(null)
     }
   }, [setContent])
-  const { previewToken, getCurrentTokens } = useThemeEditor()
+  const { previewToken, getCurrentTokens, setSelectedElement } = useThemeEditor()
+
+  // ESC-Taste: Auswahl zurücksetzen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedElement(null)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [setSelectedElement])
+
+  // Click auf Hintergrund: Auswahl zurücksetzen
+  const handleBackgroundClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Prüfe ob der Klick auf einem Swatch war (hat data-swatch Attribut)
+      const target = e.target as HTMLElement
+      const isSwatchClick = target.closest("[data-swatch]")
+      if (!isSwatchClick) {
+        setSelectedElement(null)
+      }
+    },
+    [setSelectedElement]
+  )
 
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
@@ -623,12 +647,10 @@ export default function TweakPage(): React.ReactElement {
 
   return (
     <PageContent>
-      <PageHeader
-        title="Tweak the UI"
-        description="Passe Design-Tokens live an und speichere sie als neues Theme"
-      />
+      <PageHeader description="Passe Design-Tokens live an und speichere sie als neues Theme" />
 
-      <div className="space-y-12 pb-24">
+      {}
+      <div className="min-h-full space-y-12 pb-24" onClick={handleBackgroundClick}>
         {/* Core Theme Colors */}
         <section>
           <h2 className="text-foreground mb-6 text-xl font-semibold">Core Theme Colors</h2>

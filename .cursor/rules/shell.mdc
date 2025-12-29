@@ -10,12 +10,18 @@ Dieses Projekt verwendet ein 4-Spalten-Layout basierend auf `react-resizable-pan
 
 ## Die 4 Spalten
 
-| Spalte | Komponente | Breite | Beschreibung |
-|--------|------------|--------|--------------|
-| 1 | Navbar | 15-25% (kollabierbar) | Primäre Navigation |
-| 2 | Explorer | 15-30% (optional) | Kontext-Browser |
-| 3 | Main Area | Flexibel (min 30%) | Hauptinhalt |
-| 4 | Assist | 20-35% (optional) | AI-Chat, Hilfe |
+| Spalte | Komponente | Standard | Bereich | Beschreibung |
+|--------|------------|----------|---------|--------------|
+| 1 | Navbar | **15%** | 3-22% (kollabierbar auf ~48px) | Primäre Navigation |
+| 2 | Explorer | **15%** | 10-25% (optional) | Kontext-Browser |
+| 3 | Main Area | Flexibel | min 30% | Hauptinhalt |
+| 4 | Assist | **15%** | 10-25% (optional) | AI-Chat, Hilfe, Detail-Drawer |
+
+### Standard-Breiten
+- **Alle optionalen Spalten (1, 2, 4) haben 15% als Standardbreite**
+- Bei ~1600px Fensterbreite entspricht das ~240px
+- User kann Spalten per Drag-Resize anpassen (wird in LocalStorage gespeichert)
+- Spalte 3 (Main) nimmt den verbleibenden Platz ein
 
 ---
 

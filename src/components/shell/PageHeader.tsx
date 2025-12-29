@@ -8,8 +8,8 @@ import { navigationConfig, findNavItemByHref } from "@/config/navigation"
  * PageHeader Props
  */
 interface PageHeaderProps {
-  /** Seiten-Titel */
-  title: string
+  /** Optional: Seiten-Titel (wird automatisch aus Navigation geholt wenn nicht gesetzt) */
+  title?: string
   /** Optional: Beschreibung unter dem Titel */
   description?: string
   /** Optional: Custom Icon (überschreibt Navigation-Icon) */
@@ -22,12 +22,15 @@ interface PageHeaderProps {
  * PageHeader Komponente
  *
  * Zentrale Komponente für Seiten-Header in Spalte 3 (Main Area).
- * Holt automatisch das passende Icon aus der Navigation basierend auf
+ * Holt automatisch das passende Icon und den Titel aus der Navigation basierend auf
  * der aktuellen Route. Das Icon wird konsistent zur Navbar (Spalte 1) angezeigt.
  *
  * @example
  * ```tsx
- * // Automatisches Icon aus Navigation
+ * // Automatisches Icon und Titel aus Navigation
+ * <PageHeader description="Passe das Erscheinungsbild an" />
+ *
+ * // Custom Titel, automatisches Icon
  * <PageHeader title="Personalisierung" description="Passe das Erscheinungsbild an" />
  *
  * // Custom Icon
@@ -35,16 +38,21 @@ interface PageHeaderProps {
  * ```
  */
 export function PageHeader({
-  title,
+  title: customTitle,
   description,
   icon: customIcon,
   className,
 }: PageHeaderProps): React.ReactElement {
   const pathname = usePathname()
 
-  // Icon aus Navigation holen (falls kein Custom-Icon gesetzt)
+  // Navigation-Item holen (für Icon und Titel)
   const navItem = customIcon ? null : findNavItemByHref(navigationConfig, pathname)
+
+  // Icon: Custom oder aus Navigation
   const Icon = customIcon || navItem?.icon
+
+  // Titel: Custom oder aus Navigation
+  const title = customTitle || navItem?.label || "Seite"
 
   return (
     <div className={className}>

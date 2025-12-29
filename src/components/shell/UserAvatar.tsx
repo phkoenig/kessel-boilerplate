@@ -91,7 +91,8 @@ export function UserAvatar(): React.ReactElement {
           size="icon"
           suppressHydrationWarning
           className={cn(
-            "relative size-12 shrink-0 rounded-full p-0 transition-opacity hover:opacity-80",
+            "relative size-12 shrink-0 rounded-full bg-transparent p-0 shadow-lg transition-all",
+            "hover:scale-110 hover:bg-transparent hover:shadow-xl",
             "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none"
           )}
         >

@@ -54,7 +54,7 @@ Das Layout unterteilt den Viewport in vier vertikale Bereiche.
 - **Inhalt:** Globaler Navigationsbaum (siehe Abschnitt 4)
 - **Komponente:** Mehrstufiges Accordion mit Chevrons
 - **Verhalten:** Kann auf "Icons only" minimiert werden
-- **Breite:** Standard 16rem, minimiert 3rem
+- **Breite:** Standard **15%** der Fensterbreite (~240px bei 1600px), minimiert ~48px
 
 ### Spalte 2: Kontext-Browser (Explorer)
 
@@ -166,14 +166,15 @@ Die Panel-Breiten werden intern in **Pixeln** gespeichert (nicht Prozent):
 - **Warum:** Prozent-basierte Breiten verschieben sich, wenn Panels hinzugefügt/entfernt werden
 - **Lösung:** Pixel-Werte werden dynamisch in Prozent umgerechnet basierend auf Container-Breite
 - **Effekt:** Spalte 1+2 behalten ihre absoluten Breiten, wenn Spalte 4 getoggelt wird
+- **Standard-Breite:** Alle optionalen Spalten (1, 2, 4) haben **15%** als Standardbreite
 
 ```typescript
 // shell-context.tsx
 export const DEFAULT_PANEL_WIDTHS = {
-  navbar: 200, // Schmale aber lesbare Breite
+  navbar: 240, // 15% von ~1600px Fensterbreite
   navbarCollapsed: 48, // Icon-only
-  explorer: 250, // Moderate Breite für Explorer
-  assist: 320, // Komfortable Breite für Chat/Wiki
+  explorer: 240, // 15% von ~1600px Fensterbreite
+  assist: 240, // 15% von ~1600px Fensterbreite
 } as const
 ```
 

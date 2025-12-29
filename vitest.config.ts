@@ -16,6 +16,7 @@ dotenvConfig({ path: resolve(__dirname, ".env.local") })
 export const vitestConfig = defineConfig({
   test: {
     // Globale Test-Umgebung
+    // Für React-Komponenten-Tests: "jsdom", für andere: "node"
     environment: "node",
 
     // Glob-Patterns für Testdateien

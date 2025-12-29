@@ -81,17 +81,19 @@ const ThreadScrollToBottom: FC = () => {
 const ThreadWelcome: FC = () => {
   return (
     <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
-      <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
-        <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
+      <div className="aui-thread-welcome-center flex w-full flex-col items-center">
+        <div className="aui-thread-welcome-message flex w-full flex-col items-center px-4 pt-8 pb-8">
           <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in text-2xl font-semibold duration-200">
             Hallo!
           </h1>
-          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in text-muted-foreground text-xl delay-75 duration-200">
+          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in text-muted-foreground text-lg delay-75 duration-200">
             Wie kann ich dir helfen?
           </p>
         </div>
       </div>
-      <ThreadSuggestions />
+      <div className="mt-auto">
+        <ThreadSuggestions />
+      </div>
     </div>
   )
 }

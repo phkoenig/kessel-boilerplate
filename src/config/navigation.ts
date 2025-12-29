@@ -206,7 +206,7 @@ const adminSection: NavSection = {
     },
     {
       id: "admin-design-settings",
-      label: "Design System Settings",
+      label: "Design System",
       icon: Paintbrush,
       href: "/account/design-system/tweak",
       requiredRoles: ["admin"],

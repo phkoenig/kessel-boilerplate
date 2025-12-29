@@ -26,7 +26,7 @@ const labelMappings: Record<string, string> = {
   "ai-datasources": "Datenquellen",
   "chat-logs": "KI-Chat-Logs",
   "theme-management": "Theme Manager",
-  tweak: "Design System Settings",
+  tweak: "Design System",
   components: "UI-Komponenten",
   // Account
   account: "Account",
