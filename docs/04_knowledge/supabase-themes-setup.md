@@ -9,17 +9,19 @@ Die Theme-Verwaltung nutzt Supabase für persistente Speicherung:
 
 ## Supabase-Projekt
 
-- **Projekt-ID**: `jpmhwyjiuodsvjowddsm`
-- **URL**: `https://jpmhwyjiuodsvjowddsm.supabase.co`
-- **Dashboard**: https://supabase.com/dashboard/project/jpmhwyjiuodsvjowddsm
+- **Projekt-ID**: `ufqlocxqizmiaozkashi` (Kessel)
+- **URL**: `https://ufqlocxqizmiaozkashi.supabase.co`
+- **Dashboard**: https://supabase.com/dashboard/project/ufqlocxqizmiaozkashi
+
+> **Hinweis:** Die Vault-Secrets werden aus einem separaten Projekt geholt (`zedhieyjlfhygsfxzbze`).
 
 ## Environment-Variablen
 
 ### Lokal (`.env.local`)
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://jpmhwyjiuodsvjowddsm.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon-key>
+NEXT_PUBLIC_SUPABASE_URL=https://ufqlocxqizmiaozkashi.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ```
 
 ### Vercel
@@ -92,4 +94,4 @@ Der `CustomThemeProvider` in `src/lib/themes/theme-provider.tsx`:
 
 ## Hinweis zu Secrets
 
-Die Secrets (wie `SERVICE_ROLE_KEY`) werden weiterhin aus dem separaten Supabase Vault-Projekt (`zedhieyjlfhygsfxzbze`) geladen. Dieses Projekt hier (`jpmhwyjiuodsvjowddsm`) ist nur für App-Daten.
+Die Secrets (wie `SERVICE_ROLE_KEY`) werden aus dem separaten Supabase Vault-Projekt (`zedhieyjlfhygsfxzbze`) geladen via `pnpm pull-env`. Das Kessel-Projekt (`ufqlocxqizmiaozkashi`) enthält die App-Daten inkl. Themes.

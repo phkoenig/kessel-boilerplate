@@ -36,13 +36,12 @@ export const metadata: Metadata = {
  * Lädt das Default-Theme CSS von Supabase Storage.
  * Dies geschieht serverseitig, damit das CSS beim ersten Render verfügbar ist.
  *
- * Falls die Datei nicht existiert (404), wird leise ein leerer String zurückgegeben.
- * Die Fallback-Werte aus globals.css werden dann verwendet.
+ * Das CSS wird für 1 Stunde gecacht (revalidate: 3600).
+ * Falls die Datei nicht existiert, werden die Fallback-Werte aus globals.css verwendet.
  */
 async function getDefaultThemeCSS(): Promise<string> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) {
-    // Kein Fehler loggen - Fallback-Werte werden verwendet
     return ""
   }
 
@@ -53,11 +52,10 @@ async function getDefaultThemeCSS(): Promise<string> {
     })
 
     if (!response.ok) {
-      // 400/404 sind erwartet, wenn default.css oder der Bucket nicht existiert
-      // Nur bei Server-Fehlern loggen (5xx)
-      if (response.status >= 500) {
+      // 404 ist erwartet beim ersten Setup - Fallback-Werte werden verwendet
+      if (response.status !== 404) {
         console.warn(
-          `[Theme] Default-Theme CSS konnte nicht geladen werden: ${response.status}. Fallback-Werte werden verwendet.`
+          `[Theme] Default-Theme CSS nicht geladen (${response.status}). Fallback-Werte werden verwendet.`
         )
       }
       return ""
@@ -66,12 +64,8 @@ async function getDefaultThemeCSS(): Promise<string> {
     return await response.text()
   } catch (error) {
     // Netzwerk-Fehler sind nicht kritisch - Fallback-Werte werden verwendet
-    // Nur in Development loggen, nicht in Production
     if (process.env.NODE_ENV === "development") {
-      console.debug(
-        "[Theme] Default-Theme CSS konnte nicht geladen werden, Fallback wird verwendet:",
-        error
-      )
+      console.debug("[Theme] Default-Theme CSS Netzwerk-Fehler:", error)
     }
     return ""
   }
