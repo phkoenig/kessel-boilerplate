@@ -1,7 +1,7 @@
 ---
 description: CSS-First Theme-System mit Supabase Storage und dynamischen Fonts.
-globs: ["**/themes/**", "**/globals.css", "**/theme-*.tsx", "**/layout.tsx", "**/lib/fonts/**"]
-alwaysApply: true
+globs: ["**/themes/**", "**/globals.css", "**/theme-*.tsx", "**/app/layout.tsx", "**/lib/fonts/**"]
+alwaysApply: false
 ---
 
 # Theme-System

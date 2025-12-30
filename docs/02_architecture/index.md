@@ -8,6 +8,7 @@ Diese Ebene beschreibt _wie_ das System aufgebaut ist. Sie dokumentiert die tech
 
 ## Inhalt
 
+- **Datenbank-Architektur**: [`database-architecture.md`](database-architecture.md) - Infra-DB vs. Dev-DB
 - **Technische Referenz**: Siehe `README.md` → "Tech Stack" und "Projektstruktur"
 - **Supabase-Konfiguration**: Siehe `README.md` → "Supabase Setup"
 - **Proxy & Routing**: Siehe `src/proxy.ts` (Next.js 16) und `src/app/`

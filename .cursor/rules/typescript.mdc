@@ -1,7 +1,7 @@
 ---
 description: TypeScript-Regeln und Typisierungsstandards für dieses Projekt.
 globs: ["**/*.ts", "**/*.tsx"]
-alwaysApply: true
+alwaysApply: false
 ---
 
 # TypeScript Standards

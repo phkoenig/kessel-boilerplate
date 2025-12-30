@@ -40,6 +40,7 @@ Diese Ebene bewahrt Erfahrungswissen und technische Learnings. Sie ist der "Ged√
 - **`secrets-management.md`**: Secrets-Management mit Supabase Vault
 - **`cli-workflow.md`**: Kessel CLI Workflow
 - **`initial-setup.md`**: Ersteinrichtung
+- **`app-versioning.md`**: Duales Versioning-System (App + Boilerplate)
 
 ## Nutzung
 

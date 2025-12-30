@@ -1,7 +1,7 @@
 ---
 description: Next.js 16 App Router, Proxy (statt Middleware), Routing-Konventionen.
 globs: ["**/app/**", "**/proxy.ts", "next.config.ts"]
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Next.js 16

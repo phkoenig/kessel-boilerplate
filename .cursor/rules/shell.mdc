@@ -1,7 +1,7 @@
 ---
 description: 4-Spalten-Layout-System mit react-resizable-panels.
 globs: ["**/components/shell/**", "**/app/(shell)/**"]
-alwaysApply: true
+alwaysApply: false
 ---
 
 # App Shell Layout

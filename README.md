@@ -312,6 +312,22 @@ Dynamische Themes aus **Supabase Storage**:
 
 → [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
 
+### 📦 Duales Versioning-System
+
+**App-Version** (SemVer) + **Boilerplate-Version**:
+
+- App-Version aus Git-Tags (`vX.Y.Z`) oder `package.json`
+- Boilerplate-Version aus `boilerplate.json`
+- Automatische Generierung zur Build-Zeit
+- Anzeige im Admin-Dashboard (`/app-verwaltung/app-dashboard`)
+
+**Workflow:**
+
+- App-Releases: Git-Tag setzen → Vercel deployt automatisch
+- Boilerplate-Upgrades: `boilerplate.json` manuell aktualisieren
+
+→ [App-Versionierung Dokumentation](docs/04_knowledge/app-versioning.md)
+
 ---
 
 ## 🧪 Testing

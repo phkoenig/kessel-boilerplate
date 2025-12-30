@@ -1,43 +1,39 @@
 ---
-description: Regeln für die korrekte Zuordnung der Supabase-Projekte und CLI-Nutzung statt MCP.
-alwaysApply: true
+description: Supabase-Projekt-Konfiguration und CLI-Nutzung.
+globs: ["**/utils/supabase/**", "supabase/**", "**/pull-env.mjs"]
+alwaysApply: false
 ---
 
-# Supabase-Projekt-Zuordnung
+# Supabase-Projekt
 
-## ⚠️ KRITISCH: Zwei separate Projekte - NICHT verwechseln!
+## Infra-DB (KESSEL)
 
-| Projekt       | Ref                    | Enthält                                |
-| ------------- | ---------------------- | -------------------------------------- |
-| **Vault**     | `zedhieyjlfhygsfxzbze` | Secrets (`vault.secrets`)              |
-| **Kessel**    | `ufqlocxqizmiaozkashi` | `profiles`, `themes`, `roles`          |
+Die Boilerplate nutzt **KESSEL** als Infra-DB für alle Infrastruktur-Daten:
 
-## MCP vs. CLI: Bevorzuge CLI!
+| Projekt    | Ref                    | Enthält                                      |
+| ---------- | ---------------------- | -------------------------------------------- |
+| **KESSEL** | `ufqlocxqizmiaozkashi` | Auth, Profiles, Themes, Roles, Vault/Secrets |
 
-> **MCPs haben häufig Token-Probleme.** Bevorzuge die Supabase CLI für zuverlässigen Zugriff.
+> **KESSEL = Infra-DB.** Keine App-spezifischen Business-Daten hier!
+> Für App-Daten → separate Dev-DB (siehe `docs/02_architecture/database-architecture.md`)
 
-### CLI-Befehle (BEVORZUGT)
+## CLI-Befehle
 
 ```bash
-# Projekt-Liste anzeigen
-npx supabase projects list
+# Projekt verlinken (einmalig)
+npx supabase link --project-ref ufqlocxqizmiaozkashi
 
-# Projekt verlinken (einmalig pro Projekt)
-npx supabase link --project-ref <REF>
-# WICHTIG: Nach dem Link verwendet die CLI automatisch die gespeicherten Credentials!
-
-# Migrationen ausführen (NACH dem Link - KEIN Password nötig!)
+# Migrationen pushen (nach Link)
 npx supabase db push --linked --include-all --yes
-# Die CLI authentifiziert sich automatisch über den Link!
 
-# Tabellen prüfen (zeigt Schema + Tabellennamen)
+# Tabellen prüfen
 npx supabase inspect db table-sizes --linked
 
 # Storage Buckets
 npx supabase storage ls --linked --experimental
 ```
 
-### Migrationen ausführen
+## Migrationen ausführen
 
 **WICHTIG:** Nach `supabase link` funktioniert `db push` automatisch ohne Database-Password!
 
@@ -48,42 +44,29 @@ npx supabase link --project-ref ufqlocxqizmiaozkashi
 # 2. Migration erstellen
 cp scripts/meine_migration.sql supabase/migrations/012_meine_migration.sql
 
-# 3. Migration pushen (automatische Authentifizierung!)
+# 3. Migration pushen
 npx supabase db push --linked --include-all --yes
 ```
 
-**Kein Database-Password nötig!** Die CLI verwendet die gespeicherten Credentials aus dem Link.
-
-### REST API (Alternative wenn CLI nicht funktioniert)
+## Secrets abrufen
 
 ```bash
-curl -s "https://<REF>.supabase.co/rest/v1/<TABLE>?select=*" \
-  -H "apikey: <ANON_KEY>" \
-  -H "Authorization: Bearer <ANON_KEY>"
+# Secrets aus Vault laden
+pnpm pull-env
 ```
 
-## Schnell-Identifikation: In welchem Projekt bin ich?
+Die Secrets werden aus `vault.secrets` im KESSEL-Projekt gelesen und in `.env.local` geschrieben.
 
-| Tabellen die du siehst                           | Projekt        |
-| ------------------------------------------------ | -------------- |
-| `profiles`, `themes`, `roles`, `role_permissions`| **Kessel** ✅  |
-| `vault.secrets`                                  | **Vault** ✅   |
+## Tabellen im Projekt
 
-## Wann welches Projekt?
-
-| Aufgabe                          | Projekt       |
-| -------------------------------- | ------------- |
-| Secrets abrufen                  | **Vault**     |
-| User einloggen, Profil laden     | **Kessel**    |
-| Theme laden/speichern            | **Kessel**    |
-| Rollen/Berechtigungen prüfen     | **Kessel**    |
-
-## Vor jeder Datenbankoperation
-
-1. **PRÜFE** auf welches Projekt du zugreifst
-2. **VERWENDE** `npx supabase link --project-ref <REF>` um sicherzugehen
-3. **VERIFIZIERE** mit `npx supabase inspect db table-sizes --linked`
+| Schema | Tabellen |
+|--------|----------|
+| `public` | `profiles`, `themes`, `roles`, `role_permissions` |
+| `vault` | `secrets` (für API-Keys, etc.) |
+| `storage` | `themes` Bucket |
 
 ## Dokumentation
 
-→ Vollständige Details: `docs/04_knowledge/supabase-migrationen.md`
+→ Architektur: `docs/02_architecture/database-architecture.md`
+→ Secrets: `docs/04_knowledge/secrets-management.md`
+→ Migrationen: `docs/04_knowledge/supabase-migrationen.md`

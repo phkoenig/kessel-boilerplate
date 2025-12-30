@@ -1,7 +1,7 @@
 ---
 description: ShadCN UI Komponenten, Design Tokens und Composition Patterns.
-globs: ["**/*.tsx", "**/*.css"]
-alwaysApply: true
+globs: ["**/components/**/*.tsx", "**/app/**/*.tsx"]
+alwaysApply: false
 ---
 
 # Design System: UI Components & Tokens

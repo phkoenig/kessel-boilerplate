@@ -1,8 +1,8 @@
-# Secrets Management - Ein-Projekt-Architektur
+# Secrets Management
 
 ## Architektur-Übersicht
 
-Dieses Projekt verwendet **ein Supabase-Projekt** für App-Daten, Auth, Storage und Secrets:
+Secrets werden in der **Infra-DB (KESSEL)** gespeichert. Siehe auch: [`database-architecture.md`](../02_architecture/database-architecture.md)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐

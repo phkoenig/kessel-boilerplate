@@ -1,0 +1,132 @@
+---
+description: Versioning-Regeln für App-Version und Boilerplate-Version.
+globs: ["**/config/version.ts", "**/config/boilerplate.ts", "package.json", "boilerplate.json", "scripts/write-version.ts"]
+alwaysApply: false
+---
+
+# Versioning Rules
+
+Dieses Projekt verwendet ein duales Versioning-System: App-Version (SemVer) und Boilerplate-Version.
+
+## Zwei-Ebenen-Versionierung
+
+| Ebene | Quelle | Beispiel |
+|-------|--------|----------|
+| **App-Version** | Git-Tag / package.json | `0.3.0 (fa1eade4)` |
+| **Boilerplate-Version** | boilerplate.json | `kessel-boilerplate@1.1.0` |
+
+## App-Version
+
+### Quellen (Priorität)
+
+1. **Git-Tag** `vX.Y.Z` → wird zu `X.Y.Z` (höchste Priorität)
+2. **package.json.version** → Fallback wenn kein Tag
+3. **0.0.0-dev** → letzter Fallback (Previews, Local Dev)
+
+### Generierung
+
+- Wird automatisch von `scripts/write-version.ts` generiert
+- Läuft als `prebuild` Hook vor jedem Build
+- Generiert `src/config/version.ts` mit:
+  - `APP_VERSION`: SemVer-String
+  - `APP_BUILD_COMMIT`: Abgekürzte SHA (8 Zeichen)
+  - `APP_ENV`: `development | preview | production`
+
+### Verwendung im Code
+
+```typescript
+import { APP_VERSION, APP_BUILD_COMMIT, APP_ENV } from "@/config/version"
+
+// Anzeige: "0.3.0 (fa1eade4)"
+const versionDisplay = `${APP_VERSION} (${APP_BUILD_COMMIT})`
+```
+
+### Semantic Versioning
+
+- **MAJOR**: Breaking Changes
+- **MINOR**: Neue Features, kompatibel
+- **PATCH**: Bugfixes, kompatibel
+
+### Git-Tags
+
+- Format: `vX.Y.Z` (z.B. `v0.3.0`)
+- Tags werden **nie** umgehängt
+- Bugfix → neuer Patch-Tag
+- Nur Tags auf `main` werden auf Production deployt
+
+## Boilerplate-Version
+
+### Quelle
+
+- Statisch in `boilerplate.json` gespeichert
+- Wird beim Scaffolden der App gesetzt
+- Wird **nur** bei explizitem Boilerplate-Upgrade geändert
+
+### Verwendung im Code
+
+```typescript
+import { BOILERPLATE_NAME, BOILERPLATE_VERSION } from "@/config/boilerplate"
+
+// Anzeige: "kessel-boilerplate@1.1.0"
+const boilerplateDisplay = `${BOILERPLATE_NAME}@${BOILERPLATE_VERSION}`
+```
+
+### Upgrade-Workflow
+
+```bash
+# 1. Neues Boilerplate-Release ziehen
+# 2. boilerplate.json manuell updaten (version)
+# 3. Commit: "chore: upgrade boilerplate to 1.2.0"
+```
+
+## SystemInfoCard
+
+Die `SystemInfoCard` Komponente zeigt immer:
+
+- **App-Version** + Commit: `APP_VERSION (APP_BUILD_COMMIT)`
+- **Environment**: `APP_ENV`
+- **Boilerplate**: `BOILERPLATE_NAME@BOILERPLATE_VERSION`
+
+### Verboten
+
+- ❌ Manuelles Bearbeiten von `src/config/version.ts` (wird generiert)
+- ❌ Hardcodierte Versionen im Code
+- ❌ Umhängen von Git-Tags
+- ❌ Änderung von `boilerplate.json` ohne explizites Upgrade
+
+### Erlaubt
+
+- ✅ `package.json.version` manuell ändern (wird als Fallback verwendet)
+- ✅ `boilerplate.json` bei Boilerplate-Upgrade ändern
+- ✅ Git-Tags für neue Releases setzen
+
+## Workflow-Dokumentation
+
+### App releasen
+
+```bash
+# 1. Feature auf feature-branch entwickeln
+# 2. Merge nach main
+# 3. Tag setzen
+git tag -a v0.3.0 -m "Release 0.3.0: Feature X"
+git push origin v0.3.0
+# 4. Vercel deployt Tag → Production
+```
+
+### Boilerplate upgraden
+
+```bash
+# 1. Neues Boilerplate-Release ziehen
+# 2. boilerplate.json manuell updaten (version)
+# 3. Commit: "chore: upgrade boilerplate to 1.2.0"
+```
+
+## Dateien
+
+| Datei | Status | Git |
+|-------|--------|-----|
+| `scripts/write-version.ts` | Committed | ✅ |
+| `src/config/version.ts` | Auto-generiert | ❌ (gitignore) |
+| `src/config/boilerplate.ts` | Committed | ✅ |
+| `boilerplate.json` | Committed | ✅ |
+| `package.json` | Committed | ✅ |

@@ -6,6 +6,9 @@
 # WICHTIG: .env.example NICHT ignorieren (sollte committet werden)
 !.env.example
 
+# Auto-generated files
+src/config/version.ts
+
 # Next.js
 .next/
 out/

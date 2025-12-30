@@ -1,7 +1,7 @@
 ---
 description: Tailwind CSS v4 Syntax, @theme Block, Arbitrary Values verboten.
-globs: ["**/*.css", "**/*.tsx", "**/*.ts"]
-alwaysApply: true
+globs: ["**/*.css", "**/globals.css", "**/components/**/*.tsx"]
+alwaysApply: false
 ---
 
 # Tailwind CSS v4

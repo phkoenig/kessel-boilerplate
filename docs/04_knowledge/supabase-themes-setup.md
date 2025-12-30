@@ -13,7 +13,7 @@ Die Theme-Verwaltung nutzt Supabase für persistente Speicherung:
 - **URL**: `https://ufqlocxqizmiaozkashi.supabase.co`
 - **Dashboard**: https://supabase.com/dashboard/project/ufqlocxqizmiaozkashi
 
-> **Hinweis:** Die Vault-Secrets werden aus einem separaten Projekt geholt (`zedhieyjlfhygsfxzbze`).
+> **Hinweis:** App-Daten, Auth, Storage **und Vault/Secrets** sind alle im KESSEL-Projekt.
 
 ## Environment-Variablen
 
@@ -94,4 +94,4 @@ Der `CustomThemeProvider` in `src/lib/themes/theme-provider.tsx`:
 
 ## Hinweis zu Secrets
 
-Die Secrets (wie `SERVICE_ROLE_KEY`) werden aus dem separaten Supabase Vault-Projekt (`zedhieyjlfhygsfxzbze`) geladen via `pnpm pull-env`. Das Kessel-Projekt (`ufqlocxqizmiaozkashi`) enthält die App-Daten inkl. Themes.
+Die Secrets (wie `SERVICE_ROLE_KEY`) werden aus dem KESSEL-Projekt Vault geladen via `pnpm pull-env`. Alle Daten (App, Auth, Storage, Vault) sind im selben Projekt (`ufqlocxqizmiaozkashi`).
