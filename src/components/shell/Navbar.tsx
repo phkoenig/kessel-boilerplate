@@ -310,7 +310,7 @@ function NavItemComponent({
 
   // Track ob der Benutzer das Accordion manuell geöffnet hat (nicht durch aktives Child)
   const wasManuallyOpenedRef = useRef(false)
-  const previousIsChildActiveRef = useRef(isChildActive)
+  const previousIsChildActiveRef = useRef<boolean | null>(null)
 
   // Berechne isOpen: Wenn Child aktiv ist, immer geöffnet; sonst verwende manuellen State oder Default
   const [manualOpen, setManualOpen] = useState<boolean | null>(null)
@@ -318,24 +318,30 @@ function NavItemComponent({
   // Berechne finalen isOpen State basierend auf aktuellem Zustand
   const isOpen = isChildActive || (manualOpen ?? defaultOpen)
 
-  // Aktualisiere Refs wenn sich isChildActive ändert (ohne Re-Render zu triggern)
+  // Reagiere auf Änderungen von isChildActive
+  // Wichtig: previousIsChildActiveRef wird mit null initialisiert, um den ersten Render zu erkennen
   useEffect(() => {
     const previousIsChildActive = previousIsChildActiveRef.current
 
+    // Beim ersten Render nur den Wert speichern, keine Logik ausführen
+    if (previousIsChildActive === null) {
+      previousIsChildActiveRef.current = isChildActive
+      return
+    }
+
+    // Child wurde aktiv → merken dass es nicht mehr manuell geöffnet ist
     if (isChildActive && !previousIsChildActive) {
-      // Child wurde aktiv → merken dass es nicht mehr manuell geöffnet ist
       wasManuallyOpenedRef.current = false
     }
 
-    previousIsChildActiveRef.current = isChildActive
-  }, [isChildActive])
-
-  // Wenn Child inaktiv wird und nicht manuell geöffnet wurde, zurück zum Default
-  useEffect(() => {
-    if (!isChildActive && previousIsChildActiveRef.current && !wasManuallyOpenedRef.current) {
+    // Child wurde inaktiv und war nicht manuell geöffnet → zurück zum Default
+    if (!isChildActive && previousIsChildActive && !wasManuallyOpenedRef.current) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- This effect needs to sync state when isChildActive changes
-      setManualOpen(null) // Zurück zum Default
+      setManualOpen(null)
     }
+
+    // Aktualisiere den vorherigen Wert für den nächsten Render
+    previousIsChildActiveRef.current = isChildActive
   }, [isChildActive])
 
   const Icon = item.icon
@@ -543,9 +549,8 @@ function NavItemComponent({
     const handleAction = () => {
       if (item.id === "account-logout") {
         onLogout()
-      } else {
-        console.log("Action:", item.id)
       }
+      // Andere Actions können hier bei Bedarf implementiert werden
     }
 
     // Generiere Keywords aus Label
