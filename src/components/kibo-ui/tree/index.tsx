@@ -228,8 +228,15 @@ export const TreeNodeTrigger = ({
         className
       )}
       onClick={(e) => {
-        toggleExpanded(nodeId)
-        handleSelection(nodeId, e.ctrlKey || e.metaKey)
+        // Prüfe, ob ein Link geklickt wurde - wenn ja, keine Tree-Aktionen ausführen
+        const target = e.target as HTMLElement
+        const isLinkClick = target.closest("a") !== null
+
+        if (!isLinkClick) {
+          toggleExpanded(nodeId)
+          handleSelection(nodeId, e.ctrlKey || e.metaKey)
+        }
+
         onClick?.(e)
       }}
       style={{ paddingLeft: level * (indent ?? 0) + 8 }}
