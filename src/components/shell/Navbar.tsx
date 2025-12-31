@@ -310,7 +310,7 @@ function NavSectionComponent({
     <div className="flex flex-col gap-1">
       {/* Section Title (nicht klickbar) */}
       {section.title && !collapsed && (
-        <div className="text-muted-foreground px-3 py-2 text-xs font-semibold tracking-wider uppercase">
+        <div className="text-muted-foreground px-4 py-2 text-xs font-semibold tracking-wider uppercase">
           {section.title}
         </div>
       )}

@@ -123,7 +123,7 @@ const ThreadSuggestions: FC = () => {
           <ThreadPrimitive.Suggestion prompt={suggestion.prompt} send asChild>
             <Button
               variant="ghost"
-              className="aui-thread-welcome-suggestion border-input bg-card hover:bg-card/80 h-auto w-full flex-col items-start justify-start gap-1 rounded-lg border px-4 py-3 text-left text-sm transition-colors"
+              className="aui-thread-welcome-suggestion border-input bg-card hover:bg-card/80 h-auto w-full flex-col items-start justify-start gap-1 rounded-lg border px-4 py-4 text-left text-sm transition-colors"
               aria-label={suggestion.prompt}
             >
               <span className="aui-thread-welcome-suggestion-text-1 font-medium">
@@ -147,7 +147,7 @@ const Composer: FC = () => {
         <ComposerAttachments />
         <ComposerPrimitive.Input
           placeholder="Nachricht eingeben..."
-          className="aui-composer-input placeholder:text-muted-foreground mb-1 max-h-32 min-h-14 w-full resize-none bg-transparent px-4 pt-2 pb-3 text-sm outline-none focus-visible:ring-0"
+          className="aui-composer-input placeholder:text-muted-foreground mb-1 max-h-32 min-h-14 w-full resize-none bg-transparent px-4 pt-2 pb-4 text-sm outline-none focus-visible:ring-0"
           rows={1}
           autoFocus
           aria-label="Message input"
@@ -199,7 +199,7 @@ const ComposerAction: FC = () => {
 const MessageError: FC = () => {
   return (
     <MessagePrimitive.Error>
-      <div className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive/80 mt-2 rounded-md border p-3 text-sm">
+      <div className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 dark:text-destructive/80 mt-2 rounded-md border p-4 text-sm">
         Ein Fehler ist aufgetreten. Bitte versuche es erneut.
       </div>
     </MessagePrimitive.Error>
@@ -209,7 +209,7 @@ const MessageError: FC = () => {
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 animate-in relative mx-auto w-full max-w-(--thread-max-width) py-3 duration-150"
+      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 animate-in relative mx-auto w-full max-w-(--thread-max-width) py-4 duration-150"
       data-role="assistant"
     >
       <div className="aui-assistant-message-content text-foreground px-2 leading-relaxed wrap-break-word">
@@ -263,7 +263,7 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-user-message-root fade-in slide-in-from-bottom-1 animate-in mx-auto grid w-full max-w-(--thread-max-width) auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
+      className="aui-user-message-root fade-in slide-in-from-bottom-1 animate-in mx-auto grid w-full max-w-(--thread-max-width) auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-4 duration-150 [&:where(>*)]:col-start-2"
       data-role="user"
     >
       <UserMessageAttachments />
@@ -300,13 +300,13 @@ const UserActionBar: FC = () => {
 
 const EditComposer: FC = () => {
   return (
-    <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
+    <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-4">
       <ComposerPrimitive.Root className="aui-edit-composer-root bg-muted ml-auto flex w-5/6 flex-col rounded-xl">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input text-foreground min-h-14 w-full resize-none bg-transparent p-4 text-sm outline-none"
           autoFocus
         />
-        <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
+        <div className="aui-edit-composer-footer mx-4 mb-4 flex items-center gap-2 self-end">
           <ComposerPrimitive.Cancel asChild>
             <Button variant="ghost" size="sm">
               Abbrechen

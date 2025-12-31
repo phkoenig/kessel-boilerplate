@@ -488,7 +488,7 @@ export default function BugsPage(): React.ReactElement {
               />
             </div>
 
-            <div className="border-border bg-muted/50 rounded-lg border p-3 text-xs">
+            <div className="border-border bg-muted/50 rounded-lg border p-4 text-xs">
               <strong>Tipp:</strong> Screenshots und Browser-Informationen sind besonders hilfreich.
             </div>
           </div>

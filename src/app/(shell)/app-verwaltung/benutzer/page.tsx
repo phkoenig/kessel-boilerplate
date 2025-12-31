@@ -429,7 +429,7 @@ export default function UsersPage(): React.ReactElement {
       <div className="space-y-6">
         {/* Error Message */}
         {error && (
-          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-3 text-sm">
+          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-4 text-sm">
             {error}
           </div>
         )}

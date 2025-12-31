@@ -114,14 +114,14 @@ export function DatasourceExplorer({
   return (
     <div className={cn("flex h-full flex-col", className)}>
       {/* Search */}
-      <div className="border-b p-3">
+      <div className="border-b p-4">
         <div className="relative">
           <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
           <Input
             placeholder="Suchen..."
             value={filter.searchQuery}
             onChange={(e) => onFilterChange({ ...filter, searchQuery: e.target.value })}
-            className="pl-9"
+            className="pl-8"
           />
         </div>
         {activeFilterCount > 0 && (

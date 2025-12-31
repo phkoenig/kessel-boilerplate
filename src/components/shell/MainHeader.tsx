@@ -47,12 +47,12 @@ export function MainHeader({
     <TooltipProvider delayDuration={0}>
       <header
         className={cn(
-          "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 flex items-center justify-between gap-4 border-b px-6 py-3 backdrop-blur",
+          "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 flex items-center justify-between gap-4 border-b px-6 py-4 backdrop-blur",
           className
         )}
       >
         {/* Left Section: Toggle Button + Breadcrumbs */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {/* Navbar Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>

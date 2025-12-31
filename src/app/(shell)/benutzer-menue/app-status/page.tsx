@@ -63,7 +63,7 @@ export default function AppStatusPage(): React.ReactElement {
                 {getStatusIcon("operational")}
                 <span className="text-2xl font-bold">Alle Systeme operational</span>
               </div>
-              <Badge className="bg-chart-1/10 text-chart-1 px-3 py-1 text-lg">99.7% Uptime</Badge>
+              <Badge className="bg-chart-1/10 text-chart-1 px-4 py-1 text-lg">99.7% Uptime</Badge>
             </div>
           </CardContent>
         </Card>

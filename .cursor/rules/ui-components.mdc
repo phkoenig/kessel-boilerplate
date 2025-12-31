@@ -117,6 +117,9 @@ Dieses Projekt verwendet ShadCN UI mit strikten Design Tokens. Native HTML-Eleme
 
 **VERBOTEN:** `text-[13px]`, `text-[18px]`, `leading-[1.7]`
 
+**text-box-trim (Progressive Enhancement):**
+Das Designsystem nutzt `text-box-trim` für präzisere Typometrie (80-90% Browser-Support). Die CSS-Regeln sind in `globals.css` definiert und greifen automatisch für Headings, Body-Text und Buttons/Labels. Keine manuellen Anpassungen nötig - das System kümmert sich darum.
+
 ---
 
 ## 3. Composition Patterns

@@ -91,7 +91,7 @@ const eslintConfig = defineConfig([
         "error",
         {
           allowCssVariables: true, // Erlaubt w-[var(--sidebar-width)]
-          enforceSpacingScale: false, // Deaktiviert, da zu strikt für Migration
+          enforceSpacingScale: true, // Aktiviert: Erzwingt Spacing-Skala (0,1,2,4,6,8,12,16,24,32,48,64)
         },
       ],
     },

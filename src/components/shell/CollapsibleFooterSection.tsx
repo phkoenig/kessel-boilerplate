@@ -123,7 +123,7 @@ export function CollapsibleFooterSection({
       {/* Section Title - immer sichtbar */}
       <Button
         variant="ghost"
-        className="text-muted-foreground flex h-auto w-full items-center justify-between px-3 py-3 text-xs font-semibold tracking-wider uppercase"
+        className="text-muted-foreground flex h-auto w-full items-center justify-between px-4 py-4 text-xs font-semibold tracking-wider uppercase"
         aria-expanded={isOpen}
         aria-label={`${title} ${isOpen ? "ausblenden" : "einblenden"}`}
       >

@@ -119,7 +119,7 @@ Design: Nutzt bestehende Card, Badge, Design Tokens.
 
 ### 4. Dashboard-Integration
 
-[`src/app/(shell)/app-verwaltung/app-dashboard/page.tsx`](<src/app/\(shell)/app-verwaltung/app-dashboard/page.tsx>) importiert und zeigt SystemInfoCard.
+[`src/app/(shell)/app-verwaltung/app-dashboard/page.tsx`](<src/app/(shell)/app-verwaltung/app-dashboard/page.tsx>) importiert und zeigt SystemInfoCard.
 
 ### 5. package.json Scripts
 

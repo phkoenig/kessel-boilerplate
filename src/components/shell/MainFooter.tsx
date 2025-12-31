@@ -51,7 +51,7 @@ export function MainFooter({
     return (
       <footer
         className={cn(
-          "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky bottom-0 z-10 border-t px-6 py-3 backdrop-blur",
+          "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky bottom-0 z-10 border-t px-6 py-4 backdrop-blur",
           className
         )}
       >
@@ -63,7 +63,7 @@ export function MainFooter({
   return (
     <footer
       className={cn(
-        "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t px-6 py-3 backdrop-blur",
+        "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t px-6 py-4 backdrop-blur",
         className
       )}
     >

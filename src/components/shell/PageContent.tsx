@@ -189,12 +189,12 @@ export function PageContent({
 
       {/* Custom Footer Elements */}
       {floatingFooterLeft && (
-        <div className="bg-foreground text-background absolute bottom-4 left-4 z-20 rounded-full px-3 py-1 text-xs">
+        <div className="bg-foreground text-background absolute bottom-4 left-4 z-20 rounded-full px-4 py-1 text-xs">
           {floatingFooterLeft}
         </div>
       )}
       {floatingFooterRight && (
-        <div className="bg-foreground text-background absolute right-4 bottom-4 z-20 rounded-full px-3 py-1 text-xs">
+        <div className="bg-foreground text-background absolute right-4 bottom-4 z-20 rounded-full px-4 py-1 text-xs">
           {floatingFooterRight}
         </div>
       )}

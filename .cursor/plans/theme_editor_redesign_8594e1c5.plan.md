@@ -74,12 +74,12 @@ flowchart TB
 
 **7 Dateien zu migrieren:**
 
-- [src/app/(shell)/account/app-status/page.tsx](<src/app/\\(shell)/account/app-status/page.tsx>)
-- [src/app/(shell)/account/profile/page.tsx](<src/app/\\(shell)/account/profile/page.tsx>)
-- [src/app/(shell)/about/features/page.tsx](<src/app/\\(shell)/about/features/page.tsx>)
-- [src/app/(shell)/about/bugs/page.tsx](<src/app/\\(shell)/about/bugs/page.tsx>)
-- [src/app/(shell)/account/payment/page.tsx](<src/app/\\(shell)/account/payment/page.tsx>)
-- [src/app/(shell)/account/layout-templates/dashboard/page.tsx](<src/app/\\(shell)/account/layout-templates/dashboard/page.tsx>)
+- [src/app/(shell)/account/app-status/page.tsx](<src/app/(shell)/account/app-status/page.tsx>)
+- [src/app/(shell)/account/profile/page.tsx](<src/app/(shell)/account/profile/page.tsx>)
+- [src/app/(shell)/about/features/page.tsx](<src/app/(shell)/about/features/page.tsx>)
+- [src/app/(shell)/about/bugs/page.tsx](<src/app/(shell)/about/bugs/page.tsx>)
+- [src/app/(shell)/account/payment/page.tsx](<src/app/(shell)/account/payment/page.tsx>)
+- [src/app/(shell)/account/layout-templates/dashboard/page.tsx](<src/app/(shell)/account/layout-templates/dashboard/page.tsx>)
 - [src/components/ui/saveable-input.tsx](src/components/ui/saveable-input.tsx)
 
 ### 1.2 Custom Shadows entfernen

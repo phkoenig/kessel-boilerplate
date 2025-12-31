@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { type LucideIcon } from "lucide-react"
 import { navigationConfig, findNavItemByHref } from "@/config/navigation"
+import { cn } from "@/lib/utils"
 
 /**
  * PageHeader Props
@@ -55,8 +56,8 @@ export function PageHeader({
   const title = customTitle || navItem?.label || "Seite"
 
   return (
-    <div className={className}>
-      <h1 className="text-foreground flex items-center gap-3 text-3xl font-bold tracking-tight">
+    <div className={cn("mb-8", className)}>
+      <h1 className="text-foreground flex items-center gap-4 text-3xl font-bold tracking-tight">
         {Icon && <Icon className="size-8 shrink-0" />}
         <span>{title}</span>
       </h1>

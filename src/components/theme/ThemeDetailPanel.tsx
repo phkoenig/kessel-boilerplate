@@ -204,7 +204,7 @@ export function ThemeDetailPanel(): React.ReactElement {
                     color={currentHex}
                     onChange={handleColorChange}
                     prefixed={false}
-                    className="border-input bg-background text-foreground focus-visible:ring-ring color-picker-input h-10 w-full border py-2 pr-10 pl-7 font-mono text-sm uppercase focus-visible:ring-1 focus-visible:outline-hidden"
+                    className="border-input bg-background text-foreground focus-visible:ring-ring color-picker-input h-10 w-full border py-2 pr-12 pl-8 font-mono text-sm uppercase focus-visible:ring-1 focus-visible:outline-hidden"
                   />
                   {/* Pipette im Input-Feld */}
                   {typeof window !== "undefined" && "EyeDropper" in window && (

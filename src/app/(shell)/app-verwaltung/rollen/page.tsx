@@ -437,7 +437,7 @@ export default function RolesPage(): React.ReactElement {
 
       {/* Messages */}
       {error && (
-        <div className="bg-destructive/10 text-destructive border-destructive/20 mb-4 rounded-md border p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive border-destructive/20 mb-4 rounded-md border p-4 text-sm">
           {error}
         </div>
       )}

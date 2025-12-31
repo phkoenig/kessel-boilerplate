@@ -401,3 +401,48 @@ nextjs-portal {
     corner-shape: squircle;
   }
 }
+
+/* ========================================
+ * TEXT-BOX-TRIM (Progressive Enhancement)
+ *
+ * Präzisere Typometrie für Chromium (80%) und Safari (10%).
+ * Firefox-User sehen Standard-Boxen - Layout bleibt robust.
+ *
+ * Browser-Support (Stand Januar 2026):
+ * - Chrome/Edge/Vivaldi (Chromium): Ja, ab v133
+ * - Safari (macOS + iOS): Ja, ab 18.2
+ * - Firefox: Nein
+ * - Gesamt: ~80-90%
+ * ======================================== */
+@supports (text-box-trim: trim-both) {
+  /* Headings: Trimmen auf Cap-Height */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  [data-slot="card-title"],
+  [data-slot="empty-title"] {
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+  }
+
+  /* Body-Text: Trimmen auf x-height */
+  p,
+  [data-slot="card-description"],
+  [data-slot="empty-description"],
+  [data-slot="form-description"] {
+    text-box-trim: trim-both;
+    text-box-edge: text alphabetic;
+  }
+
+  /* Buttons/Labels: Cap-basiert für vertikale Zentrierung */
+  button,
+  [role="button"],
+  label,
+  [data-slot="form-label"] {
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+  }
+}

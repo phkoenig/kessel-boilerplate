@@ -240,3 +240,7 @@ Die Regel `local/no-hardcoded-tailwind` verbietet:
 - [ ] Spacing: nur `0,1,2,4,6,8,12,16,24,32,48,64`
 - [ ] Font-Sizes: Tailwind-Skala (`text-xs` bis `text-4xl`)
 - [ ] Dark Mode ohne explizite `dark:` Klassen
+
+## text-box-trim (Progressive Enhancement)
+
+Das Projekt nutzt `text-box-trim` für präzisere Typometrie (80-90% Browser-Support). Die CSS-Regeln sind in `globals.css` definiert und greifen automatisch. **Nicht** manuell `text-box-trim` Klassen hinzufügen - das System kümmert sich darum.

@@ -156,7 +156,7 @@ export function ExplorerOutline(): React.ReactElement {
             "w-full justify-start text-sm",
             section.level === 1 && "font-medium",
             section.level === 2 && "text-muted-foreground pl-6",
-            section.level === 3 && "text-muted-foreground pl-10"
+            section.level === 3 && "text-muted-foreground pl-12"
           )}
         >
           {section.title}

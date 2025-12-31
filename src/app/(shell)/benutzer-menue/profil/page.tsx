@@ -363,17 +363,17 @@ export default function ProfilePage(): React.ReactElement {
       <div className="space-y-6">
         {/* Messages */}
         {error && (
-          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-3 text-sm">
+          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-4 text-sm">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-chart-1/10 text-chart-1 border-chart-1/20 rounded-md border p-3 text-sm">
+          <div className="bg-chart-1/10 text-chart-1 border-chart-1/20 rounded-md border p-4 text-sm">
             {success}
           </div>
         )}
         {passwordError && (
-          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-3 text-sm">
+          <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-4 text-sm">
             {passwordError}
           </div>
         )}

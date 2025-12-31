@@ -108,7 +108,7 @@ function VerifyForm(): React.ReactElement {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-3 text-sm">
+              <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-4 text-sm">
                 {error}
               </div>
             )}
@@ -125,7 +125,7 @@ function VerifyForm(): React.ReactElement {
                       <Input
                         type="text"
                         placeholder="123456"
-                        className="pl-9"
+                        className="pl-8"
                         disabled={isLoading}
                         {...field}
                       />

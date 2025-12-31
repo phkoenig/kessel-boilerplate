@@ -125,12 +125,12 @@ export function SaveThemeDialog({
             />
           </div>
           {error && (
-            <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-3 text-sm">
+            <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-md border p-4 text-sm">
               {error}
             </div>
           )}
           {!isDirty && (
-            <div className="bg-muted text-muted-foreground rounded-md p-3 text-sm">
+            <div className="bg-muted text-muted-foreground rounded-md p-4 text-sm">
               Es gibt keine ungespeicherten Änderungen.
             </div>
           )}

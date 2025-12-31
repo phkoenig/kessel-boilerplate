@@ -581,20 +581,20 @@ export default function ThemePage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Brand</h4>
                 <div className="space-y-1">
-                  <div className="bg-primary text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-primary text-primary-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs font-medium">Primary</span>
                     <span className="text-xs opacity-70">FG</span>
                   </div>
-                  <div className="bg-primary/80 text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-primary/80 text-primary-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">80%</span>
                   </div>
-                  <div className="bg-primary/60 text-primary-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-primary/60 text-primary-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">60%</span>
                   </div>
-                  <div className="bg-primary/40 flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-primary/40 flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">40%</span>
                   </div>
-                  <div className="bg-primary/20 flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-primary/20 flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">20%</span>
                   </div>
                 </div>
@@ -604,19 +604,19 @@ export default function ThemePage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Neutral</h4>
                 <div className="space-y-1">
-                  <div className="bg-foreground text-background flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-foreground text-background flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs font-medium">Foreground</span>
                   </div>
-                  <div className="bg-muted-foreground text-background flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-muted-foreground text-background flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">Muted FG</span>
                   </div>
-                  <div className="bg-border flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-border flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">Border</span>
                   </div>
-                  <div className="bg-muted text-muted-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-muted text-muted-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">Muted</span>
                   </div>
-                  <div className="bg-background text-foreground flex items-center justify-between rounded-md border px-3 py-2">
+                  <div className="bg-background text-foreground flex items-center justify-between rounded-md border px-4 py-2">
                     <span className="text-xs">Background</span>
                   </div>
                 </div>
@@ -626,19 +626,19 @@ export default function ThemePage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Status</h4>
                 <div className="space-y-1">
-                  <div className="bg-destructive text-destructive-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-destructive text-destructive-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs font-medium">Destructive</span>
                   </div>
-                  <div className="bg-destructive/80 text-destructive-foreground flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-destructive/80 text-destructive-foreground flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">80%</span>
                   </div>
-                  <div className="bg-destructive/60 flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-destructive/60 flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">60%</span>
                   </div>
-                  <div className="bg-destructive/40 flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-destructive/40 flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">40%</span>
                   </div>
-                  <div className="bg-destructive/20 flex items-center justify-between rounded-md px-3 py-2">
+                  <div className="bg-destructive/20 flex items-center justify-between rounded-md px-4 py-2">
                     <span className="text-xs">20%</span>
                   </div>
                 </div>
@@ -648,19 +648,19 @@ export default function ThemePage(): React.ReactElement {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Charts</h4>
                 <div className="space-y-1">
-                  <div className="bg-chart-1 flex items-center justify-between rounded-md px-3 py-2 text-white">
+                  <div className="bg-chart-1 flex items-center justify-between rounded-md px-4 py-2 text-white">
                     <span className="text-xs font-medium">Chart 1</span>
                   </div>
-                  <div className="bg-chart-2 flex items-center justify-between rounded-md px-3 py-2 text-white">
+                  <div className="bg-chart-2 flex items-center justify-between rounded-md px-4 py-2 text-white">
                     <span className="text-xs">Chart 2</span>
                   </div>
-                  <div className="bg-chart-3 flex items-center justify-between rounded-md px-3 py-2 text-white">
+                  <div className="bg-chart-3 flex items-center justify-between rounded-md px-4 py-2 text-white">
                     <span className="text-xs">Chart 3</span>
                   </div>
-                  <div className="bg-chart-4 flex items-center justify-between rounded-md px-3 py-2 text-white">
+                  <div className="bg-chart-4 flex items-center justify-between rounded-md px-4 py-2 text-white">
                     <span className="text-xs">Chart 4</span>
                   </div>
-                  <div className="bg-chart-5 flex items-center justify-between rounded-md px-3 py-2 text-white">
+                  <div className="bg-chart-5 flex items-center justify-between rounded-md px-4 py-2 text-white">
                     <span className="text-xs">Chart 5</span>
                   </div>
                 </div>
@@ -671,16 +671,16 @@ export default function ThemePage(): React.ReactElement {
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Interaktiv</h4>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <div className="bg-secondary text-secondary-foreground rounded-md px-3 py-2 text-center">
+                <div className="bg-secondary text-secondary-foreground rounded-md px-4 py-2 text-center">
                   <span className="text-xs">Secondary</span>
                 </div>
-                <div className="bg-accent text-accent-foreground rounded-md px-3 py-2 text-center">
+                <div className="bg-accent text-accent-foreground rounded-md px-4 py-2 text-center">
                   <span className="text-xs">Accent</span>
                 </div>
-                <div className="bg-card text-card-foreground rounded-md border px-3 py-2 text-center">
+                <div className="bg-card text-card-foreground rounded-md border px-4 py-2 text-center">
                   <span className="text-xs">Card</span>
                 </div>
-                <div className="bg-popover text-popover-foreground rounded-md border px-3 py-2 text-center">
+                <div className="bg-popover text-popover-foreground rounded-md border px-4 py-2 text-center">
                   <span className="text-xs">Popover</span>
                 </div>
               </div>

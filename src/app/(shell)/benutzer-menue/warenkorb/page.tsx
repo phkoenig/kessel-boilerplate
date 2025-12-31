@@ -50,7 +50,7 @@ export default function PaymentPage(): React.ReactElement {
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {paymentMethods.map((method, index) => (
               <div
                 key={index}
@@ -115,7 +115,7 @@ export default function PaymentPage(): React.ReactElement {
           <div className="border-border rounded-lg border">
             <div className="divide-border divide-y">
               {invoices.map((invoice, index) => (
-                <div key={index} className="flex items-center justify-between px-4 py-3">
+                <div key={index} className="flex items-center justify-between px-4 py-4">
                   <div className="flex items-center gap-4">
                     <CheckCircle className="text-chart-1 size-4" />
                     <div>

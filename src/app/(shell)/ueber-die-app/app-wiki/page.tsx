@@ -68,7 +68,6 @@ export default function WikiPage(): React.ReactElement {
       <PageHeader
         title="App-Wiki"
         description="Umfassende Dokumentation und Hilfe-Artikel zur Anwendung"
-        className="mb-8"
       />
       <MarkdownViewer content={wikiContent} />
     </PageContent>

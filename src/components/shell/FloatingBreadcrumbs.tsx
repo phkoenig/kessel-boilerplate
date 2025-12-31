@@ -168,7 +168,7 @@ export function FloatingBreadcrumbs({
         // Position: Schwebt oben links
         "absolute top-4 left-4 z-20",
         // Glassmorphism: Semi-transparenter Hintergrund mit Blur, Pillenform
-        "bg-background/80 text-foreground flex h-8 items-center gap-1 rounded-full px-3 backdrop-blur-sm",
+        "bg-background/80 text-foreground flex h-8 items-center gap-1 rounded-full px-4 backdrop-blur-sm",
         className
       )}
     >
