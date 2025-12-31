@@ -27,6 +27,7 @@ import { useShell } from "./shell-context"
 import { useAuth, usePermissions } from "@/components/auth"
 import { navigationConfig, appConfig, type NavItem, type NavSection } from "@/config/navigation"
 import { AIInteractable } from "@/components/ai/AIInteractable"
+import { CollapsibleFooterSection } from "./CollapsibleFooterSection"
 
 /** Typ für die isVisible Funktion */
 type IsVisibleFn = (item: NavItem | NavSection) => boolean
@@ -52,6 +53,14 @@ export function Navbar(): React.ReactElement {
 
   // Sichtbarkeitsprüfung über PermissionsContext (nutzt DB-Berechtigungen)
   const isVisible: IsVisibleFn = (item) => canAccess(item.id, userRole)
+
+  // State für Footer-Sections (exklusiv: nur eine gleichzeitig offen)
+  const [openFooterSection, setOpenFooterSection] = useState<"admin" | "about" | null>(null)
+
+  // Handler für exklusives Öffnen
+  const handleFooterSectionOpen = (section: "admin" | "about") => {
+    setOpenFooterSection((prev) => (prev === section ? null : section))
+  }
 
   // Logout mit hartem Redirect zur Login-Seite
   // Verwendet window.location für vollständigen Page-Reload, um alle Caches zu leeren
@@ -156,7 +165,7 @@ export function Navbar(): React.ReactElement {
           </nav>
         </ScrollArea>
 
-        {/* About & App-Verwaltung (fixiert unten) - immer vollständig sichtbar */}
+        {/* About & App-Verwaltung (fixiert unten) - kollabierbare Footer-Sections */}
         <div className="border-sidebar-border shrink-0 border-t">
           {/* App-Verwaltung Section (nur für Admin) */}
           {navigationConfig
@@ -164,14 +173,20 @@ export function Navbar(): React.ReactElement {
             .map((section) => {
               if (!isVisible(section)) return null
               return (
-                <nav
+                <CollapsibleFooterSection
                   key={section.id}
-                  className={cn(
-                    "flex flex-col gap-1",
-                    navbarCollapsed ? "items-center px-1 py-2" : "p-2"
-                  )}
+                  title={section.title ?? "APP-VERWALTUNG"}
+                  isOpen={openFooterSection === "admin"}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      handleFooterSectionOpen("admin")
+                    } else {
+                      setOpenFooterSection(null)
+                    }
+                  }}
+                  collapsed={navbarCollapsed}
                 >
-                  <NavSectionComponent
+                  <NavSectionItemsOnly
                     section={section}
                     collapsed={navbarCollapsed}
                     pathname={pathname}
@@ -179,7 +194,7 @@ export function Navbar(): React.ReactElement {
                     onLogout={handleLogout}
                     user={user}
                   />
-                </nav>
+                </CollapsibleFooterSection>
               )
             })}
 
@@ -194,14 +209,20 @@ export function Navbar(): React.ReactElement {
             .map((section) => {
               if (!isVisible(section)) return null
               return (
-                <nav
+                <CollapsibleFooterSection
                   key={section.id}
-                  className={cn(
-                    "flex flex-col gap-1",
-                    navbarCollapsed ? "items-center px-1 py-2" : "p-2"
-                  )}
+                  title={section.title ?? "ÜBER DIE APP"}
+                  isOpen={openFooterSection === "about"}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      handleFooterSectionOpen("about")
+                    } else {
+                      setOpenFooterSection(null)
+                    }
+                  }}
+                  collapsed={navbarCollapsed}
                 >
-                  <NavSectionComponent
+                  <NavSectionItemsOnly
                     section={section}
                     collapsed={navbarCollapsed}
                     pathname={pathname}
@@ -209,12 +230,57 @@ export function Navbar(): React.ReactElement {
                     onLogout={handleLogout}
                     user={user}
                   />
-                </nav>
+                </CollapsibleFooterSection>
               )
             })}
         </div>
       </div>
     </TooltipProvider>
+  )
+}
+
+/**
+ * Nav Section Items Only Komponente
+ *
+ * Rendert nur die Menüpunkte einer Section (ohne Section Title).
+ * Wird für Footer-Sections verwendet, da der Title in CollapsibleFooterSection gehandhabt wird.
+ */
+function NavSectionItemsOnly({
+  section,
+  collapsed,
+  pathname,
+  isVisible,
+  onLogout,
+  user,
+}: {
+  section: NavSection
+  collapsed: boolean
+  pathname: string
+  isVisible: IsVisibleFn
+  onLogout: () => Promise<void>
+  user: { name?: string; email?: string } | null
+}): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-1">
+      {/* Menüpunkte (ohne Section Title) */}
+      {section.items.map((item) => {
+        // Item überspringen wenn nicht sichtbar für aktuelle Rolle
+        if (!isVisible(item)) return null
+
+        return (
+          <NavItemComponent
+            key={item.id}
+            item={item}
+            collapsed={collapsed}
+            pathname={pathname}
+            level={0}
+            isVisible={isVisible}
+            onLogout={onLogout}
+            user={user}
+          />
+        )
+      })}
+    </div>
   )
 }
 

@@ -9,6 +9,7 @@ export { AppShell, AppShellWithoutProvider } from "./AppShell"
 
 // Navbar
 export { Navbar } from "./Navbar"
+export { CollapsibleFooterSection } from "./CollapsibleFooterSection"
 
 // Main Area Components (Legacy - für Rückwärtskompatibilität)
 export { MainHeader } from "./MainHeader"
