@@ -13,16 +13,18 @@ config({ path: resolve(process.cwd(), ".env.local") })
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY müssen gesetzt sein")
-}
+// Skip Tests wenn Umgebungsvariablen nicht gesetzt (z.B. in CI ohne Secrets)
+const shouldSkip = !supabaseUrl || !serviceRoleKey || supabaseUrl.includes("placeholder")
 
-const supabase = createClient(supabaseUrl, serviceRoleKey)
+const supabase = shouldSkip ? null : createClient(supabaseUrl!, serviceRoleKey!)
 
-describe("Migration 018: AI Datasources", () => {
+describe.skipIf(shouldSkip)("Migration 018: AI Datasources", () => {
   beforeAll(async () => {
     // Migration sollte bereits ausgeführt sein
     // Falls nicht, würde dieser Test fehlschlagen
+    if (!supabase) {
+      throw new Error("Supabase Client nicht initialisiert")
+    }
   })
 
   describe("Tabellen-Erstellung", () => {

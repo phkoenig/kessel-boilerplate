@@ -1,5 +1,6 @@
 /**
  * Tests für AIInteractable Komponente
+ * @vitest-environment jsdom
  */
 
 import { describe, it, expect } from "vitest"

@@ -18,6 +18,7 @@ export const vitestConfig = defineConfig({
     // Globale Test-Umgebung
     // Für React-Komponenten-Tests: "jsdom", für andere: "node"
     environment: "node",
+    // Per-Test Environment-Override möglich via /// @vitest-environment jsdom
 
     // Glob-Patterns für Testdateien
     include: [

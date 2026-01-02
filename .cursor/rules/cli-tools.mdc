@@ -1,0 +1,82 @@
+---
+description: CLI-Tools für Deployment, CI/CD und Monitoring.
+globs: [".github/workflows/**", "vercel.json"]
+alwaysApply: false
+---
+
+# CLI-Tools
+
+Dieses Projekt nutzt verschiedene CLI-Tools für Deployment, CI/CD und Monitoring. Der AI-Assistant sollte diese Tools bevorzugt nutzen, wenn verfügbar.
+
+## Verfügbare CLI-Tools
+
+### Vercel CLI (`vercel`, `npx vercel`)
+
+**Verwendung:**
+- Deployment-Status prüfen: `npx vercel ls`
+- Deployment-Logs anzeigen: `npx vercel logs <deployment-url>`
+- Umgebungsvariablen verwalten: `npx vercel env ls`
+- Projekt-Info: `npx vercel inspect`
+
+**Beispiele:**
+```bash
+# Liste aller Deployments
+npx vercel ls
+
+# Prüfe Deployment-Status
+npx vercel ls --limit 5
+
+# Zeige Logs
+npx vercel logs https://kessel-boilerplate-xxx.vercel.app
+```
+
+**Wann nutzen:**
+- Deployment-Status prüfen nach Push
+- Fehler-Debugging in Production
+- Umgebungsvariablen-Verwaltung
+
+### GitHub CLI (`gh`)
+
+**Verwendung:**
+- Workflow-Runs anzeigen: `gh run list`
+- Run-Details: `gh run view <run-id>`
+- Fehler-Logs: `gh run view <run-id> --log-failed`
+- Workflow-Status: `gh workflow view <workflow-name>`
+
+**Beispiele:**
+```bash
+# Liste aller Runs
+gh run list --limit 10
+
+# Zeige Details eines Runs
+gh run view 123456789
+
+# Zeige nur fehlgeschlagene Logs
+gh run view 123456789 --log-failed
+
+# Prüfe Workflow-Status
+gh workflow view "Theme Validation"
+```
+
+**Wann nutzen:**
+- CI/CD-Status prüfen
+- Fehler-Debugging in GitHub Actions
+- Workflow-Logs analysieren
+- Deployment-Status nach Push verifizieren
+
+## Best Practices
+
+1. **CLI-Tools bevorzugen** - Nutze `vercel` und `gh` statt Web-UI wenn möglich
+2. **Nach Push prüfen** - Nach jedem Push Deployment-Status und CI-Status prüfen
+3. **Logs bei Fehlern** - Bei Fehlern immer `--log-failed` nutzen für fokussierte Ausgabe
+4. **Limit setzen** - Bei Listen immer `--limit` nutzen für Performance
+
+## Integration in Workflows
+
+```bash
+# Nach Push: Prüfe Deployment und CI
+git push && \
+  sleep 10 && \
+  npx vercel ls --limit 3 && \
+  gh run list --limit 3
+```

@@ -22,7 +22,10 @@ import { generateText } from "ai"
 // .env.local laden für Tests
 config({ path: resolve(process.cwd(), ".env.local") })
 
-describe("OpenRouter Provider", () => {
+// Skip Tests wenn API Key nicht gesetzt (z.B. in CI ohne Secrets)
+const shouldSkip = !process.env.OPENROUTER_API_KEY
+
+describe.skipIf(shouldSkip)("OpenRouter Provider", () => {
   beforeAll(() => {
     // Prüfe ob API Key vorhanden ist
     if (!process.env.OPENROUTER_API_KEY) {

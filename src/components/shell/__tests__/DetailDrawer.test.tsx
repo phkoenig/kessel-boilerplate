@@ -1,5 +1,6 @@
 /**
  * Unit Tests für DetailDrawer Komponente
+ * @vitest-environment jsdom
  */
 
 import React from "react"
@@ -8,7 +9,7 @@ import { render, screen } from "@testing-library/react"
 import { DetailDrawer } from "../DetailDrawer"
 import { ShellProvider, useDetailDrawer } from "../shell-context"
 
-// Mock localStorage
+// Mock localStorage (nur wenn window verfügbar)
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
@@ -16,9 +17,13 @@ const localStorageMock = {
   clear: vi.fn(),
 }
 
-Object.defineProperty(window, "localStorage", {
-  value: localStorageMock,
-})
+// Nur in Browser-Umgebung (jsdom)
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "localStorage", {
+    value: localStorageMock,
+    writable: true,
+  })
+}
 
 // Test-Wrapper mit ShellProvider
 function TestWrapper({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,6 @@
 /**
  * Tests für AI Registry Context
+ * @vitest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach } from "vitest"

@@ -1,12 +1,13 @@
 /**
  * Unit Tests für useDetailDrawer Hook
+ * @vitest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { ShellProvider, useDetailDrawer } from "../shell-context"
 
-// Mock localStorage
+// Mock localStorage (nur wenn window verfügbar)
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
@@ -14,9 +15,13 @@ const localStorageMock = {
   clear: vi.fn(),
 }
 
-Object.defineProperty(window, "localStorage", {
-  value: localStorageMock,
-})
+// Nur in Browser-Umgebung (jsdom)
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "localStorage", {
+    value: localStorageMock,
+    writable: true,
+  })
+}
 
 describe("useDetailDrawer Hook", () => {
   beforeEach(() => {

@@ -82,6 +82,12 @@ jobs:
 
       - name: Run Vitest
         run: pnpm test:run
+        env:
+          # Umgebungsvariablen für Tests (Placeholder falls Secrets nicht gesetzt)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SERVICE_ROLE_KEY || 'placeholder-service-role-key' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || 'placeholder-openrouter-key' }}
 
   validate-themes:
     name: 🎨 Theme Validation
