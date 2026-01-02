@@ -12,6 +12,7 @@ import {
 } from "@/components/shell"
 import { ThemeEditorProvider } from "@/hooks/use-theme-editor"
 import { DatasourceFilterProvider } from "@/hooks/use-datasource-filter"
+import { ComponentExplorer } from "@/components/admin/component-explorer"
 import { DatasourceExplorerWrapper } from "@/components/admin/datasource-explorer-wrapper"
 
 // Navbar als Client-Only laden (Radix UI Collapsibles haben dynamische IDs)
@@ -40,9 +41,14 @@ function ExplorerAutoOpen({ shouldBeOpen }: { shouldBeOpen: boolean }): null {
       if (savedState === null) {
         sessionStorage.setItem(EXPLORER_PRE_ROUTE_KEY, String(isOpen))
       }
-      // Explorer öffnen
-      setOpen(true)
+
+      // Explorer öffnen - verzögert, damit LocalStorage-Sync (Effect) nicht überschreibt
+      const timer = setTimeout(() => {
+        setOpen(true)
+      }, 50)
+
       hasInitialized.current = true
+      return () => clearTimeout(timer)
     } else if (hasInitialized.current || sessionStorage.getItem(EXPLORER_PRE_ROUTE_KEY) !== null) {
       // Beim Verlassen: auf gespeicherten Zustand zurücksetzen
       const savedState = sessionStorage.getItem(EXPLORER_PRE_ROUTE_KEY)
@@ -101,11 +107,12 @@ export default function ShellLayout({
   const pathname = usePathname()
   const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
   const isDatasourcesPage = pathname === "/app-verwaltung/datenquellen"
+  const isComponentsPage = pathname === "/app-verwaltung/ui-komponenten"
 
   // Gemeinsamer Shell-Inhalt mit einheitlicher ExplorerAutoOpen-Instanz
   const shellContent = (
     <>
-      <ExplorerAutoOpen shouldBeOpen={isDatasourcesPage} />
+      <ExplorerAutoOpen shouldBeOpen={isDatasourcesPage || isComponentsPage} />
       <KeyboardShortcuts />
       {children}
     </>
@@ -115,10 +122,27 @@ export default function ShellLayout({
   if (isDatasourcesPage) {
     return (
       <DatasourceFilterProvider>
-        <AppShell navbar={<Navbar />} explorer={<RouteExplorer pathname={pathname} />}>
+        <AppShell
+          navbar={<Navbar />}
+          explorer={<RouteExplorer pathname={pathname} />}
+          initialState={{ explorerOpen: true }}
+        >
           {shellContent}
         </AppShell>
       </DatasourceFilterProvider>
+    )
+  }
+
+  // UI-Komponenten Seite: Spezieller Explorer
+  if (isComponentsPage) {
+    return (
+      <AppShell
+        navbar={<Navbar />}
+        explorer={<ComponentExplorer />}
+        initialState={{ explorerOpen: true }}
+      >
+        {shellContent}
+      </AppShell>
     )
   }
 

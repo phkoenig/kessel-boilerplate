@@ -11,6 +11,7 @@ import {
   PANEL_CONSTRAINTS,
   NAVBAR_COLLAPSED_PX,
   NAVBAR_MIN_PX,
+  type ShellState,
 } from "./shell-context"
 import { DetailDrawer } from "./DetailDrawer"
 import { ChatOverlay } from "./ChatOverlay"
@@ -36,6 +37,8 @@ interface AppShellProps {
   explorer?: ReactNode
   /** CSS Klassen für das Root-Element */
   className?: string
+  /** Initialer Shell State (überschreibt Defaults) */
+  initialState?: Partial<ShellState>
 }
 
 /**
@@ -45,7 +48,12 @@ interface AppShellProps {
  * AUSNAHME: Navbar collapsed/minSize werden aus festen Pixel-Werten berechnet,
  * um sicherzustellen dass Icons bei schmalen Fenstern nie abgeschnitten werden.
  */
-function ShellInner({ children, navbar, explorer, className }: AppShellProps): React.ReactElement {
+function ShellInner({
+  children,
+  navbar,
+  explorer,
+  className,
+}: Omit<AppShellProps, "initialState">): React.ReactElement {
   const {
     navbarCollapsed,
     setNavbarCollapsed,
@@ -345,9 +353,10 @@ function ShellInner({ children, navbar, explorer, className }: AppShellProps): R
  * ```
  */
 export function AppShell(props: AppShellProps): React.ReactElement {
+  const { initialState, ...innerProps } = props
   return (
-    <ShellProvider>
-      <ShellInner {...props} />
+    <ShellProvider initialState={initialState}>
+      <ShellInner {...innerProps} />
     </ShellProvider>
   )
 }

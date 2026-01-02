@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Database, Search, ChevronRight, ChevronDown, Check } from "lucide-react"
+import { useMemo } from "react"
+import { Database, Search, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ export interface DatabaseNode {
  */
 export interface DatasourceFilter {
   selectedDatabases: string[]
-  selectedTables: string[]
+  selectedTables: string[] // Bleibt für Kompatibilität, wird aber vom Explorer nicht mehr gesetzt
   searchQuery: string
 }
 
@@ -38,14 +38,9 @@ interface DatasourceExplorerProps {
 /**
  * DatasourceExplorer
  *
- * Filter-Tree für die Datenquellen-Seite.
- * Zeigt alle verfügbaren Datenbanken als Baum mit Checkboxen zum Filtern.
- *
- * Features:
- * - Suche über alle DBs und Tabellen
- * - Expand/Collapse für DB-Gruppen
- * - Multi-Select für Filterung
- * - Badge mit Anzahl ausgewählter Items
+ * Vereinfachter Filter-Tree für die Datenquellen-Seite.
+ * Zeigt nur die Datenbanken (Schemas) als flache Liste an.
+ * Tabellen werden nicht mehr hier angezeigt, sondern im Hauptbereich.
  */
 export function DatasourceExplorer({
   databases,
@@ -53,21 +48,12 @@ export function DatasourceExplorer({
   onFilterChange,
   className,
 }: DatasourceExplorerProps): React.ReactElement {
-  const [expandedDbs, setExpandedDbs] = useState<Set<string>>(new Set(databases.map((db) => db.id)))
-
   // Gefilterte DBs basierend auf Suche
   const filteredDatabases = useMemo(() => {
     if (!filter.searchQuery) return databases
 
     const query = filter.searchQuery.toLowerCase()
-    return databases
-      .map((db) => ({
-        ...db,
-        tables: db.tables.filter(
-          (table) => table.toLowerCase().includes(query) || db.name.toLowerCase().includes(query)
-        ),
-      }))
-      .filter((db) => db.tables.length > 0 || db.name.toLowerCase().includes(query))
+    return databases.filter((db) => db.name.toLowerCase().includes(query))
   }, [databases, filter.searchQuery])
 
   const toggleDatabase = (dbId: string) => {
@@ -77,28 +63,8 @@ export function DatasourceExplorer({
     } else {
       newSelected.add(dbId)
     }
+    // WICHTIG: Wenn Datenbank-Filter geändert wird, setzen wir keine Tabellen-Filter mehr
     onFilterChange({ ...filter, selectedDatabases: Array.from(newSelected) })
-  }
-
-  const toggleTable = (dbId: string, tableName: string) => {
-    const tableKey = `${dbId}:${tableName}`
-    const newSelected = new Set(filter.selectedTables)
-    if (newSelected.has(tableKey)) {
-      newSelected.delete(tableKey)
-    } else {
-      newSelected.add(tableKey)
-    }
-    onFilterChange({ ...filter, selectedTables: Array.from(newSelected) })
-  }
-
-  const toggleExpanded = (dbId: string) => {
-    const newExpanded = new Set(expandedDbs)
-    if (newExpanded.has(dbId)) {
-      newExpanded.delete(dbId)
-    } else {
-      newExpanded.add(dbId)
-    }
-    setExpandedDbs(newExpanded)
   }
 
   const clearFilters = () => {
@@ -109,7 +75,7 @@ export function DatasourceExplorer({
     })
   }
 
-  const activeFilterCount = filter.selectedDatabases.length + filter.selectedTables.length
+  const activeFilterCount = filter.selectedDatabases.length
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
@@ -118,7 +84,7 @@ export function DatasourceExplorer({
         <div className="relative">
           <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
           <Input
-            placeholder="Suchen..."
+            placeholder="Datenbank suchen..."
             value={filter.searchQuery}
             onChange={(e) => onFilterChange({ ...filter, searchQuery: e.target.value })}
             className="pl-8"
@@ -127,7 +93,7 @@ export function DatasourceExplorer({
         {activeFilterCount > 0 && (
           <div className="mt-2 flex items-center justify-between">
             <Badge variant="secondary" className="text-xs">
-              {activeFilterCount} Filter aktiv
+              {activeFilterCount} ausgewählt
             </Badge>
             <Button
               variant="ghost"
@@ -142,87 +108,39 @@ export function DatasourceExplorer({
         )}
       </div>
 
-      {/* Tree */}
+      {/* Tree (Flat List) */}
       <ScrollArea className="flex-1">
-        <div className="p-2">
+        <div className="space-y-1 p-2">
           {filteredDatabases.map((db) => {
-            const isExpanded = expandedDbs.has(db.id)
             const isDbSelected = filter.selectedDatabases.includes(db.id)
 
             return (
-              <div key={db.id} className="mb-1">
-                {/* Database Node */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => toggleExpanded(db.id)}
-                    data-ai-exempt="true"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="size-4" />
-                    ) : (
-                      <ChevronRight className="size-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 flex-1 justify-start gap-2 px-2",
-                      isDbSelected && "bg-accent"
-                    )}
-                    onClick={() => toggleDatabase(db.id)}
-                    data-ai-exempt="true"
-                  >
-                    <Database
-                      className={cn(
-                        "size-4",
-                        db.type === "infra" ? "text-primary" : "text-muted-foreground"
-                      )}
-                    />
-                    <span className="flex-1 truncate text-left text-sm">{db.name}</span>
-                    <Badge variant="outline" className="ml-auto text-xs">
-                      {db.tables.length}
-                    </Badge>
-                    {isDbSelected && <Check className="text-primary size-3" />}
-                  </Button>
-                </div>
-
-                {/* Tables */}
-                {isExpanded && (
-                  <div className="mt-0.5 ml-6 space-y-0.5">
-                    {db.tables.map((table) => {
-                      const tableKey = `${db.id}:${table}`
-                      const isTableSelected = filter.selectedTables.includes(tableKey)
-
-                      return (
-                        <Button
-                          key={table}
-                          variant="ghost"
-                          size="sm"
-                          className={cn(
-                            "h-6 w-full justify-start gap-2 pl-4 text-xs",
-                            isTableSelected && "bg-accent"
-                          )}
-                          onClick={() => toggleTable(db.id, table)}
-                          data-ai-exempt="true"
-                        >
-                          <span className="text-muted-foreground font-mono">{table}</span>
-                          {isTableSelected && <Check className="text-primary ml-auto size-3" />}
-                        </Button>
-                      )
-                    })}
-                  </div>
+              <Button
+                key={db.id}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "flex h-9 w-full items-center justify-start gap-2 px-2",
+                  isDbSelected && "bg-accent"
                 )}
-              </div>
+                onClick={() => toggleDatabase(db.id)}
+                data-ai-exempt="true"
+              >
+                <Database
+                  className={cn(
+                    "size-4 shrink-0",
+                    db.type === "infra" ? "text-primary" : "text-muted-foreground"
+                  )}
+                />
+                <span className="flex-1 truncate text-left text-sm">{db.name}</span>
+                {isDbSelected && <Check className="text-primary size-4 shrink-0" />}
+              </Button>
             )
           })}
 
           {filteredDatabases.length === 0 && (
             <div className="text-muted-foreground py-8 text-center text-sm">
-              Keine Ergebnisse für &quot;{filter.searchQuery}&quot;
+              Keine Datenbanken gefunden
             </div>
           )}
         </div>

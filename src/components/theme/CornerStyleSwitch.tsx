@@ -1,6 +1,7 @@
 "use client"
 
 import { useTheme, type CornerStyle } from "@/lib/themes/theme-provider"
+import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
@@ -14,9 +15,22 @@ import { cn } from "@/lib/utils"
  *
  * Squircle wird nur angewendet, wenn der Browser CSS corner-shape unterstützt.
  * Fallback ist immer rounded.
+ *
+ * Speichert sowohl in localStorage (für sofortige Anwendung) als auch
+ * in pendingChanges (für Theme-Speicherung).
  */
 export function CornerStyleSwitch(): React.ReactElement {
   const { cornerStyle, setCornerStyle, supportsSquircle } = useTheme()
+  const { previewToken } = useThemeEditor()
+
+  const handleCornerStyleChange = (value: string | undefined) => {
+    if (!value) return
+    const style = value as CornerStyle
+    // 1. Sofort anwenden (localStorage + data-corner-style Attribut)
+    setCornerStyle(style)
+    // 2. In pendingChanges speichern für Theme-Export
+    previewToken("--corner-style", style)
+  }
 
   return (
     <div className="w-64 space-y-2">
@@ -24,9 +38,7 @@ export function CornerStyleSwitch(): React.ReactElement {
       <ToggleGroup
         type="single"
         value={cornerStyle}
-        onValueChange={(value) => {
-          if (value) setCornerStyle(value as CornerStyle)
-        }}
+        onValueChange={handleCornerStyleChange}
         variant="outline"
         spacing={0}
         className="w-full"

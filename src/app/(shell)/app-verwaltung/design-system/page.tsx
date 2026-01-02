@@ -129,7 +129,19 @@ function SingleColorSwatch({
         }
       case "gradient":
         return {
-          background: `linear-gradient(135deg, var(${tokenName}) 0%, var(${tokenName}) 60%, transparent 60%)`,
+          // Halbe Breite volle Deckkraft, danach gestufte Opazitäten (Transparent statt Weiß)
+          // Nutzt color-mix mit transparent, damit der Hintergrund durchscheint
+          background: `linear-gradient(90deg,
+            var(${tokenName}) 0%,
+            var(${tokenName}) 50%,
+            color-mix(in oklch, var(${tokenName}) 80%, transparent) 50%,
+            color-mix(in oklch, var(${tokenName}) 80%, transparent) 62.5%,
+            color-mix(in oklch, var(${tokenName}) 60%, transparent) 62.5%,
+            color-mix(in oklch, var(${tokenName}) 60%, transparent) 75%,
+            color-mix(in oklch, var(${tokenName}) 40%, transparent) 75%,
+            color-mix(in oklch, var(${tokenName}) 40%, transparent) 87.5%,
+            color-mix(in oklch, var(${tokenName}) 20%, transparent) 87.5%,
+            color-mix(in oklch, var(${tokenName}) 20%, transparent) 100%)`,
           backgroundColor: `var(${tokenName})`,
           borderRadius: "var(--radius)",
         }
@@ -291,6 +303,7 @@ export default function DesignSystemPage(): React.ReactElement {
   const [radiusValue, setRadiusValue] = useState(0.5)
   const [spacingValue, setSpacingValue] = useState(0.25)
   const [letterSpacing, setLetterSpacing] = useState(0)
+  const [chartHueSpacing, setChartHueSpacing] = useState(72)
 
   // Shadow sliders
   const [shadowColor, setShadowColor] = useState("#000000")
@@ -307,6 +320,10 @@ export default function DesignSystemPage(): React.ReactElement {
 
   // WICHTIG: Original-Werte speichern für reproduzierbare globale Anpassungen
   const originalColorsRef = useRef<Record<string, { light: string; dark: string }>>({})
+
+  // Ref für Spacing-Slider um Scroll-Position zu stabilisieren
+  const spacingSliderRef = useRef<HTMLDivElement>(null)
+  const chartHueTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasLoadedOriginals = useRef(false)
 
   useEffect(() => {
@@ -401,39 +418,230 @@ export default function DesignSystemPage(): React.ReactElement {
   const handleSpacingChange = useCallback(
     (value: number[]) => {
       const rem = value[0]
+
+      // Speichere die Position des Sliders relativ zum Viewport VOR der Änderung
+      const sliderElement = spacingSliderRef.current
+      const scrollContainer = sliderElement?.closest(
+        "[data-radix-scroll-area-viewport]"
+      ) as HTMLElement | null
+      let offsetBefore = 0
+
+      if (sliderElement && scrollContainer) {
+        const sliderRect = sliderElement.getBoundingClientRect()
+        offsetBefore = sliderRect.top
+      }
+
       setSpacingValue(rem)
       previewToken("--spacing", `${rem}rem`)
+
+      // Nach dem Re-Render: Kompensiere die Scroll-Position
+      if (sliderElement && scrollContainer) {
+        requestAnimationFrame(() => {
+          const sliderRect = sliderElement.getBoundingClientRect()
+          const offsetAfter = sliderRect.top
+          const scrollDiff = offsetAfter - offsetBefore
+
+          if (Math.abs(scrollDiff) > 1) {
+            scrollContainer.scrollTop += scrollDiff
+          }
+        })
+      }
     },
     [previewToken]
   )
 
-  // Harmonize Chart Colors
+  const handleLetterSpacingChange = useCallback(
+    (value: number[]) => {
+      const em = value[0]
+      setLetterSpacing(em)
+      previewToken("--letter-spacing", `${em}em`)
+    },
+    [previewToken]
+  )
+
+  // Shadow-Variablen und ihre Base-Werte
+  const SHADOW_TOKENS = [
+    { token: "--shadow-2xs", baseBlur: 1, baseOffsetY: 1 },
+    { token: "--shadow-xs", baseBlur: 2, baseOffsetY: 1 },
+    { token: "--shadow-sm", baseBlur: 3, baseOffsetY: 1 },
+    { token: "--shadow", baseBlur: 3, baseOffsetY: 1 },
+    { token: "--shadow-md", baseBlur: 6, baseOffsetY: 4 },
+    { token: "--shadow-lg", baseBlur: 10, baseOffsetY: 8 },
+    { token: "--shadow-xl", baseBlur: 15, baseOffsetY: 12 },
+    { token: "--shadow-2xl", baseBlur: 25, baseOffsetY: 25 },
+  ]
+
+  /**
+   * Berechnet alle Shadow-CSS-Variablen basierend auf den aktuellen Slider-Werten
+   * und setzt sie via previewToken für die Persistierung.
+   */
+  const updateShadowTokens = useCallback(
+    (
+      color: string,
+      opacity: number,
+      blur: number,
+      spread: number,
+      offsetX: number,
+      offsetY: number
+    ) => {
+      // Konvertiere Hex zu RGB für rgba()
+      const rgbMatch = color.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
+      const r = rgbMatch ? parseInt(rgbMatch[1], 16) : 0
+      const g = rgbMatch ? parseInt(rgbMatch[2], 16) : 0
+      const b = rgbMatch ? parseInt(rgbMatch[3], 16) : 0
+
+      SHADOW_TOKENS.forEach(({ token, baseBlur, baseOffsetY }) => {
+        const dynamicShadow = `${Math.round(offsetX)}px ${Math.round(baseOffsetY * offsetY)}px ${Math.round(baseBlur * blur)}px ${spread}px rgba(${r},${g},${b},${opacity})`
+        // Shadows sind für Light und Dark Mode identisch (gleicher Wert)
+        previewToken(token, dynamicShadow, dynamicShadow)
+      })
+    },
+    [previewToken]
+  )
+
+  // Shadow-Slider Handler - aktualisiert State UND CSS-Variablen
+  const handleShadowColorChange = useCallback(
+    (color: string) => {
+      setShadowColor(color)
+      updateShadowTokens(
+        color,
+        shadowOpacity,
+        shadowBlur,
+        shadowSpread,
+        shadowOffsetX,
+        shadowOffsetY
+      )
+    },
+    [shadowOpacity, shadowBlur, shadowSpread, shadowOffsetX, shadowOffsetY, updateShadowTokens]
+  )
+
+  const handleShadowOpacityChange = useCallback(
+    (value: number[]) => {
+      const opacity = value[0]
+      setShadowOpacity(opacity)
+      updateShadowTokens(
+        shadowColor,
+        opacity,
+        shadowBlur,
+        shadowSpread,
+        shadowOffsetX,
+        shadowOffsetY
+      )
+    },
+    [shadowColor, shadowBlur, shadowSpread, shadowOffsetX, shadowOffsetY, updateShadowTokens]
+  )
+
+  const handleShadowBlurChange = useCallback(
+    (value: number[]) => {
+      const blur = value[0]
+      setShadowBlur(blur)
+      updateShadowTokens(
+        shadowColor,
+        shadowOpacity,
+        blur,
+        shadowSpread,
+        shadowOffsetX,
+        shadowOffsetY
+      )
+    },
+    [shadowColor, shadowOpacity, shadowSpread, shadowOffsetX, shadowOffsetY, updateShadowTokens]
+  )
+
+  const handleShadowSpreadChange = useCallback(
+    (value: number[]) => {
+      const spread = value[0]
+      setShadowSpread(spread)
+      updateShadowTokens(
+        shadowColor,
+        shadowOpacity,
+        shadowBlur,
+        spread,
+        shadowOffsetX,
+        shadowOffsetY
+      )
+    },
+    [shadowColor, shadowOpacity, shadowBlur, shadowOffsetX, shadowOffsetY, updateShadowTokens]
+  )
+
+  const handleShadowOffsetXChange = useCallback(
+    (value: number[]) => {
+      const offsetX = value[0]
+      setShadowOffsetX(offsetX)
+      updateShadowTokens(
+        shadowColor,
+        shadowOpacity,
+        shadowBlur,
+        shadowSpread,
+        offsetX,
+        shadowOffsetY
+      )
+    },
+    [shadowColor, shadowOpacity, shadowBlur, shadowSpread, shadowOffsetY, updateShadowTokens]
+  )
+
+  const handleShadowOffsetYChange = useCallback(
+    (value: number[]) => {
+      const offsetY = value[0]
+      setShadowOffsetY(offsetY)
+      updateShadowTokens(
+        shadowColor,
+        shadowOpacity,
+        shadowBlur,
+        shadowSpread,
+        shadowOffsetX,
+        offsetY
+      )
+    },
+    [shadowColor, shadowOpacity, shadowBlur, shadowSpread, shadowOffsetX, updateShadowTokens]
+  )
+
+  // Harmonize Chart Colors (mit anpassbarem Hue-Spacing)
+  const applyChartHarmonize = useCallback(
+    (hueSpacing: number) => {
+      if (typeof window === "undefined") return
+      const tokens = getCurrentTokens()
+      const chart1Value = isDarkMode ? tokens["--chart-1"]?.dark : tokens["--chart-1"]?.light
+      if (!chart1Value) return
+
+      const match = chart1Value.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
+      if (!match) return
+
+      const l = parseFloat(match[1])
+      const c = parseFloat(match[2])
+      const h = parseFloat(match[3])
+
+      const chartTokens = ["--chart-2", "--chart-3", "--chart-4", "--chart-5"]
+
+      chartTokens.forEach((token, index) => {
+        const newHue = (h + (index + 1) * hueSpacing) % 360
+        const newValue = `oklch(${l.toFixed(2)} ${c} ${newHue})`
+        if (isDarkMode) {
+          previewToken(token, undefined, newValue)
+        } else {
+          previewToken(token, newValue)
+        }
+      })
+    },
+    [getCurrentTokens, previewToken, isDarkMode]
+  )
+
   const handleHarmonize = useCallback(() => {
-    if (typeof window === "undefined") return
-    const tokens = getCurrentTokens()
-    const chart1Value = isDarkMode ? tokens["--chart-1"]?.dark : tokens["--chart-1"]?.light
-    if (!chart1Value) return
+    applyChartHarmonize(chartHueSpacing)
+  }, [applyChartHarmonize, chartHueSpacing])
 
-    const match = chart1Value.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
-    if (!match) return
+  // Chart Hue Spacing Slider (debounced)
+  const handleChartHueSliderChange = useCallback(
+    (value: number[]) => {
+      const spacing = value[0]
+      setChartHueSpacing(spacing)
 
-    const l = parseFloat(match[1])
-    const c = parseFloat(match[2])
-    const h = parseFloat(match[3])
-
-    const hueSpacing = 72
-    const chartTokens = ["--chart-2", "--chart-3", "--chart-4", "--chart-5"]
-
-    chartTokens.forEach((token, index) => {
-      const newHue = (h + (index + 1) * hueSpacing) % 360
-      const newValue = `oklch(${l.toFixed(2)} ${c} ${newHue})`
-      if (isDarkMode) {
-        previewToken(token, undefined, newValue)
-      } else {
-        previewToken(token, newValue)
-      }
-    })
-  }, [getCurrentTokens, previewToken, isDarkMode])
+      if (chartHueTimeoutRef.current) clearTimeout(chartHueTimeoutRef.current)
+      chartHueTimeoutRef.current = setTimeout(() => {
+        applyChartHarmonize(spacing)
+      }, 80)
+    },
+    [applyChartHarmonize]
+  )
 
   // Global Adjustments - WICHTIG: Immer von ORIGINAL-Werten ausgehen!
   const applyGlobalAdjustments = useCallback(
@@ -697,11 +905,33 @@ export default function DesignSystemPage(): React.ReactElement {
         {/* Chart Colors */}
         <section>
           <h2 className="text-foreground mb-4 text-xl font-semibold">Chart Colors</h2>
-          {/* Slider/Button OBEN */}
-          <div className="mb-6">
-            <Button variant="outline" size="sm" onClick={handleHarmonize}>
+          {/* Hue-Spacing Slider + Button */}
+          <div
+            style={{ marginBottom: "16px", display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            <div style={{ width: "256px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Hue Spacing</Label>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {chartHueSpacing.toFixed(0)}°
+                </span>
+              </div>
+              <Slider
+                value={[chartHueSpacing]}
+                onValueChange={handleChartHueSliderChange}
+                min={5}
+                max={72}
+                step={1}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleHarmonize}
+              style={{ width: "256px" }}
+            >
               <Palette className="mr-2 size-4" />
-              Harmonize (72° Spacing)
+              Harmonize (aktuelles Spacing)
             </Button>
           </div>
           <div className="space-y-4">
@@ -746,16 +976,20 @@ export default function DesignSystemPage(): React.ReactElement {
 
         {/* Radius & Spacing */}
         <section>
-          <h2 className="text-foreground mb-4 text-xl font-semibold">Radius & Spacing</h2>
+          <h2 className="text-foreground text-xl font-semibold" style={{ marginBottom: "16px" }}>
+            Radius & Spacing
+          </h2>
 
-          {/* Corner Style Switch */}
-          <div className="mb-6">
+          {/* Corner Style Switch - feste Abstände um Spacing-Einfluss zu vermeiden */}
+          <div style={{ marginBottom: "24px" }}>
             <CornerStyleSwitch />
           </div>
 
-          {/* Slider OBEN */}
-          <div className="mb-6 space-y-4">
-            <div className="w-64 space-y-2">
+          {/* Slider OBEN - feste Pixel-Abstände, damit die Slider-Position stabil bleibt */}
+          <div
+            style={{ marginBottom: "24px", display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            <div className="w-64" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">--radius</Label>
                 <span className="text-muted-foreground font-mono text-xs">
@@ -770,19 +1004,23 @@ export default function DesignSystemPage(): React.ReactElement {
                 step={0.125}
               />
             </div>
-            <div className="w-64 space-y-2">
+            <div
+              ref={spacingSliderRef}
+              className="w-64"
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">--spacing</Label>
                 <span className="text-muted-foreground font-mono text-xs">
-                  {spacingValue.toFixed(2)}rem
+                  {spacingValue.toFixed(3)}rem ({(spacingValue * 16).toFixed(1)}px)
                 </span>
               </div>
               <Slider
                 value={[spacingValue]}
                 onValueChange={handleSpacingChange}
-                min={0}
-                max={1}
-                step={0.01}
+                min={0.1}
+                max={0.4}
+                step={0.005}
               />
             </div>
           </div>
@@ -814,7 +1052,7 @@ export default function DesignSystemPage(): React.ReactElement {
             </div>
             <Slider
               value={[letterSpacing]}
-              onValueChange={(v) => setLetterSpacing(v[0])}
+              onValueChange={handleLetterSpacingChange}
               min={-0.1}
               max={0.2}
               step={0.01}
@@ -886,7 +1124,7 @@ export default function DesignSystemPage(): React.ReactElement {
               </div>
               <Slider
                 value={[shadowOpacity]}
-                onValueChange={(v) => setShadowOpacity(v[0])}
+                onValueChange={handleShadowOpacityChange}
                 min={0}
                 max={0.5}
                 step={0.01}
@@ -901,7 +1139,7 @@ export default function DesignSystemPage(): React.ReactElement {
               </div>
               <Slider
                 value={[shadowBlur]}
-                onValueChange={(v) => setShadowBlur(v[0])}
+                onValueChange={handleShadowBlurChange}
                 min={0}
                 max={3}
                 step={0.1}
@@ -916,7 +1154,7 @@ export default function DesignSystemPage(): React.ReactElement {
               </div>
               <Slider
                 value={[shadowSpread]}
-                onValueChange={(v) => setShadowSpread(v[0])}
+                onValueChange={handleShadowSpreadChange}
                 min={-10}
                 max={10}
                 step={1}
@@ -932,7 +1170,7 @@ export default function DesignSystemPage(): React.ReactElement {
               </div>
               <Slider
                 value={[shadowOffsetX]}
-                onValueChange={(v) => setShadowOffsetX(v[0])}
+                onValueChange={handleShadowOffsetXChange}
                 min={-10}
                 max={10}
                 step={0.5}
@@ -947,7 +1185,7 @@ export default function DesignSystemPage(): React.ReactElement {
               </div>
               <Slider
                 value={[shadowOffsetY]}
-                onValueChange={(v) => setShadowOffsetY(v[0])}
+                onValueChange={handleShadowOffsetYChange}
                 min={0}
                 max={3}
                 step={0.1}
@@ -958,7 +1196,7 @@ export default function DesignSystemPage(): React.ReactElement {
           <div className="mb-6 flex items-start gap-6">
             <div className="group relative h-16 w-64 shrink-0">
               {isMounted ? (
-                <ColorPicker value={shadowColor} onChange={setShadowColor}>
+                <ColorPicker value={shadowColor} onChange={handleShadowColorChange}>
                   <div
                     className="hover:ring-ring absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2"
                     style={{

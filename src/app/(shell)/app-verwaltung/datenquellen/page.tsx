@@ -23,10 +23,17 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/utils/supabase/client"
-import { RefreshCw, Database as DatabaseIcon } from "lucide-react"
+import {
+  RefreshCw,
+  Database as DatabaseIcon,
+  ChevronRight,
+  ChevronDown,
+  CornerDownRight,
+} from "lucide-react"
 import { toast } from "sonner"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 import { useDatasourceFilter, DUMMY_DATABASES } from "@/hooks/use-datasource-filter"
+import { cn } from "@/lib/utils"
 
 type AccessLevel = "none" | "read" | "read_write" | "full"
 
@@ -56,30 +63,139 @@ type UnifiedDataSource = DataSource & {
   database_type: "infra" | "dev"
 }
 
+// Typ für Tree-View (UnifiedDataSource + Tree-Props)
+type DataSourceNode = UnifiedDataSource & {
+  children: DataSourceNode[]
+  level: number
+  hasChildren: boolean
+}
+
+type SchemaRelationship = {
+  parent_table: string
+  child_table: string
+  constraint_name: string
+}
+
+// --- TREE LOGIK ---
+
 /**
- * Datenquellen-Seite
- *
- * Zeigt alle Datenquellen aus allen verbundenen Datenbanken in einer vereinigten Tabelle.
- * Der Explorer (Spalte 2) dient als Filter-Tree zum Eingrenzen der Ansicht.
- *
- * Architektur:
- * - Infra-DB (KESSEL): Echte Daten aus ai_datasources Tabelle
- * - Dev-DBs: Dummy-Daten für Entwicklung (später: echte Connections)
+ * Baut einen Baum aus der flachen Liste.
+ * Kombiniert dynamische Relationen (Infra-DB) mit Mock-Relationen (Dev-DBs).
  */
+function buildDataSourceTree(
+  sources: UnifiedDataSource[],
+  dynamicRelations: Record<string, string[]> = {}
+): DataSourceNode[] {
+  // 1. Kopien erstellen und Map aufbauen
+  const nodeMap = new Map<string, DataSourceNode>()
+
+  // Alle zuerst als potentielle Root-Nodes betrachten
+  const nodes: DataSourceNode[] = sources.map((s) => ({
+    ...s,
+    children: [],
+    level: 0,
+    hasChildren: false,
+  }))
+
+  // Map für schnellen Zugriff: "dbId:tableName" -> Node
+  nodes.forEach((node) => {
+    nodeMap.set(`${node.database_id}:${node.table_name}`, node)
+  })
+
+  const rootNodes: DataSourceNode[] = []
+  const processedChildren = new Set<string>()
+
+  // 2. Beziehungen definieren (Dynamisch + Mock)
+  const relations: Record<string, string[]> = {
+    ...dynamicRelations,
+    // Mock-Logik für Dev-DBs (da wir dort keine RPC haben)
+    users: ["profiles", "posts", "settings", "orders"],
+    posts: ["comments", "likes", "tags"],
+    customers: ["orders", "addresses"],
+    orders: ["order_items", "invoices"],
+    products: ["variants", "inventory", "reviews"],
+    projects: ["tasks", "members"],
+    tasks: ["comments", "attachments", "time_entries"],
+    // Singular Fallback
+    user: ["profile", "post", "setting", "order"],
+    customer: ["order", "address"],
+    post: ["comment", "like", "tag"],
+    order: ["order_item", "invoice"],
+    product: ["variant", "inventory", "review"],
+    project: ["task", "member"],
+    task: ["comment", "attachment", "time_entry"],
+  }
+
+  // 3. Baum verknüpfen
+  nodes.forEach((node) => {
+    // Wenn dieser Node ein Parent sein könnte
+    if (relations[node.table_name]) {
+      const childrenNames = relations[node.table_name]
+
+      childrenNames.forEach((childName) => {
+        // Suche passendes Kind in der GLEICHEN Datenbank
+        const childKey = `${node.database_id}:${childName}`
+        const childNode = nodeMap.get(childKey)
+
+        if (childNode && !processedChildren.has(childKey)) {
+          // Kind gefunden!
+          node.children.push(childNode)
+          node.hasChildren = true
+          processedChildren.add(childKey)
+        }
+      })
+    }
+  })
+
+  // 4. Root Nodes sammeln (alle, die nicht als Kind markiert wurden)
+  nodes.forEach((node) => {
+    if (!processedChildren.has(`${node.database_id}:${node.table_name}`)) {
+      rootNodes.push(node)
+    }
+  })
+
+  return rootNodes
+}
+
+/**
+ * Glättet den Baum für die Tabelle (rekursiv).
+ * Berücksichtigt expandedRows.
+ */
+function flattenTree(
+  nodes: DataSourceNode[],
+  expandedIds: Set<string>,
+  level = 0
+): DataSourceNode[] {
+  let flat: DataSourceNode[] = []
+
+  nodes.forEach((node) => {
+    // Node selbst hinzufügen (mit korrektem Level)
+    const nodeWithLevel = { ...node, level }
+    flat.push(nodeWithLevel)
+
+    // Wenn ausgeklappt und Kinder vorhanden -> Kinder rekursiv hinzufügen
+    if (node.hasChildren && expandedIds.has(node.id)) {
+      flat = flat.concat(flattenTree(node.children, expandedIds, level + 1))
+    }
+  })
+
+  return flat
+}
+
+// --- PAGE COMPONENT ---
+
 export default function DatasourcesPage(): React.ReactElement {
   const [infraDataSources, setInfraDataSources] = useState<DataSource[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set()) // ID-Set für Tree-Status
+  const [dbRelations, setDbRelations] = useState<Record<string, string[]>>({})
   const supabase = createClient()
 
-  // Dynamischer Titel aus Navigation
   const currentNavItem = useCurrentNavItem()
   const pageTitle = currentNavItem?.label ?? "Datenquellen"
 
-  // Filter-Context
   const { databases, setDatabases, filter, isTableVisible } = useDatasourceFilter()
-  // Explorer-Öffnung wird vom Layout gesteuert (ExplorerAutoOpen)
 
-  // Lade Infra-DB Daten
   const loadInfraDataSources = async () => {
     setLoading(true)
     try {
@@ -88,7 +204,6 @@ export default function DatasourcesPage(): React.ReactElement {
       if (error) throw error
       setInfraDataSources(data ?? [])
 
-      // Aktualisiere die Infra-DB Tabellen im Filter-Context
       const infraDb = DUMMY_DATABASES.find((db) => db.id === "infra-kessel")
       if (infraDb && data) {
         const updatedDatabases = DUMMY_DATABASES.map((db) =>
@@ -104,16 +219,42 @@ export default function DatasourcesPage(): React.ReactElement {
     }
   }
 
+  const loadRelationships = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_schema_relationships")
+      if (error) {
+        console.warn("Konnte Beziehungen nicht laden (evtl. fehlt Migration):", error.message)
+        return
+      }
+
+      const relMap: Record<string, string[]> = {}
+      if (data) {
+        // Cast as any because TS doesn't know the RPC return type automatically without generating types
+        ;(data as SchemaRelationship[]).forEach((rel) => {
+          if (!relMap[rel.parent_table]) {
+            relMap[rel.parent_table] = []
+          }
+          if (!relMap[rel.parent_table].includes(rel.child_table)) {
+            relMap[rel.parent_table].push(rel.child_table)
+          }
+        })
+      }
+      setDbRelations(relMap)
+    } catch (error) {
+      console.error("Fehler beim Laden der Beziehungen:", error)
+    }
+  }
+
   useEffect(() => {
     loadInfraDataSources()
+    loadRelationships()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Vereinigte Tabelle: Infra-DB + Dummy Dev-DBs
+  // Vereinigte Tabelle
   const unifiedDataSources: UnifiedDataSource[] = useMemo(() => {
     const sources: UnifiedDataSource[] = []
 
-    // Infra-DB (echte Daten)
     infraDataSources.forEach((ds) => {
       sources.push({
         ...ds,
@@ -123,7 +264,6 @@ export default function DatasourcesPage(): React.ReactElement {
       })
     })
 
-    // Dev-DBs (Dummy-Daten)
     databases
       .filter((db) => db.type === "dev")
       .forEach((db) => {
@@ -152,10 +292,27 @@ export default function DatasourcesPage(): React.ReactElement {
     return sources
   }, [infraDataSources, databases])
 
-  // Gefilterte Datenquellen basierend auf Explorer-Filter
+  // Filterung
   const filteredDataSources = useMemo(() => {
     return unifiedDataSources.filter((ds) => isTableVisible(ds.database_id, ds.table_name))
   }, [unifiedDataSources, isTableVisible])
+
+  // Tree Daten (Flat List mit Level Info)
+  const treeData = useMemo(() => {
+    const tree = buildDataSourceTree(filteredDataSources, dbRelations)
+    return flattenTree(tree, expandedRows)
+  }, [filteredDataSources, expandedRows, dbRelations])
+
+  // Toggle Row Expand
+  const toggleRow = (id: string) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id)
+    } else {
+      newExpanded.add(id)
+    }
+    setExpandedRows(newExpanded)
+  }
 
   const updateAccessLevel = async (
     id: string,
@@ -218,7 +375,6 @@ export default function DatasourcesPage(): React.ReactElement {
   }
 
   const getDatabaseBadge = (dbType: "infra" | "dev", dbName: string) => {
-    // Infra-DB: primary (blau), Dev-DB: secondary (grün/grau)
     return <Badge variant={dbType === "infra" ? "default" : "outline"}>{dbName}</Badge>
   }
 
@@ -236,10 +392,8 @@ export default function DatasourcesPage(): React.ReactElement {
               <div>
                 <CardTitle>Alle Datenquellen</CardTitle>
                 <CardDescription>
-                  {filteredDataSources.length} von {unifiedDataSources.length} Tabellen
-                  {filter.selectedDatabases.length > 0 || filter.selectedTables.length > 0
-                    ? " (gefiltert)"
-                    : ""}
+                  {filteredDataSources.length} Tabellen gefunden
+                  {filter.selectedDatabases.length > 0 ? " (gefiltert)" : ""}
                 </CardDescription>
               </div>
               <Button onClick={loadInfraDataSources} variant="outline" size="sm">
@@ -254,21 +408,19 @@ export default function DatasourcesPage(): React.ReactElement {
                 <RefreshCw className="mr-2 size-4 animate-spin" />
                 Lade Datasources...
               </div>
-            ) : filteredDataSources.length === 0 ? (
+            ) : treeData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <DatabaseIcon className="text-muted-foreground mb-4 size-12" />
                 <p className="text-muted-foreground">
-                  {unifiedDataSources.length === 0
-                    ? "Keine Datasources gefunden. Führe die Migration aus, um Tabellen zu entdecken."
-                    : "Keine Tabellen entsprechen dem Filter. Passe die Auswahl im Explorer an."}
+                  Keine Tabellen entsprechen dem Filter. Passe die Auswahl im Explorer an.
                 </p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-80">Tabelle</TableHead>
                     <TableHead>Datenbank</TableHead>
-                    <TableHead>Tabelle</TableHead>
                     <TableHead>Anzeigename</TableHead>
                     <TableHead>Zugriffslevel</TableHead>
                     <TableHead>Aktiviert</TableHead>
@@ -276,45 +428,90 @@ export default function DatasourcesPage(): React.ReactElement {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDataSources.map((ds) => (
-                    <TableRow key={ds.id}>
-                      <TableCell>{getDatabaseBadge(ds.database_type, ds.database_name)}</TableCell>
-                      <TableCell className="font-mono text-sm">{ds.table_name}</TableCell>
-                      <TableCell>{ds.display_name}</TableCell>
-                      <TableCell>{getAccessLevelBadge(ds.access_level)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={ds.is_enabled}
-                            onCheckedChange={(checked) =>
-                              toggleEnabled(ds.id, checked, ds.database_type)
+                  {treeData.map((ds) => {
+                    const isExpanded = expandedRows.has(ds.id)
+                    const paddingLeft = ds.level * 24 // 24px pro Level Einrückung
+
+                    return (
+                      <TableRow key={ds.id}>
+                        {/* Tree Spalte */}
+                        <TableCell>
+                          <div
+                            className="flex items-center gap-2"
+                            style={{ paddingLeft: `${paddingLeft}px` }}
+                          >
+                            {/* Chevron oder Spacer */}
+                            {ds.hasChildren ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-muted h-6 w-6 p-0"
+                                onClick={() => toggleRow(ds.id)}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="size-4" />
+                                ) : (
+                                  <ChevronRight className="size-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <div className="flex w-6 shrink-0 justify-center">
+                                {ds.level > 0 && (
+                                  <CornerDownRight className="text-muted-foreground/50 size-3" />
+                                )}
+                              </div>
+                            )}
+
+                            <span
+                              className={cn(
+                                "font-mono text-sm",
+                                ds.level > 0 && "text-muted-foreground"
+                              )}
+                            >
+                              {ds.table_name}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          {getDatabaseBadge(ds.database_type, ds.database_name)}
+                        </TableCell>
+                        <TableCell>{ds.display_name}</TableCell>
+                        <TableCell>{getAccessLevelBadge(ds.access_level)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={ds.is_enabled}
+                              onCheckedChange={(checked) =>
+                                toggleEnabled(ds.id, checked, ds.database_type)
+                              }
+                              disabled={ds.database_type === "dev"}
+                            />
+                            <Label className="text-sm">{ds.is_enabled ? "Aktiv" : "Inaktiv"}</Label>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={ds.access_level}
+                            onValueChange={(value) =>
+                              updateAccessLevel(ds.id, value as AccessLevel, ds.database_type)
                             }
                             disabled={ds.database_type === "dev"}
-                          />
-                          <Label className="text-sm">{ds.is_enabled ? "Aktiv" : "Inaktiv"}</Label>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={ds.access_level}
-                          onValueChange={(value) =>
-                            updateAccessLevel(ds.id, value as AccessLevel, ds.database_type)
-                          }
-                          disabled={ds.database_type === "dev"}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Kein Zugriff</SelectItem>
-                            <SelectItem value="read">Nur Lesen</SelectItem>
-                            <SelectItem value="read_write">Lesen + Schreiben</SelectItem>
-                            <SelectItem value="full">Vollzugriff</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Kein Zugriff</SelectItem>
+                              <SelectItem value="read">Nur Lesen</SelectItem>
+                              <SelectItem value="read_write">Lesen + Schreiben</SelectItem>
+                              <SelectItem value="full">Vollzugriff</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             )}
