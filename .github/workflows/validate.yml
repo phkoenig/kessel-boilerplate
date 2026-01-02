@@ -28,8 +28,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Version wird automatisch aus packageManager in package.json gelesen
 
       - name: Get pnpm store directory
         shell: bash
@@ -64,8 +63,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Version wird automatisch aus packageManager in package.json gelesen
 
       - name: Get pnpm store directory
         shell: bash
@@ -100,8 +98,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Version wird automatisch aus packageManager in package.json gelesen
 
       - name: Get pnpm store directory
         shell: bash
@@ -137,8 +134,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Version wird automatisch aus packageManager in package.json gelesen
 
       - name: Get pnpm store directory
         shell: bash
