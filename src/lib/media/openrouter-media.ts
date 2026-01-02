@@ -22,6 +22,17 @@ export class OpenRouterMediaService implements MediaService {
   private baseURL = "https://openrouter.ai/api/v1"
   private providerInfo: ProviderInfo
 
+  // Geschätzte Kosten pro Bild für OpenRouter Modelle (USD)
+  // Basierend auf OpenRouter Pricing (Stand Januar 2026)
+  // Für Image-Modelle gibt es oft keine Token-Zählung, daher feste Schätzungen
+  private static readonly MODEL_COSTS: Record<string, number> = {
+    "nano-banana-pro": 0.02, // Gemini 3 Pro Image Preview (~$0.02/Bild)
+    "nano-banana": 0.01, // Gemini 2.5 Flash Image (~$0.01/Bild)
+    "flux-2": 0.03, // FLUX.2 Flex
+    "flux-2-pro": 0.055, // FLUX.2 Pro
+    default: 0.02, // Fallback
+  }
+
   constructor(apiKey?: string) {
     if (!apiKey) {
       throw new Error("OPENROUTER_API_KEY is required for OpenRouterMediaService")
@@ -82,6 +93,9 @@ export class OpenRouterMediaService implements MediaService {
       ],
       modalities: ["image"],
       stream: false,
+      // Usage-Accounting aktivieren für Kosteninformationen
+      // https://openrouter.ai/docs/usage-accounting
+      usage: { include: true },
     }
 
     // Bildkonfiguration für Gemini Image Models
@@ -184,22 +198,41 @@ export class OpenRouterMediaService implements MediaService {
     }
 
     // Kosteninformationen zusammenstellen
-    const cost: GenerationCost | undefined =
-      totalCost > 0
-        ? {
-            totalCost,
-            costPerImage: totalCost / allImages.length,
-            currency: "USD",
-            model: modelId,
-            imageCount: allImages.length,
-          }
-        : undefined
+    // Falls OpenRouter keine Kosten zurückgibt (z.B. bei Image-Modellen),
+    // verwenden wir geschätzte Kosten basierend auf Modell-Preisen
+    let finalCost: GenerationCost
 
-    console.log(
-      `[OpenRouterMediaService] Total cost: $${totalCost.toFixed(6)} for ${allImages.length} images`
-    )
+    if (totalCost > 0) {
+      // Echte Kosten von OpenRouter
+      finalCost = {
+        totalCost,
+        costPerImage: totalCost / allImages.length,
+        currency: "USD",
+        model: modelId,
+        imageCount: allImages.length,
+      }
+      console.log(
+        `[OpenRouterMediaService] Actual cost from API: $${totalCost.toFixed(6)} for ${allImages.length} images`
+      )
+    } else {
+      // Geschätzte Kosten basierend auf Modell-Preisen
+      const estimatedCostPerImage =
+        OpenRouterMediaService.MODEL_COSTS[model] || OpenRouterMediaService.MODEL_COSTS.default
+      const estimatedTotalCost = estimatedCostPerImage * allImages.length
 
-    return { images: allImages, cost }
+      finalCost = {
+        totalCost: estimatedTotalCost,
+        costPerImage: estimatedCostPerImage,
+        currency: "USD",
+        model: modelId,
+        imageCount: allImages.length,
+      }
+      console.log(
+        `[OpenRouterMediaService] Estimated cost: $${estimatedTotalCost.toFixed(4)} for ${allImages.length} images (no usage data from API)`
+      )
+    }
+
+    return { images: allImages, cost: finalCost }
   }
 
   getProviderInfo(): ProviderInfo {
