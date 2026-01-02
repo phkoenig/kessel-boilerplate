@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Image, RefreshCw, Check, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +23,6 @@ import { cn } from "@/lib/utils"
  */
 export function AppIconGenerator(): React.ReactElement {
   const supabase = createClient()
-  const router = useRouter()
 
   // Form States
   const [appName, setAppName] = useState("")
@@ -357,10 +355,12 @@ export function AppIconGenerator(): React.ReactElement {
       setCurrentIconUrl(selectedVariant.url)
       setIconVariants(generatedVariants.map((img) => ({ url: img.url })))
       setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
 
-      // Seite aktualisieren, damit das neue Logo überall angezeigt wird
-      router.refresh()
+      // Kurz warten, damit der User die Erfolgsmeldung sieht,
+      // dann Seite vollständig neu laden für korrektes Icon-Update überall
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Fehler beim Speichern"
       console.error("[AppIconGenerator] Save error:", err)
