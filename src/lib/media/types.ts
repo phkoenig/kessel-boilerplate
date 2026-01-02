@@ -5,6 +5,22 @@
  */
 
 /**
+ * Kosteninformationen für eine Generierung
+ */
+export interface GenerationCost {
+  /** Kosten in USD (Cent-genau) */
+  totalCost: number
+  /** Kosten pro Bild in USD */
+  costPerImage: number
+  /** Währung (immer USD) */
+  currency: "USD"
+  /** Modell das verwendet wurde */
+  model: string
+  /** Anzahl generierter Bilder */
+  imageCount: number
+}
+
+/**
  * Generiertes Bild mit Metadaten
  */
 export interface GeneratedImage {
@@ -53,6 +69,16 @@ export interface ImageGenerationOptions {
 }
 
 /**
+ * Ergebnis einer Bildgenerierung mit Kosten
+ */
+export interface GenerationResult {
+  /** Generierte Bilder */
+  images: GeneratedImage[]
+  /** Kosteninformationen (falls verfügbar) */
+  cost?: GenerationCost
+}
+
+/**
  * MediaService Interface
  *
  * Abstraktion für Image-Generierungs-Provider
@@ -63,9 +89,9 @@ export interface MediaService {
    *
    * @param prompt - Text-Prompt für Bildgenerierung
    * @param options - Optionale Generierungs-Parameter
-   * @returns Array von generierten Bildern
+   * @returns Generierungs-Ergebnis mit Bildern und Kosten
    */
-  generateImage(prompt: string, options?: ImageGenerationOptions): Promise<GeneratedImage[]>
+  generateImage(prompt: string, options?: ImageGenerationOptions): Promise<GenerationResult>
 
   /**
    * Gibt Provider-Informationen zurück

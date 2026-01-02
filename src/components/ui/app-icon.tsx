@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Home } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MonochromeIcon } from "./monochrome-icon"
 
 /**
  * AppIcon Props
@@ -72,25 +73,9 @@ export function AppIcon({ size = 32, className, iconUrl }: AppIconProps): React.
     )
   }
 
-  // Custom Icon direkt als Bild anzeigen
-  // Hinweis: mask-image funktioniert nur mit transparenten PNGs
-  // Da die meisten Image-Generatoren keine echten transparenten Bilder erzeugen,
-  // zeigen wir das Bild direkt an.
+  // Custom Icon mit MonochromeIcon für Theme-Anpassung
+  const sizeNumber = typeof size === "number" ? size : 32
   return (
-    <div
-      className={cn("flex items-center justify-center overflow-hidden rounded-lg", className)}
-      style={{ width: sizeValue, height: sizeValue }}
-    >
-      <img
-        src={currentIconUrl}
-        alt="App Icon"
-        className="h-full w-full object-contain"
-        onError={(e) => {
-          console.error("Error loading app icon:", currentIconUrl)
-          // Fallback: Verstecke das kaputte Bild
-          e.currentTarget.style.display = "none"
-        }}
-      />
-    </div>
+    <MonochromeIcon src={currentIconUrl} alt="App Icon" size={sizeNumber} className={className} />
   )
 }

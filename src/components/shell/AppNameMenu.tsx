@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { AppIcon } from "@/components/ui/app-icon"
 import { useAuth, usePermissions } from "@/components/auth"
 import { navigationConfig, appConfig } from "@/config/navigation"
 
@@ -61,7 +62,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
               size="icon"
               className="size-10 transition-transform duration-200"
             >
-              <appConfig.logo className="size-5" />
+              <AppIcon size={20} className="text-sidebar-foreground" />
             </Button>
           </Link>
         </TooltipTrigger>
@@ -77,7 +78,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
         href="/"
         className="flex min-w-0 items-center gap-2 transition-opacity duration-200 hover:opacity-80"
       >
-        <appConfig.logo className="text-sidebar-foreground size-5 shrink-0" />
+        <AppIcon size={20} className="text-sidebar-foreground shrink-0" />
         <span className="text-sidebar-foreground truncate text-lg font-bold uppercase transition-opacity duration-200">
           {appConfig.name}
         </span>
@@ -96,7 +97,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
             "hover:scale-110 hover:bg-transparent"
           )}
         >
-          <appConfig.logo className="text-sidebar-foreground size-5 shrink-0" />
+          <AppIcon size={20} className="text-sidebar-foreground shrink-0" />
           <span className="text-sidebar-foreground truncate text-lg font-bold uppercase">
             {appConfig.name}
           </span>

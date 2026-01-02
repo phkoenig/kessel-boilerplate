@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Image, RefreshCw, Check, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,14 +24,15 @@ import { cn } from "@/lib/utils"
  */
 export function AppIconGenerator(): React.ReactElement {
   const supabase = createClient()
+  const router = useRouter()
 
   // Form States
   const [appName, setAppName] = useState("")
   const [description, setDescription] = useState("")
   const [prompt, setPrompt] = useState("")
-  const [variants, setVariants] = useState(1)
+  const [variants, setVariants] = useState(4) // Standard: 4 Varianten
   const [provider, setProvider] = useState<"openrouter" | "fal">("openrouter")
-  const [model, setModel] = useState<string>("") // Ausgewähltes Modell
+  const [model, setModel] = useState<string>("nano-banana-pro") // Standard: Nano Banana Pro
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
 
   // Icon States
@@ -46,6 +48,14 @@ export function AppIconGenerator(): React.ReactElement {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Kosteninformationen
+  const [generationCost, setGenerationCost] = useState<{
+    totalCost: number
+    costPerImage: number
+    currency: string
+    imageCount: number
+  } | null>(null)
 
   // Available Providers mit Modellen
   const [availableProviders, setAvailableProviders] = useState<
@@ -74,7 +84,9 @@ export function AppIconGenerator(): React.ReactElement {
           setDescription(data.app_description || "")
           setCurrentIconUrl(data.icon_url)
           setIconVariants((data.icon_variants as Array<{ url: string }>) || [])
-          setProvider((data.icon_provider as "openrouter" | "fal") || "openrouter")
+          const loadedProvider = (data.icon_provider as "openrouter" | "fal") || "openrouter"
+          setProvider(loadedProvider)
+          // Modell wird später durch useEffect gesetzt, wenn Provider geladen ist
         }
       } catch (err) {
         console.error("Error loading app settings:", err)
@@ -245,6 +257,14 @@ export function AppIconGenerator(): React.ReactElement {
       setGeneratedVariants(data.images || [])
       setSelectedVariantIndex(0)
       setCurrentIconUrl(data.images[0].url)
+
+      // Kosten speichern (falls vorhanden)
+      if (data.cost) {
+        setGenerationCost(data.cost)
+        console.log("[AppIconGenerator] Generation cost:", data.cost)
+      } else {
+        setGenerationCost(null)
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Fehler bei der Icon-Generierung"
       console.error("[AppIconGenerator] Error generating icon:", err)
@@ -265,32 +285,86 @@ export function AppIconGenerator(): React.ReactElement {
     setError(null)
 
     try {
+      // Prüfe ob User eingeloggt ist
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error("Nicht eingeloggt. Bitte melde dich an.")
+      }
+
+      console.log("[AppIconGenerator] User:", user.id)
+
       const selectedVariant = generatedVariants[selectedVariantIndex]
       if (!selectedVariant) {
         throw new Error("Keine Variante ausgewählt")
       }
 
-      const { error: updateError } = await supabase
+      if (!selectedVariant.url) {
+        throw new Error("Die ausgewählte Variante hat keine URL")
+      }
+
+      console.log("[AppIconGenerator] Saving icon:", {
+        icon_url: selectedVariant.url,
+        app_name: appName.trim(),
+        icon_provider: provider,
+        variants_count: generatedVariants.length,
+      })
+
+      const updateData = {
+        app_name: appName.trim(),
+        app_description: description.trim(),
+        icon_url: selectedVariant.url,
+        icon_variants: generatedVariants.map((img) => ({ url: img.url })),
+        icon_provider: provider,
+      }
+
+      console.log("[AppIconGenerator] Update data:", updateData)
+
+      const { data, error: updateError } = await supabase
         .from("app_settings")
-        .update({
-          app_name: appName.trim(),
-          app_description: description.trim(),
-          icon_url: selectedVariant.url,
-          icon_variants: generatedVariants.map((img) => ({ url: img.url })),
-          icon_provider: provider,
-        })
+        .update(updateData)
         .eq("id", "00000000-0000-0000-0000-000000000001")
+        .select()
+
+      console.log("[AppIconGenerator] Update response:", { data, error: updateError })
 
       if (updateError) {
-        throw updateError
+        console.error("[AppIconGenerator] Update error details:", updateError)
+
+        // Spezifische Fehlermeldungen
+        if (updateError.code === "PGRST301" || updateError.message?.includes("permission")) {
+          throw new Error(
+            "Keine Berechtigung zum Speichern. Bitte stelle sicher, dass du als Admin eingeloggt bist."
+          )
+        }
+
+        throw new Error(
+          `Fehler beim Speichern: ${updateError.message || updateError.code || "Unbekannter Fehler"}`
+        )
       }
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Keine Daten nach dem Update zurückgegeben. Möglicherweise keine Berechtigung."
+        )
+      }
+
+      console.log("[AppIconGenerator] Successfully saved:", data[0])
 
       setCurrentIconUrl(selectedVariant.url)
       setIconVariants(generatedVariants.map((img) => ({ url: img.url })))
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+
+      // Seite aktualisieren, damit das neue Logo überall angezeigt wird
+      router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Speichern")
+      const errorMessage = err instanceof Error ? err.message : "Fehler beim Speichern"
+      console.error("[AppIconGenerator] Save error:", err)
+      setError(errorMessage)
     } finally {
       setIsSaving(false)
     }
@@ -386,6 +460,25 @@ export function AppIconGenerator(): React.ReactElement {
                   </Button>
                 </>
               )}
+
+              {/* Kostenanzeige */}
+              {generationCost && (
+                <div className="text-muted-foreground mt-2 text-xs">
+                  <span className="font-medium">Kosten:</span>{" "}
+                  {generationCost.totalCost < 0.01
+                    ? `$${generationCost.totalCost.toFixed(6)}`
+                    : `$${generationCost.totalCost.toFixed(4)}`}
+                  {generationCost.imageCount > 1 && (
+                    <span className="ml-1">
+                      ({generationCost.imageCount} Bilder à $
+                      {generationCost.costPerImage < 0.01
+                        ? generationCost.costPerImage.toFixed(6)
+                        : generationCost.costPerImage.toFixed(4)}
+                      )
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -446,7 +539,7 @@ export function AppIconGenerator(): React.ReactElement {
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="minimal monochrome app icon, flat, vector-like, no text, no background, for a..."
                 disabled={isGenerating}
-                rows={3}
+                rows={8}
                 className="font-mono text-sm"
               />
               <p className="text-muted-foreground mt-1 text-xs">

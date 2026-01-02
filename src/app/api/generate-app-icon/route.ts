@@ -34,6 +34,12 @@ interface GenerateIconResponse {
   }>
   provider: string
   model: string
+  cost?: {
+    totalCost: number
+    costPerImage: number
+    currency: string
+    imageCount: number
+  }
 }
 
 /**
@@ -89,12 +95,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     // 5. MediaService erstellen und Bilder generieren
     console.log("[Generate Icon API] Generating", variants, "variants with provider:", provider)
     const mediaService = createMediaService(provider)
-    const generatedImages = await mediaService.generateImage(prompt, {
+    const generationResult = await mediaService.generateImage(prompt, {
       model,
       variants,
       size: { width: 512, height: 512 },
     })
+    const generatedImages = generationResult.images
     console.log("[Generate Icon API] Generated", generatedImages.length, "images")
+    if (generationResult.cost) {
+      console.log("[Generate Icon API] Cost:", `$${generationResult.cost.totalCost.toFixed(6)}`)
+    }
 
     // 6. Bilder in Supabase Storage hochladen
     const uploadedImages: Array<{ url: string; base64?: string }> = []
@@ -169,6 +179,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       images: uploadedImages,
       provider,
       model: model || providerInfo.defaultModel,
+      cost: generationResult.cost
+        ? {
+            totalCost: generationResult.cost.totalCost,
+            costPerImage: generationResult.cost.costPerImage,
+            currency: generationResult.cost.currency,
+            imageCount: generationResult.cost.imageCount,
+          }
+        : undefined,
     }
 
     return NextResponse.json(response)
