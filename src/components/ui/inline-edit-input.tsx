@@ -157,7 +157,9 @@ export function InlineEditInput({
     return (
       <div className={cn("group", className)}>
         {label && (
-          <label className="text-foreground mb-1.5 block text-sm font-medium">{label}</label>
+          <label className="text-muted-foreground mb-1.5 block text-sm font-medium tracking-wider uppercase">
+            {label}
+          </label>
         )}
         <button
           type="button"
@@ -199,7 +201,10 @@ export function InlineEditInput({
   return (
     <div className={cn("group", className)}>
       {label && (
-        <label htmlFor={id} className="text-foreground mb-1.5 block text-sm font-medium">
+        <label
+          htmlFor={id}
+          className="text-muted-foreground mb-1.5 block text-sm font-medium tracking-wider uppercase"
+        >
           {label}
         </label>
       )}
