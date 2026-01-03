@@ -17,7 +17,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { AppIcon } from "@/components/ui/app-icon"
 import { useAuth, usePermissions } from "@/components/auth"
-import { navigationConfig, appConfig } from "@/config/navigation"
+import { navigationConfig } from "@/config/navigation"
+import { useAppSettings } from "@/hooks/use-app-settings"
 
 /**
  * AppNameMenu Komponente
@@ -36,6 +37,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
   const { canAccess } = usePermissions()
   const pathname = usePathname()
   const router = useRouter()
+  const { appName } = useAppSettings()
 
   // User-Rolle für Berechtigungsprüfung
   const userRole = role ?? "NoUser"
@@ -66,7 +68,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
             </Button>
           </Link>
         </TooltipTrigger>
-        <TooltipContent side="right">{appConfig.name}</TooltipContent>
+        <TooltipContent side="right">{appName}</TooltipContent>
       </Tooltip>
     )
   }
@@ -80,7 +82,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
       >
         <AppIcon size={20} className="text-sidebar-foreground shrink-0" />
         <span className="text-sidebar-foreground truncate text-lg font-bold uppercase transition-opacity duration-200">
-          {appConfig.name}
+          {appName}
         </span>
       </Link>
     )
@@ -99,7 +101,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
         >
           <AppIcon size={20} className="text-sidebar-foreground shrink-0" />
           <span className="text-sidebar-foreground truncate text-lg font-bold uppercase">
-            {appConfig.name}
+            {appName}
           </span>
           <ChevronDown className="text-sidebar-foreground size-4 shrink-0" />
         </Button>
