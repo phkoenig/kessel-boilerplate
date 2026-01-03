@@ -87,6 +87,17 @@ const infraClient = createClient(supabaseUrl, serviceRoleKey, {
   },
 })
 
+// Client für app-Schema (Tenant-Tabellen)
+const appClient = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+  db: {
+    schema: "app",
+  },
+})
+
 /**
  * Erstellt Tenant via direkter PostgreSQL-Verbindung
  */
@@ -106,7 +117,7 @@ async function createTenantViaPg() {
 
   const client = new pg.Client({
     connectionString,
-    ssl: { rejectUnauthorized: false },
+    ssl: true, // Supabase erfordert SSL, Zertifikat wird validiert
   })
 
   try {
@@ -227,8 +238,8 @@ async function assignStandardUsers(tenantId) {
         })
 
         if (assignError) {
-          // Fallback: Direkter Insert (falls RPC nicht verfügbar)
-          const { error: insertError } = await supabaseClient.from("user_tenants").upsert(
+          // Fallback: Direkter Insert via app-Schema Client (falls RPC nicht verfügbar)
+          const { error: insertError } = await appClient.from("user_tenants").upsert(
             {
               user_id: user.id,
               tenant_id: tenantId,
