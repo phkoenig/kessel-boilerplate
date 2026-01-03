@@ -10,10 +10,17 @@ interface AppSettings {
 }
 
 /**
+ * Default-Werte aus Kessel Boilerplate, die auf ENV-Variable fallen sollen
+ */
+const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
+
+/**
  * Hook zum Laden der App-Einstellungen aus der Datenbank
  *
- * Lädt den App-Namen, die Beschreibung und das Icon dynamisch aus app_settings.
- * Fällt auf NEXT_PUBLIC_APP_NAME zurück wenn DB-Wert nicht verfügbar.
+ * Priorität für App-Name:
+ * 1. NEXT_PUBLIC_APP_NAME (wenn gesetzt) - Single Source of Truth
+ * 2. DB-Wert (wenn nicht Default-Wert)
+ * 3. Fallback: "APP"
  *
  * @example
  * ```tsx
@@ -21,9 +28,10 @@ interface AppSettings {
  * ```
  */
 export function useAppSettings(): AppSettings {
-  const [appName, setAppName] = useState<string>(
-    process.env.NEXT_PUBLIC_APP_NAME?.toUpperCase() || "APP"
-  )
+  // ENV-Variable hat höchste Priorität
+  const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
+
+  const [appName, setAppName] = useState<string>(envAppName.toUpperCase() || "APP")
   const [appDescription, setAppDescription] = useState<string>("")
   const [iconUrl, setIconUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -35,12 +43,26 @@ export function useAppSettings(): AppSettings {
         if (response.ok) {
           const data = await response.json()
 
-          // App-Name: DB-Wert verwenden, außer es ist leer oder "Kessel App"
+          // App-Name: ENV hat immer Priorität wenn gesetzt
+          // DB-Wert nur verwenden wenn ENV leer UND DB-Wert kein Default ist
           const dbName = data.app_name || ""
-          const envName = process.env.NEXT_PUBLIC_APP_NAME || ""
-          const finalName = dbName && dbName !== "Kessel App" ? dbName : envName || "APP"
-          setAppName(finalName.toUpperCase())
+          const isDbDefault = BOILERPLATE_DEFAULTS.some(
+            (d) => d.toLowerCase() === dbName.toLowerCase()
+          )
 
+          let finalName: string
+          if (envAppName) {
+            // ENV hat Priorität
+            finalName = envAppName
+          } else if (dbName && !isDbDefault) {
+            // DB-Wert verwenden wenn kein Default
+            finalName = dbName
+          } else {
+            // Fallback
+            finalName = "APP"
+          }
+
+          setAppName(finalName.toUpperCase())
           setAppDescription(data.app_description || "")
           setIconUrl(data.icon_url || null)
         }
@@ -52,7 +74,7 @@ export function useAppSettings(): AppSettings {
     }
 
     loadSettings()
-  }, [])
+  }, [envAppName])
 
   return { appName, appDescription, iconUrl, isLoading }
 }

@@ -60,6 +60,9 @@ export function AppIconGenerator(): React.ReactElement {
     Array<{ id: string; name: string; models: string[]; defaultModel: string }>
   >([])
 
+  // Default-Werte aus Kessel Boilerplate, die auf ENV-Variable fallen sollen
+  const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
+
   // Lade app_settings beim Mount
   useEffect(() => {
     async function loadAppSettings() {
@@ -78,10 +81,27 @@ export function AppIconGenerator(): React.ReactElement {
         if (data) {
           console.log("[AppIconGenerator] Loaded app settings:", data)
           console.log("[AppIconGenerator] Icon URL:", data.icon_url)
-          // Fallback auf Env-Variable wenn DB-Wert leer oder "Kessel App"
+
+          // App-Name: ENV hat immer Priorität wenn gesetzt
+          // DB-Wert nur verwenden wenn ENV leer UND DB-Wert kein Default ist
           const dbAppName = data.app_name || ""
           const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
-          const finalAppName = dbAppName && dbAppName !== "Kessel App" ? dbAppName : envAppName
+          const isDbDefault = BOILERPLATE_DEFAULTS.some(
+            (d) => d.toLowerCase() === dbAppName.toLowerCase()
+          )
+
+          let finalAppName: string
+          if (envAppName) {
+            // ENV hat Priorität
+            finalAppName = envAppName
+          } else if (dbAppName && !isDbDefault) {
+            // DB-Wert verwenden wenn kein Default
+            finalAppName = dbAppName
+          } else {
+            // Fallback
+            finalAppName = "App"
+          }
+
           setAppName(finalAppName)
           setDescription(data.app_description || "")
           setCurrentIconUrl(data.icon_url)
