@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth"
 import { PageContent } from "@/components/shell"
@@ -41,9 +42,10 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TableInlineEdit } from "@/components/ui/table-inline-edit"
-import { Loader2, Users, Trash2 } from "lucide-react"
+import { Loader2, Users, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import { AddButton } from "@/components/ui/add-button"
 import { ExpandableSearch } from "@/components/ui/expandable-search"
+import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
 
@@ -63,6 +65,19 @@ interface Role {
   is_system: boolean
 }
 
+interface Tenant {
+  id: string
+  slug: string
+  name: string
+}
+
+interface UserTenant {
+  user_id: string
+  tenant_id: string
+  is_active: boolean
+  tenant?: Tenant
+}
+
 /**
  * User-Verwaltungsseite (nur für Admins)
  *
@@ -76,6 +91,9 @@ export default function UsersPage(): React.ReactElement {
   const { user, role, isLoading: authLoading } = useAuth()
   const [users, setUsers] = useState<UserProfile[]>([])
   const [availableRoles, setAvailableRoles] = useState<Role[]>([])
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [userTenants, setUserTenants] = useState<Record<string, UserTenant[]>>({})
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -101,6 +119,61 @@ export default function UsersPage(): React.ReactElement {
   const [isCreating, setIsCreating] = useState(false)
 
   const supabase = createClient()
+
+  // Lade Tenants aus DB via RPC
+  async function loadTenants() {
+    try {
+      const { data, error: fetchError } = await supabase.rpc("get_all_tenants")
+
+      if (fetchError) {
+        console.warn("Fehler beim Laden der Tenants:", fetchError)
+        return []
+      }
+
+      return (data || []) as Tenant[]
+    } catch (err) {
+      console.error("Fehler beim Laden der Tenants:", err)
+      return []
+    }
+  }
+
+  // Lade User-Tenant-Zuordnungen via RPC
+  async function loadUserTenants() {
+    try {
+      const { data, error: fetchError } = await supabase.rpc("get_user_tenants_with_details")
+
+      if (fetchError) {
+        console.warn("Fehler beim Laden der User-Tenants:", fetchError)
+        return {}
+      }
+
+      // Gruppiere nach user_id
+      const grouped: Record<string, UserTenant[]> = {}
+      if (data) {
+        for (const item of data) {
+          const userTenant: UserTenant = {
+            user_id: item.user_id,
+            tenant_id: item.tenant_id,
+            is_active: item.is_active,
+            tenant: {
+              id: item.tenant_id,
+              slug: item.tenant_slug,
+              name: item.tenant_name,
+            },
+          }
+          if (!grouped[item.user_id]) {
+            grouped[item.user_id] = []
+          }
+          grouped[item.user_id].push(userTenant)
+        }
+      }
+
+      return grouped
+    } catch (err) {
+      console.error("Fehler beim Laden der User-Tenants:", err)
+      return {}
+    }
+  }
 
   // Lade Rollen aus DB
   async function loadRoles() {
@@ -158,15 +231,13 @@ export default function UsersPage(): React.ReactElement {
   useEffect(() => {
     if (role === "admin" || role === "super-user") {
       setIsLoading(true)
-      Promise.all([loadRoles(), loadUsers()]).then(([roles]) => {
-        setAvailableRoles(roles)
-        // setIsLoading(false) wird in loadUsers finally aufgerufen, aber loadRoles ist auch async
-        // loadUsers setzt isLoading am Ende auf false.
-        // Das ist okay, solange loadUsers als zweites läuft oder wir hier warten.
-        // loadUsers setzt isLoading=true am Anfang.
-        // Besser: Wir steuern Loading hier zentraler oder lassen loadUsers es machen.
-        // Da loadUsers selbst isLoading steuert, ist es okay.
-      })
+      Promise.all([loadRoles(), loadUsers(), loadTenants(), loadUserTenants()]).then(
+        ([roles, , tenantsData, userTenantsData]) => {
+          setAvailableRoles(roles)
+          setTenants(tenantsData)
+          setUserTenants(userTenantsData)
+        }
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadUsers/loadRoles sind stabil
   }, [role])
@@ -293,16 +364,22 @@ export default function UsersPage(): React.ReactElement {
         body: JSON.stringify({ userId: deleteDialog.id }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Fehler beim Löschen des Users")
+        // Zeige detaillierte Fehlermeldung
+        const errorMsg = data.error || "Fehler beim Löschen des Users"
+        const details = data.details ? ` (Details: ${JSON.stringify(data.details)})` : ""
+        throw new Error(`${errorMsg}${details}`)
       }
 
       // Entferne User aus lokaler Liste
       setUsers((prev) => prev.filter((u) => u.id !== deleteDialog.id))
       setDeleteDialog(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Löschen des Users")
+      const errorMessage = err instanceof Error ? err.message : "Fehler beim Löschen des Users"
+      console.error("Fehler beim Löschen:", err)
+      setError(errorMessage)
     } finally {
       setIsDeleting(false)
     }
@@ -399,6 +476,85 @@ export default function UsersPage(): React.ReactElement {
     return role?.display_name || roleName
   }
 
+  // Toggle expandable row
+  function toggleUserExpansion(userId: string) {
+    setExpandedUsers((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+  }
+
+  // Aktualisiere is_active für User-Tenant-Zuordnung
+  async function updateUserTenantActive(userId: string, tenantId: string, isActive: boolean) {
+    try {
+      // Prüfe ob es der admin@local User ist
+      const userItem = users.find((u) => u.id === userId)
+      if (userItem?.email === "admin@local" && !isActive) {
+        throw new Error("Der Admin-User kann nicht deaktiviert werden")
+      }
+
+      // Prüfe ob Zuordnung existiert
+      const existing = userTenants[userId]?.find((ut) => ut.tenant_id === tenantId)
+
+      if (existing) {
+        // Update bestehende Zuordnung via RPC
+        const { error: updateError } = await supabase.rpc("update_user_tenant_active", {
+          p_user_id: userId,
+          p_tenant_id: tenantId,
+          p_is_active: isActive,
+        })
+
+        if (updateError) throw updateError
+      } else {
+        // Erstelle neue Zuordnung via RPC
+        const tenant = tenants.find((t) => t.id === tenantId)
+        if (!tenant) {
+          throw new Error("Tenant nicht gefunden")
+        }
+
+        const { error: insertError } = await supabase.rpc("create_user_tenant", {
+          p_user_id: userId,
+          p_tenant_id: tenantId,
+          p_is_active: isActive,
+        })
+
+        if (insertError) throw insertError
+      }
+
+      // Aktualisiere lokalen State
+      setUserTenants((prev) => {
+        const userTenantsList = prev[userId] || []
+        const existingIndex = userTenantsList.findIndex((ut) => ut.tenant_id === tenantId)
+
+        if (existingIndex >= 0) {
+          // Update bestehende
+          const updated = [...userTenantsList]
+          updated[existingIndex] = { ...updated[existingIndex], is_active: isActive }
+          return { ...prev, [userId]: updated }
+        } else {
+          // Neue hinzufügen
+          const tenant = tenants.find((t) => t.id === tenantId)
+          if (!tenant) return prev
+
+          const newUserTenant: UserTenant = {
+            user_id: userId,
+            tenant_id: tenantId,
+            is_active: isActive,
+            tenant,
+          }
+          return { ...prev, [userId]: [...userTenantsList, newUserTenant] }
+        }
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Aktualisieren")
+    }
+  }
+
   // Während Auth lädt: Spinner anzeigen
   if (authLoading) {
     return (
@@ -459,6 +615,7 @@ export default function UsersPage(): React.ReactElement {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12"></TableHead>
                     <TableHead>E-Mail</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Rolle</TableHead>
@@ -469,7 +626,7 @@ export default function UsersPage(): React.ReactElement {
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground text-center">
+                      <TableCell colSpan={6} className="text-muted-foreground text-center">
                         Keine User gefunden
                       </TableCell>
                     </TableRow>
@@ -483,102 +640,196 @@ export default function UsersPage(): React.ReactElement {
                       const isEditingRole =
                         editingField?.userId === userItem.id && editingField?.field === "role"
                       const isCurrentUser = userItem.id === user?.id
+                      const isExpanded = expandedUsers.has(userItem.id)
+                      const userTenantsList = userTenants[userItem.id] || []
 
                       return (
-                        <TableRow
-                          key={userItem.id}
-                          className="hover:bg-accent/50 transition-colors"
-                        >
-                          {/* E-Mail */}
-                          <TableCell className="font-medium">
-                            <TableInlineEdit
-                              value={isEditingEmail ? editValue : userItem.email}
-                              type="email"
-                              isEditing={isEditingEmail}
-                              onStartEdit={() => startEditing(userItem.id, "email", userItem.email)}
-                              onValueChange={(val) => setEditValue(val)}
-                              onSave={saveEdit}
-                              onCancel={cancelEditing}
-                              isSaving={isSaving}
-                              disabled={isCurrentUser}
-                              disabledTooltip="Eigene E-Mail kann nicht geändert werden"
-                              isValid={
-                                editingField?.field === "email"
-                                  ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editValue)
-                                  : true
-                              }
-                              displayClassName="font-medium"
-                            />
-                          </TableCell>
-
-                          {/* Name */}
-                          <TableCell>
-                            <TableInlineEdit
-                              value={isEditingName ? editValue : userItem.display_name || ""}
-                              type="text"
-                              isEditing={isEditingName}
-                              onStartEdit={() =>
-                                startEditing(
-                                  userItem.id,
-                                  "display_name",
-                                  userItem.display_name || ""
-                                )
-                              }
-                              onValueChange={(val) => setEditValue(val)}
-                              onSave={saveEdit}
-                              onCancel={cancelEditing}
-                              isSaving={isSaving}
-                            />
-                          </TableCell>
-
-                          {/* Rolle */}
-                          <TableCell>
-                            <TableInlineEdit
-                              value={isEditingRole ? editValue : userItem.role}
-                              type="select"
-                              isEditing={isEditingRole}
-                              onStartEdit={() => startEditing(userItem.id, "role", userItem.role)}
-                              onValueChange={(val) => setEditValue(val)}
-                              onSave={saveEdit}
-                              onCancel={cancelEditing}
-                              isSaving={isSaving}
-                              disabled={isCurrentUser}
-                              disabledTooltip="Eigene Rolle kann nicht geändert werden"
-                              selectOptions={availableRoles.map((r) => ({
-                                value: r.name,
-                                label: r.display_name,
-                              }))}
-                              getSelectDisplayValue={(value) => getRoleDisplayName(value)}
-                              showAsBadge
-                              badgeVariant={getRoleBadgeVariant(userItem.role)}
-                            />
-                          </TableCell>
-
-                          {/* Erstellt */}
-                          <TableCell>
-                            {new Date(userItem.created_at).toLocaleDateString("de-DE")}
-                          </TableCell>
-
-                          {/* Aktionen */}
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
+                        <React.Fragment key={userItem.id}>
+                          <TableRow className="hover:bg-accent/50 transition-colors">
+                            {/* Expand/Collapse Button */}
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => setDeleteDialog(userItem)}
-                                disabled={isCurrentUser}
-                                className={cn(isCurrentUser && "opacity-50")}
-                                title={
-                                  isCurrentUser
-                                    ? "Eigener Account kann nicht gelöscht werden"
-                                    : "User löschen"
-                                }
+                                className="size-8"
+                                onClick={() => toggleUserExpansion(userItem.id)}
+                                title={isExpanded ? "Apps ausblenden" : "Apps anzeigen"}
                               >
-                                <Trash2 className="size-4" />
+                                {isExpanded ? (
+                                  <ChevronDown className="size-4" />
+                                ) : (
+                                  <ChevronRight className="size-4" />
+                                )}
                               </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+
+                            {/* E-Mail */}
+                            <TableCell className="font-medium">
+                              <TableInlineEdit
+                                value={isEditingEmail ? editValue : userItem.email}
+                                type="email"
+                                isEditing={isEditingEmail}
+                                onStartEdit={() =>
+                                  startEditing(userItem.id, "email", userItem.email)
+                                }
+                                onValueChange={(val) => setEditValue(val)}
+                                onSave={saveEdit}
+                                onCancel={cancelEditing}
+                                isSaving={isSaving}
+                                disabled={isCurrentUser}
+                                disabledTooltip="Eigene E-Mail kann nicht geändert werden"
+                                isValid={
+                                  editingField?.field === "email"
+                                    ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editValue)
+                                    : true
+                                }
+                                displayClassName="font-medium"
+                              />
+                            </TableCell>
+
+                            {/* Name */}
+                            <TableCell>
+                              <TableInlineEdit
+                                value={isEditingName ? editValue : userItem.display_name || ""}
+                                type="text"
+                                isEditing={isEditingName}
+                                onStartEdit={() =>
+                                  startEditing(
+                                    userItem.id,
+                                    "display_name",
+                                    userItem.display_name || ""
+                                  )
+                                }
+                                onValueChange={(val) => setEditValue(val)}
+                                onSave={saveEdit}
+                                onCancel={cancelEditing}
+                                isSaving={isSaving}
+                              />
+                            </TableCell>
+
+                            {/* Rolle */}
+                            <TableCell>
+                              <TableInlineEdit
+                                value={isEditingRole ? editValue : userItem.role}
+                                type="select"
+                                isEditing={isEditingRole}
+                                onStartEdit={() => startEditing(userItem.id, "role", userItem.role)}
+                                onValueChange={(val) => setEditValue(val)}
+                                onSave={saveEdit}
+                                onCancel={cancelEditing}
+                                isSaving={isSaving}
+                                disabled={isCurrentUser}
+                                disabledTooltip="Eigene Rolle kann nicht geändert werden"
+                                selectOptions={availableRoles.map((r) => ({
+                                  value: r.name,
+                                  label: r.display_name,
+                                }))}
+                                getSelectDisplayValue={(value) => getRoleDisplayName(value)}
+                                showAsBadge
+                                badgeVariant={getRoleBadgeVariant(userItem.role)}
+                              />
+                            </TableCell>
+
+                            {/* Erstellt */}
+                            <TableCell>
+                              {new Date(userItem.created_at).toLocaleDateString("de-DE")}
+                            </TableCell>
+
+                            {/* Aktionen */}
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeleteDialog(userItem)}
+                                  disabled={isCurrentUser}
+                                  className={cn(isCurrentUser && "opacity-50")}
+                                  title={
+                                    isCurrentUser
+                                      ? "Eigener Account kann nicht gelöscht werden"
+                                      : "User löschen"
+                                  }
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Expandable Row: Tenant-Zuordnungen */}
+                          {isExpanded && (
+                            <TableRow key={`${userItem.id}-tenants`} className="bg-muted/30">
+                              <TableCell colSpan={6} className="p-0">
+                                <div className="border-t">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-muted/50">
+                                        <TableHead className="w-64 pl-12">App-Name</TableHead>
+                                        <TableHead>Slug</TableHead>
+                                        <TableHead className="w-32 text-right">Status</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {tenants.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={3}
+                                            className="text-muted-foreground pl-12 text-center"
+                                          >
+                                            Keine Apps verfügbar
+                                          </TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        tenants.map((tenant) => {
+                                          const userTenant = userTenantsList.find(
+                                            (ut) => ut.tenant_id === tenant.id
+                                          )
+                                          const isActive = userTenant?.is_active ?? false
+                                          const isAdminLocal = userItem.email === "admin@local"
+                                          // Admin-Local User kann nicht deaktiviert werden
+                                          const isDisabled = isCurrentUser || isAdminLocal
+
+                                          return (
+                                            <TableRow key={tenant.id} className="hover:bg-muted/30">
+                                              <TableCell className="pl-12 font-medium">
+                                                {tenant.name}
+                                              </TableCell>
+                                              <TableCell>
+                                                <span className="text-muted-foreground text-sm">
+                                                  {tenant.slug}
+                                                </span>
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                  <Switch
+                                                    checked={isActive}
+                                                    onCheckedChange={(checked) =>
+                                                      updateUserTenantActive(
+                                                        userItem.id,
+                                                        tenant.id,
+                                                        checked
+                                                      )
+                                                    }
+                                                    disabled={isDisabled}
+                                                  />
+                                                  {isAdminLocal && (
+                                                    <span className="text-muted-foreground text-xs">
+                                                      Immer aktiv
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
+                                          )
+                                        })
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       )
                     })
                   )}

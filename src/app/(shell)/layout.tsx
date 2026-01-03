@@ -108,6 +108,7 @@ export default function ShellLayout({
   const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
   const isDatasourcesPage = pathname === "/app-verwaltung/datenquellen"
   const isComponentsPage = pathname === "/app-verwaltung/ui-komponenten"
+  const isUsersPage = pathname === "/app-verwaltung/benutzer"
 
   // Gemeinsamer Shell-Inhalt mit einheitlicher ExplorerAutoOpen-Instanz
   const shellContent = (
@@ -154,6 +155,15 @@ export default function ShellLayout({
           {shellContent}
         </AppShell>
       </ThemeEditorProvider>
+    )
+  }
+
+  // Benutzerverwaltungsseite: Kein Explorer
+  if (isUsersPage) {
+    return (
+      <AppShell navbar={<Navbar />} explorer={null}>
+        {shellContent}
+      </AppShell>
     )
   }
 

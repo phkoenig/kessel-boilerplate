@@ -60,20 +60,67 @@ export async function POST(request: Request) {
       },
     })
 
-    // 1. Lösche Profile (wird automatisch durch Foreign Key Constraint auch gelöscht, aber sicherheitshalber explizit)
-    const { error: profileError } = await adminClient.from("profiles").delete().eq("id", userId)
+    // Lösche alle abhängigen Daten VOR dem Auth-User
+    // (Supabase löscht zwar automatisch via Trigger, aber manche Foreign Keys können Probleme machen)
 
-    if (profileError) {
-      console.error("Fehler beim Löschen des Profils:", profileError)
-      // Fortfahren, auch wenn Profil nicht existiert
+    // 1. Lösche alle Tenant-Zuordnungen (app.user_tenants)
+    try {
+      const { error: tenantError } = await adminClient.rpc("delete_user_tenant_assignments", {
+        p_user_id: userId,
+      })
+      if (tenantError) {
+        console.warn("Warnung beim Löschen der Tenant-Zuordnungen:", tenantError.message)
+      }
+    } catch (err) {
+      console.warn("Exception beim Löschen der Tenant-Zuordnungen:", err)
     }
 
-    // 2. Lösche Auth-User (dies löscht auch automatisch das Profil durch Trigger)
+    // 2. Lösche alle Feature-Votes (public.feature_votes)
+    try {
+      const { error: votesError } = await adminClient
+        .from("feature_votes")
+        .delete()
+        .eq("user_id", userId)
+      if (votesError) {
+        console.warn("Warnung beim Löschen der Feature-Votes:", votesError.message)
+      }
+    } catch (err) {
+      console.warn("Exception beim Löschen der Feature-Votes:", err)
+    }
+
+    // 3. Lösche alle AI Tool Calls (public.ai_tool_calls)
+    try {
+      const { error: toolCallsError } = await adminClient
+        .from("ai_tool_calls")
+        .delete()
+        .eq("user_id", userId)
+      if (toolCallsError) {
+        console.warn("Warnung beim Löschen der AI Tool Calls:", toolCallsError.message)
+      }
+    } catch (err) {
+      console.warn("Exception beim Löschen der AI Tool Calls:", err)
+    }
+
+    // 4. Lösche Auth-User (dies löscht automatisch das Profil und andere abhängige Daten via Trigger)
+    // WICHTIG: Dies sollte alle restlichen Abhängigkeiten automatisch löschen
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId)
 
     if (deleteError) {
-      console.error("Fehler beim Löschen des Users:", deleteError)
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+      console.error("Fehler beim Löschen des Auth-Users:", deleteError)
+      // Gebe detaillierte Fehlermeldung zurück
+      const errorMessage =
+        deleteError.message || deleteError.toString() || "Unbekannter Fehler beim Löschen des Users"
+      return NextResponse.json(
+        {
+          error: `DatabaseError: ${errorMessage}`,
+          details: {
+            code: deleteError.code,
+            message: deleteError.message,
+            status: deleteError.status,
+          },
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true })

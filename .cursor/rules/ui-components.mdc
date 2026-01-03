@@ -144,12 +144,14 @@ Das Designsystem nutzt `text-box-trim` für präzisere Typometrie (80-90% Browse
 </Card>
 ```
 
+**Wichtig:** `CardHeader` verwendet automatisch `gap-2` zwischen `CardTitle` und `CardDescription`. Wenn Titel und Beschreibung in einem wrapper `div` sind, muss dieser ebenfalls `flex flex-col gap-2` haben.
+
 ### Dashboard Page Pattern
 ```tsx
 <div className="flex flex-col gap-6 p-6">
   {/* Header */}
   <div className="flex items-center justify-between">
-    <div>
+    <div className="flex flex-col gap-2">
       <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
       <p className="text-sm text-muted-foreground">Übersicht</p>
     </div>
