@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Dokumentationsstruktur validieren
 echo "🔍 Validiere Dokumentationsstruktur..."
 node scripts/validate-docs-structure.mjs
