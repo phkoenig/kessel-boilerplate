@@ -56,24 +56,108 @@ const LOCAL_DEV_DEFAULTS = {
   NEXT_PUBLIC_AUTH_BYPASS: "true",
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PRESERVED VARIABLES
+// Diese Variablen werden aus der bestehenden .env.local erhalten und nicht
+// überschrieben. Sie werden von der CLI bei der Projekt-Erstellung gesetzt.
+// ═══════════════════════════════════════════════════════════════════════════
+const PRESERVED_VAR_PREFIXES = [
+  "NEXT_PUBLIC_APP_NAME",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_TENANT_SLUG",
+  "NEXT_PUBLIC_DEV_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+]
+
+/**
+ * Liest bestehende .env.local und extrahiert Variablen die erhalten bleiben sollen
+ */
+function getPreservedVariables(envPath) {
+  const preserved = {}
+
+  if (!fs.existsSync(envPath)) {
+    return preserved
+  }
+
+  try {
+    const content = fs.readFileSync(envPath, "utf-8")
+    const lines = content.split("\n")
+
+    for (const line of lines) {
+      // Ignoriere Kommentare und leere Zeilen
+      if (line.startsWith("#") || !line.includes("=")) continue
+
+      const [key, ...valueParts] = line.split("=")
+      const trimmedKey = key.trim()
+      const value = valueParts.join("=").trim()
+
+      // Prüfe ob diese Variable erhalten bleiben soll
+      if (PRESERVED_VAR_PREFIXES.some((prefix) => trimmedKey.startsWith(prefix))) {
+        // Entferne Anführungszeichen falls vorhanden
+        preserved[trimmedKey] = value.replace(/^["']|["']$/g, "")
+      }
+    }
+  } catch (e) {
+    // Ignoriere Lesefehler
+  }
+
+  return preserved
+}
+
 async function run() {
   try {
-    // 1. Primäre Validierung (Konnektivität & SERVICE_ROLE_KEY)
+    const envPath = path.resolve(process.cwd(), ".env.local")
+
+    // 1. Bestehende projektspezifische Variablen erhalten
+    const preservedVars = getPreservedVariables(envPath)
+    const hasPreservedVars = Object.keys(preservedVars).length > 0
+
+    if (hasPreservedVars) {
+      log(chalk.cyan("📋 Bestehende Projekt-Variablen werden erhalten:\n"))
+      for (const [key, value] of Object.entries(preservedVars)) {
+        const displayValue =
+          key.includes("KEY") || key.includes("SECRET") ? `${value.substring(0, 10)}...` : value
+        log(chalk.gray(`   ${key}=${displayValue}`))
+      }
+      log("")
+    }
+
+    // 2. Secrets aus Vault laden
     log(chalk.blue("🔐 Rufe Secrets aus dem Supabase Vault ab...\n"))
     const secrets = await fetchSecretsFromSupabase()
 
-    // 2. Vault-Secrets formatieren
+    // 3. Vault-Secrets formatieren
     const vaultEnvLines = Object.entries(secrets).map(
       ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
     )
 
-    // 3. Local Dev Defaults hinzufügen
+    // 4. Erhaltene Variablen formatieren
+    const preservedEnvLines = Object.entries(preservedVars).map(
+      ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
+    )
+
+    // 5. Local Dev Defaults hinzufügen
     const devDefaultsLines = Object.entries(LOCAL_DEV_DEFAULTS).map(
       ([key, value]) => `${key}=${value}`
     )
 
-    // 4. Alles zusammenfügen mit Kommentar-Sektion
-    const envFileContent = [
+    // 6. Alles zusammenfügen mit Kommentar-Sektionen
+    const sections = []
+
+    // Projekt-Konfiguration (erhaltene Variablen)
+    if (preservedEnvLines.length > 0) {
+      sections.push(
+        "# ════════════════════════════════════════════════════════════════════",
+        "# Projekt-Konfiguration (von CLI generiert, bleibt erhalten)",
+        "# ════════════════════════════════════════════════════════════════════",
+        ...preservedEnvLines,
+        ""
+      )
+    }
+
+    // Vault-Secrets
+    sections.push(
       "# ════════════════════════════════════════════════════════════════════",
       "# Secrets aus Supabase Vault (via pnpm pull-env)",
       "# ════════════════════════════════════════════════════════════════════",
@@ -83,10 +167,10 @@ async function run() {
       "# Local Development Defaults (automatisch hinzugefügt)",
       "# ════════════════════════════════════════════════════════════════════",
       ...devDefaultsLines,
-      "", // Trailing newline
-    ].join("\n")
+      "" // Trailing newline
+    )
 
-    const envPath = path.resolve(process.cwd(), ".env.local")
+    const envFileContent = sections.join("\n")
 
     // 5. Secrets in .env.local schreiben
     fs.writeFileSync(envPath, envFileContent)
