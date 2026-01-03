@@ -335,6 +335,32 @@ async function setupThemes() {
 }
 
 /**
+ * Aktualisiert App-Name in app_settings
+ */
+async function updateAppSettings() {
+  console.log("\n📋 Aktualisiere App-Einstellungen...")
+
+  try {
+    const { error: updateError } = await supabaseClient
+      .from("app_settings")
+      .update({
+        app_name: tenantName,
+        app_description: `${tenantName} - Erstellt mit Kessel CLI`,
+      })
+      .eq("id", "00000000-0000-0000-0000-000000000001")
+
+    if (updateError) {
+      console.log(`   ⚠️  App-Settings Update fehlgeschlagen: ${updateError.message}`)
+      return
+    }
+
+    console.log(`   ✅ App-Name auf "${tenantName}" gesetzt`)
+  } catch (error) {
+    console.log(`   ⚠️  App-Settings übersprungen: ${error.message}`)
+  }
+}
+
+/**
  * Hauptfunktion
  */
 async function main() {
@@ -376,6 +402,11 @@ async function main() {
   console.log("\n📋 Schritt 3: Themes einrichten")
   console.log("-".repeat(50))
   await setupThemes()
+
+  // Schritt 4: App-Einstellungen aktualisieren
+  console.log("\n📋 Schritt 4: App-Einstellungen aktualisieren")
+  console.log("-".repeat(50))
+  await updateAppSettings()
 
   // Zusammenfassung
   console.log("\n" + "=".repeat(50))
