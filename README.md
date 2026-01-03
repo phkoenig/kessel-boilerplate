@@ -94,24 +94,23 @@ pnpm dev
 
 Bei der Installation mit `kessel-cli` wird automatisch:
 
-- Ein Schema im Shared-Projekt erstellt (z.B. `galaxy`, `nova`)
-- Alle Migrationen im Schema ausgeführt
-- Standard-User angelegt (falls noch nicht vorhanden)
+- Ein Tenant in `app.tenants` erstellt (RLS-basierte Isolation)
+- Standard-User dem Tenant zugeordnet (`app.user_tenants`)
+- Themes eingerichtet
 
 **Manuelles Setup** (falls CLI nicht verwendet):
 
 ```bash
-# 1. Schema erstellen
-CREATE SCHEMA IF NOT EXISTS "dein_projektname";
-
-# 2. Migrationen im Schema ausführen
+# 1. Tenant erstellen (RLS-basierte Multi-Tenant-Architektur)
 node scripts/apply-migrations-to-schema.mjs dein_projektname
 
-# 3. .env.local konfigurieren
+# 2. .env.local konfigurieren
 NEXT_PUBLIC_SUPABASE_URL=https://ufqlocxqizmiaozkashi.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_PROJECT_SCHEMA=dein_projektname
+NEXT_PUBLIC_TENANT_SLUG=dein_projektname
 ```
+
+> **Hinweis:** Seit v1.1.0 verwendet Kessel RLS-basierte Multi-Tenancy, nicht mehr separate Schemas.
 
 Detaillierte Anleitung: [Multi-Tenant Architektur](docs/04_knowledge/multi-tenant-architektur.md) | [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
 

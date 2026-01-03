@@ -86,9 +86,9 @@ kessel meine-app
 #    - SERVICE_ROLE_KEY (✅ automatisch geladen - Enter drücken!)
 #    - Dependencies installieren? (Ja)
 
-# 4. Das Tool richtet automatisch ein (Multi-Tenant):
-#    - Schema im Shared Supabase-Projekt (z.B. "galaxy")
-#    - Alle Datenbank-Tabellen im Schema (Migrationen)
+# 4. Das Tool richtet automatisch ein (RLS-basiertes Multi-Tenant):
+#    - Tenant in app.tenants erstellt (z.B. "galaxy")
+#    - Standard-User dem Tenant zugeordnet (app.user_tenants)
 #    - Standard-User für sofortigen Zugriff (Shared Auth):
 #      → admin@local / admin123 (Admin-Rolle) - existiert für ALLE Projekte
 #      → user@local / user123 (User-Rolle) - existiert für ALLE Projekte
