@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { PageContent, PageHeader } from "@/components/shell"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 import { useAuth } from "@/components/auth"
@@ -144,6 +145,7 @@ import {
 } from "@/components/ui/carousel"
 import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"
+import { InlineEditInput } from "@/components/ui/inline-edit-input"
 
 // Helper für Sektionen
 function ComponentSection({
@@ -167,15 +169,17 @@ function ComponentSection({
 
 function DemoContainer({
   title,
+  id,
   children,
   className,
 }: {
   title: string
+  id?: string
   children: React.ReactNode
   className?: string
 }) {
   return (
-    <div className="space-y-4">
+    <div id={id} className="scroll-mt-24 space-y-4">
       <h4 className="text-muted-foreground text-sm font-medium tracking-wider uppercase">
         {title}
       </h4>
@@ -188,6 +192,14 @@ export default function ComponentsPage(): React.ReactElement {
   const { role, isLoading: authLoading } = useAuth()
   const currentNavItem = useCurrentNavItem()
   const pageTitle = currentNavItem?.label ?? "UI-Komponenten"
+
+  // State für InlineEditInput Demo
+  const [demoValue, setDemoValue] = React.useState("Beispieltext")
+
+  // Scroll nach oben beim Erstaufruf
+  React.useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   if (authLoading) {
     return (
@@ -219,7 +231,7 @@ export default function ComponentsPage(): React.ReactElement {
       <div className="space-y-24 pb-24">
         {/* BUTTONS & ACTIONS */}
         <ComponentSection title="Buttons & Actions" id="buttons">
-          <DemoContainer title="Varianten">
+          <DemoContainer title="Varianten" id="button-variants">
             <div className="flex flex-wrap gap-2">
               <Button variant="default">Default</Button>
               <Button variant="secondary">Secondary</Button>
@@ -230,7 +242,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Größen & Icons">
+          <DemoContainer title="Größen & Icons" id="button-sizes">
             <div className="flex flex-wrap items-center gap-2">
               <Button size="lg">Large</Button>
               <Button size="default">Default</Button>
@@ -248,7 +260,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Toggles">
+          <DemoContainer title="Toggles" id="toggles">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <Toggle aria-label="Toggle italic">
@@ -266,7 +278,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Badges">
+          <DemoContainer title="Badges" id="badges">
             <div className="flex flex-wrap gap-2">
               <Badge>Default</Badge>
               <Badge variant="secondary">Secondary</Badge>
@@ -281,7 +293,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* FORMULARE */}
         <ComponentSection title="Formulare & Inputs" id="inputs">
-          <DemoContainer title="Text Inputs">
+          <DemoContainer title="Text Inputs" id="text-inputs">
             <div className="grid w-full items-center gap-4" style={{ maxWidth: "24rem" }}>
               <div className="grid w-full items-center gap-1.5" style={{ maxWidth: "24rem" }}>
                 <Label htmlFor="email">Email</Label>
@@ -298,7 +310,30 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Auswahl & Schalter">
+          <DemoContainer title="Inline Edit Input" id="inline-edit">
+            <div className="space-y-4" style={{ maxWidth: "24rem" }}>
+              <p className="text-muted-foreground text-sm">
+                Klicken zum Bearbeiten. Mit ✓ speichern oder ✗ abbrechen.
+              </p>
+              <InlineEditInput
+                label="Editierbarer Wert"
+                value={demoValue}
+                onSave={(value) => {
+                  setDemoValue(value)
+                  toast.success(`Gespeichert: "${value}"`)
+                }}
+                placeholder="Klicken zum Bearbeiten..."
+              />
+              <InlineEditInput
+                label="Deaktiviert"
+                value="Nicht bearbeitbar"
+                onSave={() => {}}
+                disabled
+              />
+            </div>
+          </DemoContainer>
+
+          <DemoContainer title="Auswahl & Schalter" id="selection">
             <div className="space-y-6">
               <div className="flex items-center space-x-2">
                 <Switch id="airplane-mode" />
@@ -334,7 +369,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Slider (Bereiche)">
+          <DemoContainer title="Slider (Bereiche)" id="slider">
             <div className="space-y-8 py-4">
               <div className="space-y-2">
                 <Label>Standard Slider (50%)</Label>
@@ -347,7 +382,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Date & Calendar">
+          <DemoContainer title="Date & Calendar" id="calendar">
             <div className="flex flex-col gap-4">
               <div className="w-fit rounded-md border">
                 <Calendar mode="single" selected={new Date()} className="rounded-md border" />
@@ -358,7 +393,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* FEEDBACK & DISPLAY */}
         <ComponentSection title="Feedback & Display" id="alerts">
-          <DemoContainer title="Alerts">
+          <DemoContainer title="Alerts" id="alerts-demo">
             <div className="space-y-4">
               <Alert>
                 <Terminal className="size-4" />
@@ -375,7 +410,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Progress & Loading">
+          <DemoContainer title="Progress & Loading" id="progress">
             <div className="space-y-8">
               <div className="space-y-2">
                 <Label>Fortschritt (60%)</Label>
@@ -400,7 +435,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Avatare">
+          <DemoContainer title="Avatare" id="avatars">
             <div className="flex items-center gap-4">
               <Avatar>
                 <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
@@ -416,7 +451,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Keyboard Shortcuts">
+          <DemoContainer title="Keyboard Shortcuts" id="kbd">
             <div className="flex flex-wrap gap-2">
               <Kbd>⌘ K</Kbd>
               <Kbd>Ctrl + C</Kbd>
@@ -424,7 +459,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Toasts (Sonner)">
+          <DemoContainer title="Toasts (Sonner)" id="toasts">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -452,7 +487,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* OVERLAYS */}
         <ComponentSection title="Overlays" id="dialogs">
-          <DemoContainer title="Dialogs">
+          <DemoContainer title="Dialogs" id="dialogs-demo">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">Open Dialog</Button>
@@ -485,7 +520,7 @@ export default function ComponentsPage(): React.ReactElement {
             </Dialog>
           </DemoContainer>
 
-          <DemoContainer title="Alert Dialog">
+          <DemoContainer title="Alert Dialog" id="alert-dialog">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">Delete Account</Button>
@@ -506,7 +541,7 @@ export default function ComponentsPage(): React.ReactElement {
             </AlertDialog>
           </DemoContainer>
 
-          <DemoContainer title="Sheets">
+          <DemoContainer title="Sheets" id="sheets">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline">Open Sheet</Button>
@@ -539,7 +574,7 @@ export default function ComponentsPage(): React.ReactElement {
             </Sheet>
           </DemoContainer>
 
-          <DemoContainer title="Popovers & Tooltips">
+          <DemoContainer title="Popovers & Tooltips" id="popovers">
             <div className="flex items-center gap-4">
               <Popover>
                 <PopoverTrigger asChild>
@@ -580,7 +615,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Dropdowns & Context">
+          <DemoContainer title="Dropdowns & Context" id="dropdowns">
             <div className="flex items-center gap-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -622,7 +657,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* DATEN & TABELLEN */}
         <ComponentSection title="Data Display" id="cards">
-          <DemoContainer title="Cards" className="p-0">
+          <DemoContainer title="Cards" id="data-cards" className="p-0">
             <div className="rounded-md border">
               <Table>
                 <TableCaption>Liste der letzten Transaktionen.</TableCaption>
@@ -661,7 +696,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* CARDS & LAYOUT */}
         <ComponentSection title="Layout & Cards">
-          <DemoContainer title="Card Example" className="p-0">
+          <DemoContainer title="Card Example" id="card-example" className="p-0">
             <div className="p-6">
               <Card className="mx-auto w-full shadow-sm" style={{ maxWidth: "24rem" }}>
                 <CardHeader>
@@ -691,7 +726,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Tabs & Accordion">
+          <DemoContainer title="Tabs & Accordion" id="tabs-accordion">
             <div className="space-y-8">
               <Tabs defaultValue="account" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -723,7 +758,7 @@ export default function ComponentsPage(): React.ReactElement {
             </div>
           </DemoContainer>
 
-          <DemoContainer title="Carousel">
+          <DemoContainer title="Carousel" id="carousel">
             <Carousel className="mx-auto w-full" style={{ maxWidth: "20rem" }}>
               <CarouselContent>
                 {Array.from({ length: 5 }).map((_, index) => (
@@ -746,7 +781,7 @@ export default function ComponentsPage(): React.ReactElement {
 
         {/* NAVIGATION */}
         <ComponentSection title="Navigation" id="breadcrumb">
-          <DemoContainer title="Breadcrumb">
+          <DemoContainer title="Breadcrumb" id="breadcrumb-demo">
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -764,7 +799,7 @@ export default function ComponentsPage(): React.ReactElement {
             </Breadcrumb>
           </DemoContainer>
 
-          <DemoContainer title="Pagination">
+          <DemoContainer title="Pagination" id="pagination">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -791,7 +826,7 @@ export default function ComponentsPage(): React.ReactElement {
             </Pagination>
           </DemoContainer>
 
-          <DemoContainer title="Command">
+          <DemoContainer title="Command" id="command">
             <Command className="rounded-lg border shadow-md">
               <CommandInput placeholder="Type a command or search..." />
               <CommandList>
