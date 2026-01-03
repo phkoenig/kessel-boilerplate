@@ -82,8 +82,10 @@ export function AppIconGenerator(): React.ReactElement {
           console.log("[AppIconGenerator] Loaded app settings:", data)
           console.log("[AppIconGenerator] Icon URL:", data.icon_url)
 
-          // App-Name: ENV hat immer Priorität wenn gesetzt
-          // DB-Wert nur verwenden wenn ENV leer UND DB-Wert kein Default ist
+          // App-Name Priorität:
+          // 1. DB-Wert wenn vom User geändert (nicht Default)
+          // 2. ENV-Variable als Fallback für Defaults
+          // 3. "App" als letzter Fallback
           const dbAppName = data.app_name || ""
           const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
           const isDbDefault = BOILERPLATE_DEFAULTS.some(
@@ -91,14 +93,14 @@ export function AppIconGenerator(): React.ReactElement {
           )
 
           let finalAppName: string
-          if (envAppName) {
-            // ENV hat Priorität
-            finalAppName = envAppName
-          } else if (dbAppName && !isDbDefault) {
-            // DB-Wert verwenden wenn kein Default
+          if (dbAppName && !isDbDefault) {
+            // DB-Wert hat Priorität wenn vom User geändert
             finalAppName = dbAppName
+          } else if (envAppName) {
+            // ENV als Fallback wenn DB leer oder noch Default
+            finalAppName = envAppName
           } else {
-            // Fallback
+            // Letzter Fallback
             finalAppName = "App"
           }
 
@@ -548,6 +550,7 @@ export function AppIconGenerator(): React.ReactElement {
               label="App-Name *"
               value={appName}
               onSave={(value) => handleSaveField("app_name", value)}
+              onSaveSuccess={() => window.location.reload()}
               placeholder="z.B. Meine App"
               disabled={isGenerating}
             />
@@ -557,6 +560,7 @@ export function AppIconGenerator(): React.ReactElement {
               label="Beschreibung *"
               value={description}
               onSave={(value) => handleSaveField("app_description", value)}
+              onSaveSuccess={() => window.location.reload()}
               placeholder="z.B. Boilerplate für B2B-Apps"
               disabled={isGenerating}
             />

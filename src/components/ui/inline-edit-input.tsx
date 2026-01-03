@@ -12,6 +12,8 @@ export interface InlineEditInputProps {
   value: string
   /** Callback wenn gespeichert wird - gibt neuen Wert zurück */
   onSave: (value: string) => void | Promise<void>
+  /** Callback nach erfolgreichem Speichern (z.B. für Page Reload) */
+  onSaveSuccess?: () => void
   /** Optional: Label über dem Feld */
   label?: string
   /** Placeholder für leere Werte */
@@ -55,6 +57,7 @@ export interface InlineEditInputProps {
 export function InlineEditInput({
   value,
   onSave,
+  onSaveSuccess,
   label,
   placeholder = "Klicken zum Bearbeiten",
   isSaving: externalIsSaving,
@@ -112,13 +115,21 @@ export function InlineEditInput({
       setInternalIsSaving(true)
       await onSave(localValue.trim())
       setIsEditing(false)
+
+      // Nach erfolgreichem Speichern Callback aufrufen (z.B. für Page Reload)
+      if (onSaveSuccess) {
+        // Kurze Verzögerung damit UI-Feedback sichtbar ist
+        setTimeout(() => {
+          onSaveSuccess()
+        }, 300)
+      }
     } catch (error) {
       console.error("Fehler beim Speichern:", error)
       // Bei Fehler im Edit-Modus bleiben
     } finally {
       setInternalIsSaving(false)
     }
-  }, [localValue, value, onSave, isSaving])
+  }, [localValue, value, onSave, onSaveSuccess, isSaving])
 
   const handleCancel = React.useCallback(() => {
     setLocalValue(value) // Reset auf Original
@@ -166,7 +177,8 @@ export function InlineEditInput({
           onClick={handleStartEdit}
           disabled={disabled}
           className={cn(
-            "bg-muted/50 hover:bg-muted flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors",
+            // Gleiche Höhe wie Input (h-9 = 36px) für konsistentes Layout
+            "bg-muted/50 hover:bg-muted flex h-9 w-full items-center justify-between rounded-md border px-3 text-left text-sm transition-colors",
             "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none",
             disabled && "cursor-not-allowed opacity-50",
             displayClassName
