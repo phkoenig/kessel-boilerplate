@@ -4,13 +4,13 @@ import { useState, useEffect } from "react"
 import { Image, RefreshCw, Check, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { AppIcon } from "@/components/ui/app-icon"
 import { MonochromeIcon } from "@/components/ui/monochrome-icon"
+import { InlineEditInput } from "@/components/ui/inline-edit-input"
 import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
 
@@ -161,6 +161,35 @@ export function AppIconGenerator(): React.ReactElement {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider, availableProviders])
+
+  // Einzelnes Feld speichern (App-Name oder Beschreibung)
+  async function handleSaveField(field: "app_name" | "app_description", value: string) {
+    try {
+      const { error: updateError } = await supabase
+        .from("app_settings")
+        .update({ [field]: value })
+        .eq("id", "00000000-0000-0000-0000-000000000001")
+
+      if (updateError) {
+        throw updateError
+      }
+
+      // State aktualisieren
+      if (field === "app_name") {
+        setAppName(value)
+      } else {
+        setDescription(value)
+      }
+
+      console.log(`[AppIconGenerator] Saved ${field}:`, value)
+    } catch (err) {
+      console.error(`[AppIconGenerator] Error saving ${field}:`, err)
+      setError(
+        `Fehler beim Speichern: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`
+      )
+      throw err // Re-throw damit InlineEditInput im Edit-Modus bleibt
+    }
+  }
 
   // Prompt automatisch generieren
   async function handleGeneratePrompt() {
@@ -494,27 +523,23 @@ export function AppIconGenerator(): React.ReactElement {
               </div>
             )}
 
-            <div>
-              <Label htmlFor="appName">App-Name *</Label>
-              <Input
-                id="appName"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                placeholder="z.B. Kessel App"
-                disabled={isGenerating}
-              />
-            </div>
+            <InlineEditInput
+              id="appName"
+              label="App-Name *"
+              value={appName}
+              onSave={(value) => handleSaveField("app_name", value)}
+              placeholder="z.B. Meine App"
+              disabled={isGenerating}
+            />
 
-            <div>
-              <Label htmlFor="description">Beschreibung *</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="z.B. Boilerplate für B2B-Apps"
-                disabled={isGenerating}
-              />
-            </div>
+            <InlineEditInput
+              id="description"
+              label="Beschreibung *"
+              value={description}
+              onSave={(value) => handleSaveField("app_description", value)}
+              placeholder="z.B. Boilerplate für B2B-Apps"
+              disabled={isGenerating}
+            />
 
             <div>
               <div className="mb-2 flex items-center justify-between">
