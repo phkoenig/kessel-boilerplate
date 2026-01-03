@@ -78,7 +78,11 @@ export function AppIconGenerator(): React.ReactElement {
         if (data) {
           console.log("[AppIconGenerator] Loaded app settings:", data)
           console.log("[AppIconGenerator] Icon URL:", data.icon_url)
-          setAppName(data.app_name || "")
+          // Fallback auf Env-Variable wenn DB-Wert leer oder "Kessel App"
+          const dbAppName = data.app_name || ""
+          const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
+          const finalAppName = dbAppName && dbAppName !== "Kessel App" ? dbAppName : envAppName
+          setAppName(finalAppName)
           setDescription(data.app_description || "")
           setCurrentIconUrl(data.icon_url)
           setIconVariants((data.icon_variants as Array<{ url: string }>) || [])
