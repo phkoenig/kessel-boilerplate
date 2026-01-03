@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
+    "postinstall": "node scripts/postinstall.mjs",
     "dev": "next dev",
     "version:write": "tsx scripts/write-version.ts",
     "prebuild": "pnpm version:write && pnpm validate:ai",

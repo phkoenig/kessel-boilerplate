@@ -77,9 +77,13 @@ pnpm pull-env
 pnpm dev
 ```
 
-**Wichtig:**
+**Wichtig - API Keys:**
 
-- Vor jedem `pnpm dev` sollte `pnpm pull-env` ausgeführt werden, um aktuelle Secrets zu laden
+> ⚠️ Nach `pnpm install` werden automatisch die Secrets aus dem Supabase Vault geladen.
+> Falls dies fehlschlägt, führe **manuell `pnpm pull-env`** aus!
+>
+> Ohne diesen Schritt fehlen API-Keys wie `OPENROUTER_API_KEY` und `FAL_KEY`.
+
 - **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo ein User-Selector statt der normalen Auth-Form angezeigt wird
 
 → [kessel-cli Installation & Workflow](docs/04_knowledge/cli-workflow.md)
