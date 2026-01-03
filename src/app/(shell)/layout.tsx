@@ -147,29 +147,23 @@ export default function ShellLayout({
     )
   }
 
-  // Design System Seite mit ThemeEditorProvider
+  // Design System Seite mit ThemeEditorProvider (kein Explorer)
   if (isDesignSystemPage) {
     return (
       <ThemeEditorProvider>
-        <AppShell navbar={<Navbar />} explorer={<RouteExplorer pathname={pathname} />}>
+        <AppShell navbar={<Navbar />} explorer={null}>
           {shellContent}
         </AppShell>
       </ThemeEditorProvider>
     )
   }
 
-  // Benutzerverwaltungsseite: Kein Explorer
-  if (isUsersPage) {
-    return (
-      <AppShell navbar={<Navbar />} explorer={null}>
-        {shellContent}
-      </AppShell>
-    )
-  }
-
-  // Standard-Layout für alle anderen Seiten
+  // Standard-Layout für alle anderen Seiten (kein Explorer)
+  // Explorer wird nur auf spezifischen Seiten angezeigt:
+  // - /app-verwaltung/datenquellen → DatasourceExplorer
+  // - /app-verwaltung/ui-komponenten → ComponentExplorer
   return (
-    <AppShell navbar={<Navbar />} explorer={<RouteExplorer pathname={pathname} />}>
+    <AppShell navbar={<Navbar />} explorer={null}>
       {shellContent}
     </AppShell>
   )
