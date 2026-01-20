@@ -20,6 +20,9 @@ export const vitestConfig = defineConfig({
     environment: "node",
     // Per-Test Environment-Override möglich via /// @vitest-environment jsdom
 
+    // Setup-File für Testing Library Matchers
+    setupFiles: ["./vitest.setup.ts"],
+
     // Glob-Patterns für Testdateien
     include: [
       "src/**/*.test.ts",

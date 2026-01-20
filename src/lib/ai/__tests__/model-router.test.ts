@@ -50,7 +50,7 @@ describe("Model Router", () => {
 
   describe("detectToolNeed - Tool-Calling erforderlich", () => {
     it("sollte Tool-Model für explizite DB-Referenzen wählen", () => {
-      const messages: CoreMessage[] = [{ role: "user", content: "Zeige mir die Datenbank" }]
+      const messages: CoreMessage[] = [{ role: "user", content: "Frage die Datenbank ab" }]
 
       const result = detectToolNeed(messages)
 
@@ -70,7 +70,7 @@ describe("Model Router", () => {
     })
 
     it("sollte Tool-Model für Rollen-Queries wählen", () => {
-      const messages: CoreMessage[] = [{ role: "user", content: "Zeige mir alle Rollen" }]
+      const messages: CoreMessage[] = [{ role: "user", content: "Liste alle Rollen auf" }]
 
       const result = detectToolNeed(messages)
 
@@ -153,12 +153,24 @@ describe("Model Router", () => {
 
     it("sollte nur CRUD OHNE Entity als Chat behandeln", () => {
       const messages: CoreMessage[] = [
-        { role: "user", content: "Zeige mir was du kannst" }, // CRUD aber keine Entity
+        { role: "user", content: "Kannst du mir helfen?" }, // Kein CRUD, keine Entity
       ]
 
       const result = detectToolNeed(messages)
 
       expect(result.needsTools).toBe(false)
+    })
+
+    it("sollte 'zeige' als UI-Action erkennen (nicht CRUD)", () => {
+      const messages: CoreMessage[] = [
+        { role: "user", content: "Zeige mir was du kannst" }, // UI-Keyword "zeige"
+      ]
+
+      const result = detectToolNeed(messages)
+
+      // "zeige" ist ein UI-Keyword → Tool-Modell für UI-Actions
+      expect(result.needsTools).toBe(true)
+      expect(result.reason).toContain("ui-action")
     })
 
     it("sollte multimodale Nachrichten mit Text-Parts analysieren", () => {

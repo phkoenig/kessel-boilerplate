@@ -1,6 +1,9 @@
 /**
  * Tests für Font-Registry
  * =======================
+ *
+ * Die Registry enthält nur statisch geladene Fonts (derzeit nur Inter).
+ * Alle anderen Fonts werden dynamisch über die Google Fonts API geladen.
  */
 
 import { describe, it, expect } from "vitest"
@@ -19,28 +22,19 @@ import {
 
 describe("Font Registry", () => {
   describe("FONT_NAME_TO_VARIABLE", () => {
-    it("sollte Mappings für alle bekannten Fonts haben", () => {
+    it("sollte Mapping für Inter haben (statisch geladener Font)", () => {
       expect(FONT_NAME_TO_VARIABLE["inter"]).toBe("--font-inter")
-      expect(FONT_NAME_TO_VARIABLE["outfit"]).toBe("--font-outfit")
-      expect(FONT_NAME_TO_VARIABLE["poppins"]).toBe("--font-poppins")
     })
 
-    it("sollte alternative Schreibweisen unterstützen", () => {
-      // Verschiedene Schreibweisen von IBM Plex Sans
-      expect(FONT_NAME_TO_VARIABLE["ibm plex sans"]).toBe("--font-ibm-sans")
-      expect(FONT_NAME_TO_VARIABLE["ibm-plex-sans"]).toBe("--font-ibm-sans")
-
-      // Verschiedene Schreibweisen von JetBrains Mono
-      expect(FONT_NAME_TO_VARIABLE["jetbrains mono"]).toBe("--font-jetbrains")
-      expect(FONT_NAME_TO_VARIABLE["jetbrains-mono"]).toBe("--font-jetbrains")
+    it("sollte nur statisch geladene Fonts enthalten", () => {
+      // Inter ist der einzige statisch geladene Font
+      expect(Object.keys(FONT_NAME_TO_VARIABLE)).toContain("inter")
     })
   })
 
   describe("KNOWN_FONT_VARIABLES", () => {
-    it("sollte alle registrierten Font-Variablen enthalten", () => {
+    it("sollte registrierte Font-Variablen enthalten", () => {
       expect(KNOWN_FONT_VARIABLES).toContain("--font-inter")
-      expect(KNOWN_FONT_VARIABLES).toContain("--font-outfit")
-      expect(KNOWN_FONT_VARIABLES).toContain("--font-ibm-sans")
       expect(KNOWN_FONT_VARIABLES.length).toBeGreaterThan(0)
     })
   })
@@ -48,12 +42,10 @@ describe("Font Registry", () => {
   describe("isKnownFontVariable", () => {
     it("sollte bekannte Variablen erkennen", () => {
       expect(isKnownFontVariable("--font-inter")).toBe(true)
-      expect(isKnownFontVariable("--font-outfit")).toBe(true)
     })
 
     it("sollte var() Wrapper korrekt handhaben", () => {
       expect(isKnownFontVariable("var(--font-inter)")).toBe(true)
-      expect(isKnownFontVariable("var(--font-outfit)")).toBe(true)
     })
 
     it("sollte unbekannte Variablen ablehnen", () => {
@@ -63,22 +55,8 @@ describe("Font Registry", () => {
   })
 
   describe("getFontCategory", () => {
-    it("sollte Sans-Fonts korrekt kategorisieren", () => {
+    it("sollte Inter als Sans kategorisieren", () => {
       expect(getFontCategory("--font-inter")).toBe("sans")
-      expect(getFontCategory("--font-outfit")).toBe("sans")
-      expect(getFontCategory("--font-poppins")).toBe("sans")
-    })
-
-    it("sollte Mono-Fonts korrekt kategorisieren", () => {
-      expect(getFontCategory("--font-jetbrains")).toBe("mono")
-      expect(getFontCategory("--font-fira-code")).toBe("mono")
-      expect(getFontCategory("--font-space-mono")).toBe("mono")
-    })
-
-    it("sollte Serif-Fonts korrekt kategorisieren", () => {
-      expect(getFontCategory("--font-playfair")).toBe("serif")
-      expect(getFontCategory("--font-lora")).toBe("serif")
-      expect(getFontCategory("--font-merriweather")).toBe("serif")
     })
 
     it("sollte undefined für unbekannte Variablen zurückgeben", () => {
@@ -90,9 +68,9 @@ describe("Font Registry", () => {
 describe("Font Mapping Utilities", () => {
   describe("mapRawFontToVariable", () => {
     it("sollte bekannte Fonts korrekt mappen", () => {
-      const result = mapRawFontToVariable("Outfit, sans-serif")
+      const result = mapRawFontToVariable("Inter, sans-serif")
       expect(result.success).toBe(true)
-      expect(result.variable).toBe("var(--font-outfit)")
+      expect(result.variable).toBe("var(--font-inter)")
     })
 
     it("sollte bereits korrekte var() Syntax unverändert lassen", () => {
@@ -110,19 +88,19 @@ describe("Font Mapping Utilities", () => {
     })
 
     it("sollte case-insensitive mappen", () => {
-      const result1 = mapRawFontToVariable("OUTFIT")
-      const result2 = mapRawFontToVariable("outfit")
-      const result3 = mapRawFontToVariable("Outfit")
+      const result1 = mapRawFontToVariable("INTER")
+      const result2 = mapRawFontToVariable("inter")
+      const result3 = mapRawFontToVariable("Inter")
 
-      expect(result1.variable).toBe("var(--font-outfit)")
-      expect(result2.variable).toBe("var(--font-outfit)")
-      expect(result3.variable).toBe("var(--font-outfit)")
+      expect(result1.variable).toBe("var(--font-inter)")
+      expect(result2.variable).toBe("var(--font-inter)")
+      expect(result3.variable).toBe("var(--font-inter)")
     })
 
     it("sollte Anführungszeichen ignorieren", () => {
-      const result = mapRawFontToVariable('"Outfit", sans-serif')
+      const result = mapRawFontToVariable('"Inter", sans-serif')
       expect(result.success).toBe(true)
-      expect(result.variable).toBe("var(--font-outfit)")
+      expect(result.variable).toBe("var(--font-inter)")
     })
   })
 
@@ -130,16 +108,16 @@ describe("Font Mapping Utilities", () => {
     it("sollte Font-Deklarationen extrahieren", () => {
       const css = `
         :root {
-          --font-sans: Outfit, sans-serif;
-          --font-mono: Fira Code, monospace;
-          --font-serif: Lora, serif;
+          --font-sans: Inter, sans-serif;
+          --font-mono: monospace;
+          --font-serif: serif;
         }
       `
       const result = extractFontsFromCSS(css)
 
-      expect(result["font-sans"]).toBe("Outfit, sans-serif")
-      expect(result["font-mono"]).toBe("Fira Code, monospace")
-      expect(result["font-serif"]).toBe("Lora, serif")
+      expect(result["font-sans"]).toBe("Inter, sans-serif")
+      expect(result["font-mono"]).toBe("monospace")
+      expect(result["font-serif"]).toBe("serif")
     })
 
     it("sollte undefined für fehlende Fonts zurückgeben", () => {
@@ -153,15 +131,15 @@ describe("Font Mapping Utilities", () => {
   })
 
   describe("convertCSSFontsToVariables", () => {
-    it("sollte rohe Font-Namen zu var() konvertieren", () => {
-      const css = `:root { --font-sans: Outfit, sans-serif; }`
+    it("sollte bekannte Font-Namen zu var() konvertieren", () => {
+      const css = `:root { --font-sans: Inter, sans-serif; }`
       const result = convertCSSFontsToVariables(css)
 
-      expect(result.css).toContain("var(--font-outfit)")
+      expect(result.css).toContain("var(--font-inter)")
       expect(result.warnings).toHaveLength(0)
       expect(result.conversions).toHaveLength(1)
-      expect(result.conversions[0].from).toBe("Outfit, sans-serif")
-      expect(result.conversions[0].to).toBe("var(--font-outfit)")
+      expect(result.conversions[0].from).toBe("Inter, sans-serif")
+      expect(result.conversions[0].to).toBe("var(--font-inter)")
     })
 
     it("sollte bereits korrekte var() Syntax unverändert lassen", () => {
@@ -186,7 +164,6 @@ describe("Font Mapping Utilities", () => {
       const css = `
         :root {
           --font-sans: var(--font-inter);
-          --font-mono: var(--font-jetbrains);
         }
       `
       const errors = validateCSSFontSyntax(css)
@@ -196,7 +173,7 @@ describe("Font Mapping Utilities", () => {
     it("sollte rohe Font-Namen als Fehler melden", () => {
       const css = `
         :root {
-          --font-sans: Outfit, sans-serif;
+          --font-sans: Inter, sans-serif;
         }
       `
       const errors = validateCSSFontSyntax(css)

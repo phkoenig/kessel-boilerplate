@@ -260,7 +260,7 @@ describe("AI Router", () => {
       expect(temperature).toBe(0)
     })
 
-    it("sollte maxTokens 10 verwenden", async () => {
+    it("sollte ohne maxTokens aufrufen (Kategorie ist kurz genug)", async () => {
       const { generateText } = await import("ai")
       vi.mocked(generateText).mockResolvedValue({
         text: "CHAT",
@@ -275,9 +275,8 @@ describe("AI Router", () => {
       await routeWithAI(messages)
 
       const callArgs = vi.mocked(generateText).mock.calls[0]
-      const maxTokens = callArgs?.[0]?.maxTokens
-
-      expect(maxTokens).toBe(10)
+      // maxTokens ist nicht gesetzt, da die Antwort nur ein Wort ist
+      expect(callArgs?.[0]?.maxTokens).toBeUndefined()
     })
   })
 })

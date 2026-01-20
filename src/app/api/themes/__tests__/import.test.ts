@@ -4,6 +4,9 @@
  *
  * Testet die automatische Font-Konvertierung und Validierung
  * beim Importieren von TweakCN-Themes.
+ *
+ * HINWEIS: Die Font-Registry enthält nur statisch geladene Fonts (Inter).
+ * Andere Fonts werden dynamisch über Google Fonts API geladen.
  */
 
 import { describe, it, expect, vi } from "vitest"
@@ -18,9 +21,9 @@ vi.mock("fs/promises", () => ({
 describe("Theme Import - Font Conversion", () => {
   describe("mapRawFontToVariable Integration", () => {
     it("sollte bekannte Fonts zu var() konvertieren", () => {
-      const result = mapRawFontToVariable("Outfit, sans-serif")
+      const result = mapRawFontToVariable("Inter, sans-serif")
       expect(result.success).toBe(true)
-      expect(result.variable).toBe("var(--font-outfit)")
+      expect(result.variable).toBe("var(--font-inter)")
     })
 
     it("sollte bereits korrekte var() Syntax akzeptieren", () => {
@@ -38,20 +41,11 @@ describe("Theme Import - Font Conversion", () => {
   })
 
   describe("Font-Variable Konvertierung", () => {
-    it("sollte alle gängigen TweakCN-Fonts mappen können", () => {
-      const tweakCNFonts = [
-        { input: "Inter", expected: "var(--font-inter)" },
-        { input: "Outfit", expected: "var(--font-outfit)" },
-        { input: "Poppins", expected: "var(--font-poppins)" },
-        { input: "IBM Plex Sans", expected: "var(--font-ibm-sans)" },
-        { input: "Fira Code", expected: "var(--font-fira-code)" },
-        { input: "JetBrains Mono", expected: "var(--font-jetbrains)" },
-        { input: "Space Mono", expected: "var(--font-space-mono)" },
-        { input: "Lora", expected: "var(--font-lora)" },
-        { input: "Playfair Display", expected: "var(--font-playfair)" },
-      ]
+    it("sollte statisch geladene Fonts mappen können", () => {
+      // Nur Inter ist statisch geladen, andere Fonts werden dynamisch geladen
+      const staticFonts = [{ input: "Inter", expected: "var(--font-inter)" }]
 
-      for (const { input, expected } of tweakCNFonts) {
+      for (const { input, expected } of staticFonts) {
         const result = mapRawFontToVariable(input)
         expect(result.success).toBe(true)
         expect(result.variable).toBe(expected)
@@ -59,17 +53,20 @@ describe("Theme Import - Font Conversion", () => {
     })
 
     it("sollte Fonts mit Fallback-Stack korrekt mappen", () => {
-      const inputs = [
-        "Outfit, sans-serif",
-        "Fira Code, monospace",
-        "Lora, serif",
-        '"Playfair Display", Georgia, serif',
-      ]
+      // Inter mit Fallback
+      const result = mapRawFontToVariable("Inter, sans-serif")
+      expect(result.success).toBe(true)
+      expect(result.variable).toBe("var(--font-inter)")
+    })
 
-      for (const input of inputs) {
-        const result = mapRawFontToVariable(input)
-        expect(result.success).toBe(true)
-        expect(result.variable).toMatch(/^var\(--font-/)
+    it("sollte unbekannte Fonts als Warnung melden", () => {
+      // Fonts die nicht in der Registry sind (werden dynamisch geladen)
+      const dynamicFonts = ["Outfit", "Fira Code", "Lora", "Playfair Display"]
+
+      for (const font of dynamicFonts) {
+        const result = mapRawFontToVariable(font)
+        expect(result.success).toBe(false)
+        expect(result.warning).toContain("nicht in der Registry")
       }
     })
   })
@@ -103,66 +100,81 @@ describe("Theme Import - Font Conversion", () => {
         :root {
           --background: oklch(1 0 0);
           --foreground: oklch(0.2 0 0);
-          --font-sans: Outfit, sans-serif;
+          --primary: oklch(0.6 0.2 250);
         }
       `
 
-      // Simpler Parser-Test
-      const varMatches = css.matchAll(/--([a-z0-9-]+):\s*([^;]+);/gi)
-      const variables: Record<string, string> = {}
+      // Einfaches Regex-Parsing wie in der API
+      const rootMatch = css.match(/:root\s*\{([^}]+)\}/)
+      expect(rootMatch).not.toBeNull()
 
-      for (const match of varMatches) {
-        const [, name, value] = match
-        variables[name.trim()] = value.trim()
+      const variables: Record<string, string> = {}
+      const varRegex = /--([\w-]+):\s*([^;]+);/g
+      let match
+
+      while ((match = varRegex.exec(rootMatch![1])) !== null) {
+        variables[match[1]] = match[2].trim()
       }
 
       expect(variables["background"]).toBe("oklch(1 0 0)")
       expect(variables["foreground"]).toBe("oklch(0.2 0 0)")
-      expect(variables["font-sans"]).toBe("Outfit, sans-serif")
+      expect(variables["primary"]).toBe("oklch(0.6 0.2 250)")
     })
 
     it("sollte .dark Variablen extrahieren", () => {
       const css = `
         .dark {
-          --background: oklch(0.15 0 0);
-          --foreground: oklch(0.95 0 0);
+          --background: oklch(0.1 0 0);
+          --foreground: oklch(0.9 0 0);
         }
       `
 
-      const varMatches = css.matchAll(/--([a-z0-9-]+):\s*([^;]+);/gi)
-      const variables: Record<string, string> = {}
+      const darkMatch = css.match(/\.dark\s*\{([^}]+)\}/)
+      expect(darkMatch).not.toBeNull()
 
-      for (const match of varMatches) {
-        const [, name, value] = match
-        variables[name.trim()] = value.trim()
+      const variables: Record<string, string> = {}
+      const varRegex = /--([\w-]+):\s*([^;]+);/g
+      let match
+
+      while ((match = varRegex.exec(darkMatch![1])) !== null) {
+        variables[match[1]] = match[2].trim()
       }
 
-      expect(variables["background"]).toBe("oklch(0.15 0 0)")
-      expect(variables["foreground"]).toBe("oklch(0.95 0 0)")
+      expect(variables["background"]).toBe("oklch(0.1 0 0)")
+      expect(variables["foreground"]).toBe("oklch(0.9 0 0)")
     })
   })
 
-  describe("Response Format", () => {
-    it("sollte das erwartete Response-Format haben", () => {
-      // Simuliere erwartetes Response-Format
-      const successResponse = {
-        success: true,
-        theme: {
-          id: "test-theme",
-          name: "Test Theme",
-          description: "Importiertes Theme von TweakCN",
-        },
-        warnings: ["Font 'CustomFont' nicht registriert"],
-        missingFonts: ["CustomFont"],
-        fontConversions: [{ from: "Outfit", to: "var(--font-outfit)" }],
-      }
+  describe("OKLCH Validierung", () => {
+    it("sollte valide OKLCH-Werte akzeptieren", () => {
+      const validValues = [
+        "oklch(1 0 0)",
+        "oklch(0.5 0.2 250)",
+        "oklch(0.95 0.01 180)",
+        "oklch(0.2 0.15 30)",
+      ]
 
-      expect(successResponse.success).toBe(true)
-      expect(successResponse.theme).toBeDefined()
-      expect(successResponse.theme.id).toBe("test-theme")
-      expect(successResponse.warnings).toHaveLength(1)
-      expect(successResponse.missingFonts).toHaveLength(1)
-      expect(successResponse.fontConversions).toHaveLength(1)
+      const oklchRegex = /^oklch\(\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*\)$/
+
+      for (const value of validValues) {
+        expect(oklchRegex.test(value)).toBe(true)
+      }
+    })
+
+    it("sollte ungültige OKLCH-Werte ablehnen", () => {
+      const invalidValues = [
+        "rgb(255, 0, 0)",
+        "hsl(0, 100%, 50%)",
+        "#ff0000",
+        "oklch(1, 0, 0)", // Kommas statt Leerzeichen
+        "oklch(1 0)", // Fehlender Wert
+      ]
+
+      const oklchRegex = /^oklch\(\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*\)$/
+
+      for (const value of invalidValues) {
+        expect(oklchRegex.test(value)).toBe(false)
+      }
     })
   })
 })
