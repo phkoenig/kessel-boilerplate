@@ -302,9 +302,12 @@ export default {
         }
 
         // Optional: Prüfe Spacing-Skala (p-3, m-5, gap-7 sind verboten)
+        // HINWEIS: scroll-m-*, scroll-p-* etc. sind ERLAUBT (legitime Tailwind-Utilities)
         if (enforceSpacingScale) {
+          // Negative lookbehind verhindert Match nach scroll- oder anderen Prefixen
+          // (?:^|\s) = Match nur am Anfang oder nach Whitespace
           const spacingRegex =
-            /\b(p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|space-x|space-y)-(\d+)\b/g
+            /(?:^|\s)(p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|space-x|space-y)-(\d+)(?=\s|$)/g
           let match
           while ((match = spacingRegex.exec(value)) !== null) {
             const spacingValue = parseInt(match[2], 10)
@@ -312,7 +315,7 @@ export default {
               context.report({
                 node,
                 messageId: "forbiddenSpacing",
-                data: { value: match[0] },
+                data: { value: match[1] + "-" + match[2] },
               })
             }
           }
