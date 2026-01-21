@@ -154,5 +154,8 @@
   },
   "peerDependencies": {
     "@storybook/addon-links": "^10.1.7"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

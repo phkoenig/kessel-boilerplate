@@ -1,9 +1,28 @@
+"use client"
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
-  return (
+/**
+ * Input-Props mit optionaler AI-Unterstützung.
+ */
+type InputProps = React.ComponentProps<"input"> & AIProps
+
+function Input({
+  className,
+  type,
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
+  ...props
+}: InputProps) {
+  const inputElement = (
     <input
       type={type}
       data-slot="input"
@@ -16,6 +35,24 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       {...props}
     />
   )
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.input.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.input.category}
+      >
+        {inputElement}
+      </AIInteractable>
+    )
+  }
+
+  return inputElement
 }
 
 export { Input }
+export type { InputProps }

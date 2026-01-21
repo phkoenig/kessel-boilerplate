@@ -37,6 +37,7 @@ export const AIComponentCategory = z.enum([
   "modal", // Modals, Dialogs
   "data", // Datentabellen, Listen
   "settings", // Einstellungen, Theme-Switcher
+  "actions", // Aktions-Buttons, Trigger
 ])
 
 export type AIComponentCategory = z.infer<typeof AIComponentCategory>

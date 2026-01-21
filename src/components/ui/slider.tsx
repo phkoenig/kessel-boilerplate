@@ -4,6 +4,13 @@ import * as React from "react"
 import * as SliderPrimitive from "@radix-ui/react-slider"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
+
+/**
+ * Slider-Props mit optionaler AI-Unterstützung.
+ */
+type SliderProps = React.ComponentProps<typeof SliderPrimitive.Root> & AIProps
 
 function Slider({
   className,
@@ -11,14 +18,20 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: SliderProps) {
   const _values = React.useMemo(
     () => (Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : [min, max]),
     [value, defaultValue, min, max]
   )
 
-  return (
+  const sliderElement = (
     <SliderPrimitive.Root
       data-slot="slider"
       defaultValue={defaultValue}
@@ -53,6 +66,24 @@ function Slider({
       ))}
     </SliderPrimitive.Root>
   )
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.select.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.select.category}
+      >
+        {sliderElement}
+      </AIInteractable>
+    )
+  }
+
+  return sliderElement
 }
 
 export { Slider }
+export type { SliderProps }

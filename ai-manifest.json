@@ -431,6 +431,15 @@
       "keywords": ["avatar", "speichern", "save", "profilbild", "bild"],
       "requiredRole": "user",
       "route": "/benutzer-menue/profile"
+    },
+    {
+      "id": "save-btn",
+      "description": "Beispiel: Speichert Änderungen",
+      "action": "trigger",
+      "target": "save",
+      "category": "actions",
+      "keywords": ["speichern", "save"],
+      "requiredRole": "user"
     }
   ]
 }

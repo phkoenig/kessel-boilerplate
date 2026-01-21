@@ -74,9 +74,37 @@ ai-manifest.json
 
 ## Verwendung
 
-### AIInteractable Wrapper
+### Option 1: Inline AI-Props (BEVORZUGT)
 
-Wrappe interaktive UI-Komponenten mit `AIInteractable`:
+Die UI-Komponenten haben eingebaute AI-Unterstützung. Setze einfach die `ai*` Props:
+
+```tsx
+import { Button } from "@/components/ui/button"
+
+function MyComponent() {
+  return (
+    <Button
+      onClick={handleClick}
+      aiId="my-action-button"
+      aiDescription="Führt meine Aktion aus"
+      aiKeywords={["aktion", "button", "ausführen"]}
+    >
+      Aktion ausführen
+    </Button>
+  )
+}
+```
+
+**Vorteile:**
+
+- Weniger Boilerplate
+- Komponente ist sofort AI-fähig
+- Kein zusätzlicher Wrapper nötig
+- Bessere Lesbarkeit
+
+### Option 2: AIInteractable Wrapper (Legacy)
+
+Der klassische Wrapper-Ansatz wird weiterhin unterstützt:
 
 ```tsx
 import { AIInteractable } from "@/components/ai/AIInteractable"
@@ -98,7 +126,30 @@ function MyComponent() {
 }
 ```
 
-### Props
+**Wann Wrapper verwenden:**
+
+- Für komplexe Komponenten die nicht in `/components/ui/` sind
+- Wenn mehrere Elemente zusammen eine AI-Aktion bilden
+
+### Inline AI-Props (für UI-Komponenten)
+
+| Prop            | Typ        | Pflicht | Beschreibung                                      |
+| --------------- | ---------- | ------- | ------------------------------------------------- |
+| `aiId`          | `string`   | ✅      | Eindeutige ID (muss im Manifest registriert sein) |
+| `aiDescription` | `string`   | ✅      | Menschenlesbare Beschreibung für die KI           |
+| `aiKeywords`    | `string[]` | ✅      | Suchbegriffe für KI-Erkennung                     |
+| `aiAction`      | `string`   | ❌      | Aktionstyp (Default: je nach Komponente)          |
+| `aiCategory`    | `string`   | ❌      | Kategorie (Default: je nach Komponente)           |
+| `aiTarget`      | `string`   | ❌      | Ziel der Aktion (Route, Panel-Name, etc.)         |
+
+**Defaults nach Komponententyp:**
+
+- `Button`: action="trigger", category="actions"
+- `Switch`: action="toggle", category="settings"
+- `Select`: action="select", category="forms"
+- `Input`: action="input", category="forms"
+
+### AIInteractable Props (Legacy Wrapper)
 
 | Prop          | Typ                                                              | Pflicht | Beschreibung                                        |
 | ------------- | ---------------------------------------------------------------- | ------- | --------------------------------------------------- |
@@ -199,13 +250,23 @@ Prüft, dass jede `AIInteractable` Komponente im Manifest registriert ist.
 
 ### 2. `require-ai-wrapper`
 
-Prüft, dass interaktive UI-Komponenten in `AIInteractable` gewrappt sind.
+Prüft, dass interaktive UI-Komponenten AI-konfiguriert sind.
 
 ```javascript
-// ❌ Warnung: Button ohne Wrapper
+// ❌ Fehler: Button ohne AI-Konfiguration
 <Button onClick={handleClick}>Klick mich</Button>
 
-// ✅ OK: Button mit AIInteractable
+// ✅ OK: Button mit Inline AI-Props (BEVORZUGT)
+<Button
+  onClick={handleClick}
+  aiId="my-button"
+  aiDescription="Führt Aktion aus"
+  aiKeywords={["klick", "aktion"]}
+>
+  Klick mich
+</Button>
+
+// ✅ OK: Button mit AIInteractable (Legacy)
 <AIInteractable id="my-button" ...>
   <Button onClick={handleClick}>Klick mich</Button>
 </AIInteractable>

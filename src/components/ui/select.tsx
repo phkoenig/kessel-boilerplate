@@ -5,9 +5,41 @@ import { Select as SelectPrimitive } from "radix-ui"
 import type * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+/**
+ * Select-Props mit optionaler AI-Unterstützung.
+ */
+type SelectProps = React.ComponentProps<typeof SelectPrimitive.Root> & AIProps
+
+function Select({
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
+  ...props
+}: SelectProps) {
+  const selectElement = <SelectPrimitive.Root data-slot="select" {...props} />
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.select.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.select.category}
+      >
+        {selectElement}
+      </AIInteractable>
+    )
+  }
+
+  return selectElement
 }
 
 function SelectGroup({ ...props }: React.ComponentProps<typeof SelectPrimitive.Group>) {
@@ -169,3 +201,4 @@ export {
   SelectTrigger,
   SelectValue,
 }
+export type { SelectProps }

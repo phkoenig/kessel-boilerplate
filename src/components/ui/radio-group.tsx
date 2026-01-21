@@ -4,18 +4,48 @@ import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
 import type * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
+
+/**
+ * RadioGroup-Props mit optionaler AI-Unterstützung.
+ */
+type RadioGroupProps = React.ComponentProps<typeof RadioGroupPrimitive.Root> & AIProps
 
 function RadioGroup({
   className,
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
-  return (
+}: RadioGroupProps) {
+  const radioGroupElement = (
     <RadioGroupPrimitive.Root
       className={cn("grid gap-3", className)}
       data-slot="radio-group"
       {...props}
     />
   )
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.select.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.select.category}
+      >
+        {radioGroupElement}
+      </AIInteractable>
+    )
+  }
+
+  return radioGroupElement
 }
 
 function RadioGroupItem({
@@ -47,3 +77,4 @@ function RadioGroupItem({
 }
 
 export { RadioGroup, RadioGroupItem }
+export type { RadioGroupProps }

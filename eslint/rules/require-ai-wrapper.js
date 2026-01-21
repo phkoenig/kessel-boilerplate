@@ -1,16 +1,29 @@
 /**
- * ESLint Rule: Require AI Wrapper
+ * ESLint Rule: Require AI Configuration
  *
  * Erzwingt dass interaktive UI-Komponenten aus @/components/ui/
- * in einem AIInteractable Wrapper verwendet werden müssen.
+ * AI-konfiguriert sind, damit sie für die KI sichtbar und steuerbar sind.
  *
- * Dies stellt sicher, dass keine UI-Elemente für die KI "unsichtbar" sind.
+ * Es gibt zwei Möglichkeiten:
+ *
+ * 1. BEVORZUGT: Inline AI-Props direkt auf der Komponente
+ *    <Button aiId="save-btn" aiDescription="Speichert" aiKeywords={["save"]}>
+ *      Speichern
+ *    </Button>
+ *
+ * 2. LEGACY: AIInteractable Wrapper (weiterhin unterstützt)
+ *    <AIInteractable id="save-btn" ...>
+ *      <Button>Speichern</Button>
+ *    </AIInteractable>
  *
  * Ausnahmen:
  * - Komponenten innerhalb von src/components/ui/ (die Definitionen selbst)
- * - Komponenten innerhalb von AIInteractable
+ * - Komponenten mit aiId Prop (bevorzugter Ansatz)
+ * - Komponenten innerhalb von AIInteractable (legacy Ansatz)
  * - Explizit ausgenommene Komponenten (data-ai-exempt="true")
  * - Dekorative/Container-Komponenten (Card, Label, Separator, etc.)
+ * - Komponenten in Modal-Containern (DialogContent, SheetContent, etc.)
+ * - Komponenten in Trigger-Wrappern (DialogTrigger, etc.)
  */
 
 // const path = require("path") // Unused
@@ -194,6 +207,15 @@ function hasExemptAttribute(node) {
   )
 }
 
+// Prüfe ob die Komponente selbst AI-Props hat (aiId, aiDescription, aiKeywords)
+// Dies ist der neue, bevorzugte Ansatz: AI-Fähigkeit direkt in der Komponente
+function hasInlineAIProps(node) {
+  if (!node.attributes) return false
+  return node.attributes.some(
+    (attr) => attr.type === "JSXAttribute" && attr.name?.name === "aiId" && attr.value // aiId hat einen Wert
+  )
+}
+
 // Prüfe ob die Datei in src/components/ui/ liegt (UI-Definitionen selbst)
 function isUIComponentDefinition(filename) {
   const normalized = filename.replace(/\\/g, "/")
@@ -214,6 +236,7 @@ function isDemoOrAboutPage(filename) {
     normalized.includes("/layout-templates/") ||
     normalized.includes("/about/") ||
     normalized.includes("/design-system/") ||
+    normalized.includes("/ui-komponenten/") ||
     normalized.includes("/(auth)/") ||
     normalized.includes("/payment/") ||
     normalized.includes("/roles/") ||
@@ -234,9 +257,11 @@ module.exports = {
     schema: [],
     messages: {
       missingWrapper:
-        "Interactive component <{{component}}> must be wrapped in <AIInteractable>. " +
-        'Add an AIInteractable wrapper or use data-ai-exempt="true" if this is intentional.',
-      missingWrapperHint: 'Wrap with: <AIInteractable id="..." action="..." description="...">',
+        "Interactive component <{{component}}> needs AI configuration. " +
+        'Add aiId/aiDescription/aiKeywords props, or use data-ai-exempt="true" if not AI-relevant.',
+      missingWrapperHint:
+        'Option 1 (preferred): <{{component}} aiId="..." aiDescription="..." aiKeywords={[...]}>\n' +
+        'Option 2 (legacy): <AIInteractable id="..."><{{component}}></AIInteractable>',
     },
   },
 
@@ -272,7 +297,13 @@ module.exports = {
           return
         }
 
-        // Überspringe wenn bereits in AIInteractable
+        // Überspringe wenn die Komponente selbst aiId hat (neuer Ansatz)
+        // z.B. <Button aiId="save-btn" aiDescription="..." aiKeywords={[...]}>
+        if (hasInlineAIProps(node)) {
+          return
+        }
+
+        // Überspringe wenn bereits in AIInteractable (alter Ansatz, weiterhin unterstützt)
         if (isInsideAIInteractable(node)) {
           return
         }

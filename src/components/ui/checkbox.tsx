@@ -4,9 +4,25 @@ import { Checkbox as CheckboxPrimitive } from "radix-ui"
 import type * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
 
-function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
-  return (
+/**
+ * Checkbox-Props mit optionaler AI-Unterstützung.
+ */
+type CheckboxProps = React.ComponentProps<typeof CheckboxPrimitive.Root> & AIProps
+
+function Checkbox({
+  className,
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
+  ...props
+}: CheckboxProps) {
+  const checkboxElement = (
     <CheckboxPrimitive.Root
       className={cn(
         "peer border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:aria-invalid:ring-destructive/40 flex size-4 shrink-0 items-center justify-center rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
@@ -51,6 +67,24 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.switch.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.switch.category}
+      >
+        {checkboxElement}
+      </AIInteractable>
+    )
+  }
+
+  return checkboxElement
 }
 
 export { Checkbox }
+export type { CheckboxProps }

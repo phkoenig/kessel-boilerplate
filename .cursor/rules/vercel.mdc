@@ -1,0 +1,145 @@
+---
+description: Vercel Deployment Patterns und Fallstricke für dieses Projekt
+globs:
+  - vercel.json
+  - src/app/api/**/*.ts
+  - src/env.mjs
+alwaysApply: false
+---
+
+# Vercel Deployment Rules
+
+## ⚠️ KRITISCH: Region IMMER auf EU setzen
+
+**Vercel Serverless Functions laufen standardmäßig in den USA (us-east-1).**
+
+Dies führt zu Problemen bei:
+- Exchange-APIs (KuCoin, Binance, etc.) die US-IPs blockieren
+- GDPR-kritischen Anwendungen
+- Latenz-sensitiven EU-Kunden
+
+### Pflicht-Konfiguration in `vercel.json`:
+
+```json
+{
+  "regions": ["fra1"]
+}
+```
+
+**fra1 = Frankfurt** - Standard-Region für alle Kessel-Projekte.
+
+### Symptom bei fehlendem Region-Setting:
+
+```
+KuCoin API Error: Our services are currently unavailable in the U.S.
+(current ip: 34.203.233.x and current area: US)
+```
+
+**NIEMALS vergessen:** Bei jedem neuen Projekt diese Region-Einstellung prüfen!
+
+---
+
+## Environment Variables
+
+### Trailing Newlines vermeiden!
+
+**FALSCH:**
+```bash
+echo "wert" | vercel env add VARIABLE production
+```
+
+**RICHTIG:**
+```bash
+printf '%s' "wert" | vercel env add VARIABLE production
+```
+
+### Minimale Vercel Env Vars
+
+Nur Bootstrap-Variables gehören in Vercel Env:
+
+| Variable                               | Woher                |
+| -------------------------------------- | -------------------- |
+| `SERVICE_ROLE_KEY`                     | Supabase Dashboard   |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Supabase Dashboard   |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard   |
+
+### NIEMALS in Vercel Env:
+
+- Exchange API Keys → Diese gehören in den Supabase Vault!
+- Andere sensible Secrets → Supabase Vault verwenden!
+
+---
+
+## @t3-oss/env-nextjs Handling
+
+### Build-Zeit vs Runtime
+
+Das `env.mjs` validiert Variables beim Import. Auf Vercel:
+
+1. **Build:** `SKIP_ENV_VALIDATION=true` ist bereits in `vercel.json` gesetzt
+2. **Runtime:** Variables werden normal verwendet
+
+### Schema-Definition
+
+```typescript
+// src/env.mjs
+export const serverSchema = z.object({
+  SERVICE_ROLE_KEY: z.string().min(1),        // Required - Vault-Zugriff
+  OPENROUTER_API_KEY: z.string().optional(),  // Optional - nur für AI Features
+})
+```
+
+---
+
+## Deployment-Workflow
+
+### Standard-Deployment:
+
+```bash
+git push origin main
+vercel --prod --yes
+```
+
+### Bei Environment-Änderungen:
+
+```bash
+# Variable setzen (ohne Newline!)
+printf '%s' "WERT" | vercel env add VARIABLE production
+
+# Redeploy
+vercel --prod --yes
+```
+
+### Logs prüfen:
+
+```bash
+vercel logs <project-name>.vercel.app
+```
+
+---
+
+## Häufige Fehler
+
+### 500 Error bei externen API-Aufrufen
+
+1. **Prüfe Region:** Ist `"regions": ["fra1"]` in `vercel.json`?
+2. **Prüfe Vault:** Sind die Secrets im Vault korrekt?
+3. **Prüfe Logs:** `vercel logs ...`
+
+### Variables leer trotz UI-Anzeige
+
+Trailing Newlines! Lösche Variable und setze mit `printf` neu.
+
+### Build OK, Runtime 500
+
+`SKIP_ENV_VALIDATION=true` nicht gesetzt? Oder Variable in `env.mjs` als required aber nicht auf Vercel?
+
+---
+
+## Checkliste für neue Projekte
+
+- [ ] `"regions": ["fra1"]` in `vercel.json` gesetzt
+- [ ] `SKIP_ENV_VALIDATION=true` in build.env gesetzt
+- [ ] Bootstrap-Secrets (SERVICE_ROLE_KEY, SUPABASE_URL) in Vercel Env
+- [ ] Alle anderen Secrets im Supabase Vault
+- [ ] `printf` statt `echo` für Env-Variable setzen

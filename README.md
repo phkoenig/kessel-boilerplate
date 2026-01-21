@@ -433,6 +433,9 @@ git commit -m "feat: Neue Funktion"
 
 ### Vercel (empfohlen)
 
+> ⚠️ **WICHTIG:** Die Region ist auf `fra1` (Frankfurt/EU) vorkonfiguriert in `vercel.json`.
+> Niemals ändern! US-Region führt zu Problemen mit Exchange-APIs (KuCoin, Binance blockieren US-IPs).
+
 1. **Environment Variables setzen:**
    - `NEXT_PUBLIC_SUPABASE_URL` (Daten-Projekt)
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`

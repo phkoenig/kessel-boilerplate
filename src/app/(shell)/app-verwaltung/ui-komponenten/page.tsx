@@ -417,9 +417,9 @@ export default function ComponentsPage(): React.ReactElement {
                 <Progress value={60} />
               </div>
               <div className="flex items-center gap-4">
-                <Spinner size="sm" />
+                <Spinner className="size-4" />
                 <Spinner />
-                <Spinner size="lg" />
+                <Spinner className="size-6" />
                 <span className="text-muted-foreground text-sm">Loading Spinners</span>
               </div>
               <div className="space-y-2">
@@ -455,7 +455,7 @@ export default function ComponentsPage(): React.ReactElement {
             <div className="flex flex-wrap gap-2">
               <Kbd>⌘ K</Kbd>
               <Kbd>Ctrl + C</Kbd>
-              <Kbd variant="outline">Shift + Alt</Kbd>
+              <Kbd className="border">Shift + Alt</Kbd>
             </div>
           </DemoContainer>
 

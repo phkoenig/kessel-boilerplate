@@ -5,6 +5,8 @@ import * as TogglePrimitive from "@radix-ui/react-toggle"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
+import { AIInteractable } from "@/components/ai/AIInteractable"
 
 const toggleVariants = cva(
   "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap",
@@ -28,19 +30,50 @@ const toggleVariants = cva(
   }
 )
 
+/**
+ * Toggle-Props mit optionaler AI-Unterstützung.
+ */
+type ToggleProps = React.ComponentProps<typeof TogglePrimitive.Root> &
+  VariantProps<typeof toggleVariants> &
+  AIProps
+
 function Toggle({
   className,
   variant,
   size,
+  aiId,
+  aiDescription,
+  aiKeywords,
+  aiAction,
+  aiCategory,
+  aiTarget,
   ...props
-}: React.ComponentProps<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>) {
-  return (
+}: ToggleProps) {
+  const toggleElement = (
     <TogglePrimitive.Root
       data-slot="toggle"
       className={cn(toggleVariants({ variant, size, className }))}
       {...props}
     />
   )
+
+  if (aiId && aiDescription && aiKeywords) {
+    return (
+      <AIInteractable
+        id={aiId}
+        action={aiAction ?? AI_DEFAULTS.switch.action}
+        target={aiTarget}
+        description={aiDescription}
+        keywords={aiKeywords}
+        category={aiCategory ?? AI_DEFAULTS.switch.category}
+      >
+        {toggleElement}
+      </AIInteractable>
+    )
+  }
+
+  return toggleElement
 }
 
 export { Toggle, toggleVariants }
+export type { ToggleProps }
