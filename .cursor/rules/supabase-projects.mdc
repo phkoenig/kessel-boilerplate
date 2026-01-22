@@ -15,7 +15,7 @@ Die Boilerplate nutzt **KESSEL** als Infra-DB für alle Infrastruktur-Daten:
 | **KESSEL** | `ufqlocxqizmiaozkashi` | Auth, Profiles, Themes, Roles, Vault/Secrets |
 
 > **KESSEL = Infra-DB.** Keine App-spezifischen Business-Daten hier!
-> Für App-Daten → separate Dev-DB (siehe `docs/02_architecture/database-architecture.md`)
+> Für App-Daten → separate Dev-DB (siehe `docs/architecture/database-architecture.md`)
 
 ## CLI-Befehle
 
@@ -67,6 +67,6 @@ Die Secrets werden aus `vault.secrets` im KESSEL-Projekt gelesen und in `.env.lo
 
 ## Dokumentation
 
-→ Architektur: `docs/02_architecture/database-architecture.md`
-→ Secrets: `docs/04_knowledge/secrets-management.md`
-→ Migrationen: `docs/04_knowledge/supabase-migrationen.md`
+→ Architektur: `docs/architecture/database-architecture.md`
+→ Secrets: `docs/guides/secrets-management.md`
+→ Migrationen: `docs/guides/supabase-migrationen.md`

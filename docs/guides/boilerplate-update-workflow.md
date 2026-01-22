@@ -98,7 +98,7 @@ git push origin v1.1.0
 
 ## CHANGELOG führen
 
-Alle Änderungen werden in `docs/06_history/CHANGELOG.md` dokumentiert:
+Alle Änderungen werden in `Git Commit Messages` dokumentiert:
 
 ```markdown
 ## [1.1.0] - 2024-12-19

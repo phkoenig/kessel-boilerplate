@@ -156,7 +156,7 @@ echo "VALUE" | npx vercel env add VARIABLE_NAME development
 
 1. Neue Variable benötigt → In Vercel setzen
 2. Für alle Umgebungen setzen (production, preview, development)
-3. Dokumentieren in `docs/04_knowledge/deployment-guide.md`
+3. Dokumentieren in `docs/guides/deployment-guide.md`
 
 ### Proxy-Implementierung
 

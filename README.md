@@ -86,7 +86,7 @@ pnpm dev
 
 - **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo ein User-Selector statt der normalen Auth-Form angezeigt wird
 
-→ [kessel-cli Installation & Workflow](docs/04_knowledge/cli-workflow.md)
+→ [kessel-cli Installation & Workflow](docs/guides/cli-workflow.md)
 
 ### 3. Supabase Setup (Multi-Tenant)
 
@@ -116,7 +116,7 @@ NEXT_PUBLIC_TENANT_SLUG=dein_projektname
 
 > **Hinweis:** Seit v1.1.0 verwendet Kessel RLS-basierte Multi-Tenancy, nicht mehr separate Schemas.
 
-Detaillierte Anleitung: [Multi-Tenant Architektur](docs/04_knowledge/multi-tenant-architektur.md) | [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
+Detaillierte Anleitung: [Multi-Tenant Architektur](docs/guides/multi-tenant-architektur.md) | [Supabase Themes Setup](docs/guides/supabase-themes-setup.md)
 
 ### 4. Standard-User (automatisch erstellt)
 
@@ -229,7 +229,7 @@ Das Herzstück: Ein **4-Spalten-Layout** mit flexiblen, resizable Panels:
 
 **Panel-States werden in LocalStorage persistiert.**
 
-→ [Vollständige Dokumentation](docs/03_features/neues_app_shell_konzept.md)
+→ [Vollständige Dokumentation](docs/specifications/neues_app_shell_konzept.md)
 
 ### 🎨 Design System Governance
 
@@ -254,7 +254,7 @@ import { Button } from "@/components/ui/button"
 - Keine nativen HTML-Elemente (`<button>`, `<input>`)
 - Nur semantische Tokens (`bg-primary`, `p-4`, `rounded-md`)
 
-→ [Design System Governance](docs/04_knowledge/design-system-governance.md)
+→ [Design System Governance](docs/guides/design-system-governance.md)
 
 ### 🤖 AI Chat Assist Panel
 
@@ -267,7 +267,7 @@ KI-Assistent mit **multimodalem Kontext**:
 
 **Tech:** `assistant-ui`, `modern-screenshot`, Vercel AI SDK
 
-→ [AI Chat Assist Dokumentation](docs/03_features/ai-chat-assist.md)
+→ [AI Chat Assist Dokumentation](docs/specifications/ai-chat-assist.md)
 
 ### 🎯 AI-Interactable Component System
 
@@ -313,7 +313,7 @@ Dynamische Themes aus **Supabase Storage**:
 - FOUC Prevention durch Server-Side CSS Injection
 - Dynamisches Laden von Google Fonts
 
-→ [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
+→ [Supabase Themes Setup](docs/guides/supabase-themes-setup.md)
 
 ### 📦 Duales Versioning-System
 
@@ -329,7 +329,7 @@ Dynamische Themes aus **Supabase Storage**:
 - App-Releases: Git-Tag setzen → Vercel deployt automatisch
 - Boilerplate-Upgrades: `boilerplate.json` manuell aktualisieren
 
-→ [App-Versionierung Dokumentation](docs/04_knowledge/app-versioning.md)
+→ [App-Versionierung Dokumentation](docs/guides/app-versioning.md)
 
 ---
 
@@ -370,7 +370,7 @@ pnpm pull-env
 - `.env.local`: App-Secrets (automatisch via `pnpm pull-env`)
 - Vercel: Environment Variables aus Vault exportieren
 
-→ [Secrets Management Guide](docs/04_knowledge/secrets-management.md)
+→ [Secrets Management Guide](docs/guides/secrets-management.md)
 
 ---
 
@@ -454,8 +454,8 @@ git commit -m "feat: Neue Funktion"
    -- Vercel-Domain hinzufügen
    ```
 
-→ [Deployment Guide](docs/04_knowledge/deployment-guide.md)  
-→ [Deployment Checklist](docs/04_knowledge/deployment-checklist.md)
+→ [Deployment Guide](docs/guides/deployment-guide.md)  
+→ [Deployment Checklist](docs/guides/deployment-checklist.md)
 
 ---
 

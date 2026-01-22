@@ -32,7 +32,7 @@
 - Proxy verwendet `getAll()`/`setAll()` statt `get()`/`set()`/`remove()`
 - Response muss bei jedem Cookie-Update verwendet werden
 - Siehe `src/proxy.ts` für Referenz-Implementierung
-- Siehe auch `docs/04_knowledge/deployment-guide.md` → "Next.js 16 Proxy Migration"
+- Siehe auch `docs/guides/deployment-guide.md` → "Next.js 16 Proxy Migration"
 
 ### Build-Fehler
 

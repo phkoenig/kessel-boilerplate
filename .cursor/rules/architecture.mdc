@@ -39,8 +39,8 @@ Dein Ziel ist es, Code im Stil eines erfahrenen Principal Engineers zu schreiben
 ## DOKUMENTATIONSARCHITEKTUR
 
 - **7-Ebenen-System:** Dieses Projekt folgt einer strukturierten Dokumentationsarchitektur in `docs/`.
-- **Architektur-Doku:** Bei architektonischen Änderungen verweise auf `docs/02_architecture/`.
-- **Feature-Doku:** Neue Features sollten in `docs/03_features/backlog.md` dokumentiert werden.
+- **Architektur-Doku:** Bei architektonischen Änderungen verweise auf `docs/architecture/`.
+- **Feature-Doku:** Neue Features sollten in `docs/specifications/` dokumentiert werden.
 
 ## DESIGN-PATTERNS
 
