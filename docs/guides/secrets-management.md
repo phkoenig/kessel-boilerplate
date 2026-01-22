@@ -4,6 +4,8 @@
 
 **Alle API-Keys werden AUSSCHLIESSLICH im Supabase Vault gespeichert.**
 
+**NIEMALS** Secrets manuell in `.env.local` schreiben! Immer via Vault.
+
 ## Architektur
 
 Secrets werden in der **Infra-DB (KESSEL)** gespeichert.
@@ -66,9 +68,30 @@ pnpm pull-env
 
 ## Vault-Operationen
 
-> **WICHTIG:** Alle Vault-Operationen erfolgen via `psql`. Das DB-Passwort steht in `.env.local` unter `SUPABASE_DB_PASSWORD`.
+Es gibt zwei Methoden, Secrets zum Vault hinzuzufügen:
 
-### Verbindung
+### Methode 1: REST API (empfohlen für Windows)
+
+```bash
+# Hole Service Role Key aus .env.local
+SERVICE_KEY=$(grep SUPABASE_SERVICE_ROLE_KEY .env.local | cut -d= -f2)
+
+# Neues Secret erstellen
+curl -X POST "https://ufqlocxqizmiaozkashi.supabase.co/rest/v1/rpc/insert_secret" \
+  -H "apikey: $SERVICE_KEY" \
+  -H "Authorization: Bearer $SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "MEIN_SECRET_NAME", "secret": "mein-secret-wert"}'
+
+# Danach: .env.local aktualisieren
+pnpm pull-env
+```
+
+### Methode 2: psql (für Linux/macOS)
+
+> **WICHTIG:** Das DB-Passwort steht in `.env.local` unter `SUPABASE_DB_PASSWORD`.
+
+#### Verbindung
 
 ```bash
 DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2)
@@ -76,7 +99,7 @@ DB_HOST="db.ufqlocxqizmiaozkashi.supabase.co"
 PGPASSWORD="$DB_PASS" psql -h $DB_HOST -p 5432 -U postgres -d postgres
 ```
 
-### Alle Secrets auflisten
+#### Alle Secrets auflisten
 
 ```bash
 DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2) && \
@@ -84,7 +107,7 @@ PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U pos
   -c "SELECT id, name FROM vault.secrets ORDER BY name;"
 ```
 
-### Neues Secret erstellen
+#### Neues Secret erstellen
 
 ```bash
 DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2) && \
@@ -92,7 +115,7 @@ PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U pos
   -c "SELECT vault.create_secret('WERT_HIER', 'SECRET_NAME');"
 ```
 
-### Secret aktualisieren
+#### Secret aktualisieren
 
 **Schritt 1: Secret-ID finden**
 
@@ -110,7 +133,7 @@ PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U pos
   -c "SELECT vault.update_secret('UUID_HIER'::uuid, 'NEUER_WERT');"
 ```
 
-### Secret löschen
+#### Secret löschen
 
 ```bash
 DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2) && \
@@ -118,7 +141,7 @@ PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U pos
   -c "SELECT delete_secret('SECRET_NAME');"
 ```
 
-### Nach Vault-Änderung
+#### Nach Vault-Änderung
 
 ```bash
 pnpm pull-env
@@ -127,6 +150,28 @@ pnpm pull-env
 ---
 
 ## Kompletter Workflow: Neues Secret
+
+### Mit REST API (empfohlen)
+
+```bash
+# 1. Service Key holen
+SERVICE_KEY=$(grep SUPABASE_SERVICE_ROLE_KEY .env.local | cut -d= -f2)
+
+# 2. Secret erstellen
+curl -X POST "https://ufqlocxqizmiaozkashi.supabase.co/rest/v1/rpc/insert_secret" \
+  -H "apikey: $SERVICE_KEY" \
+  -H "Authorization: Bearer $SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "MEIN_SECRET", "secret": "mein-wert"}'
+
+# 3. .env.local aktualisieren
+pnpm pull-env
+
+# 4. Verifizieren
+grep MEIN_SECRET .env.local
+```
+
+### Mit psql
 
 ```bash
 # 1. Secret erstellen
@@ -139,23 +184,6 @@ pnpm pull-env
 
 # 3. Verifizieren
 grep MEIN_SECRET .env.local
-```
-
-## Kompletter Workflow: Secret aktualisieren
-
-```bash
-# 1. ID finden
-DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2) && \
-PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U postgres -d postgres \
-  -c "SELECT id, name FROM vault.secrets WHERE name = 'MEIN_SECRET';"
-
-# 2. Aktualisieren
-DB_PASS=$(grep SUPABASE_DB_PASSWORD .env.local | cut -d= -f2) && \
-PGPASSWORD="$DB_PASS" psql -h db.ufqlocxqizmiaozkashi.supabase.co -p 5432 -U postgres -d postgres \
-  -c "SELECT vault.update_secret('DIE-UUID'::uuid, 'neuer-wert');"
-
-# 3. .env.local aktualisieren
-pnpm pull-env
 ```
 
 ---

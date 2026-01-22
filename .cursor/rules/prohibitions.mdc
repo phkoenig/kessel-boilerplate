@@ -34,3 +34,21 @@ Du bist ein KI-Assistent, der strikten, nicht verhandelbaren Regeln unterliegt. 
 - **VERBOTEN:** Erstelle NIEMALS Vault-Funktionen ohne anschließende REVOKE-Statements.
 - **VERBOTEN:** Deaktiviere NIEMALS Row Level Security (RLS) komplett.
 - **VERBOTEN:** Speichere NIEMALS Secrets außerhalb des Supabase Vault (kein Doppler, kein .env commit).
+
+## PFLICHT-DOKUMENTATION
+
+Bei folgenden Stichworten MUSS ZUERST die Dokumentation gelesen werden, BEVOR irgendwelche Aktionen durchgeführt werden:
+
+### Secrets, Vault, API-Keys, Credentials, Environment Variables, .env.local
+
+- **PFLICHT:** `.cursor/rules/secrets.mdc` - Secrets-Regeln, Workflows und Best Practices
+- **PFLICHT:** `docs/guides/secrets-management.md` - Vollständige Secrets-Architektur
+
+**Wichtige Punkte:**
+- ALLE Secrets im KESSEL Vault (zentrale Infra-DB)
+- `pnpm pull-env` lädt Secrets aus Vault in `.env.local`
+
+**VERBOTEN:**
+- **NIEMALS** Secrets manuell in `.env.local` schreiben!
+- **IMMER** zuerst im Vault speichern (`insert_secret`), dann `pnpm pull-env`
+- Bei fehlendem Secret: **NICHT** manuell hinzufügen, sondern Vault-Workflow nutzen
