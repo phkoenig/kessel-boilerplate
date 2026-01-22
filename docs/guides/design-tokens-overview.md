@@ -46,15 +46,26 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 
 **Hinweis**: Status-Farben sind **nicht** Teil des Standard-TweakCN-Exports, wurden aber in unserer Codebase hinzugefügt.
 
+**Fallback-Architektur**: Die Status-Farben sind in `:root` und `.dark` definiert (nicht in `[data-theme="..."]`). Das bedeutet:
+
+- Sie sind **immer verfügbar**, auch wenn ein TweakCN-Theme importiert wird
+- TweakCN-Themes können sie nicht überschreiben (außer sie definieren explizit diese Variablen)
+- Sie dienen als **permanente Fallbacks** für konsistentes Feedback im gesamten Design-System
+
+**OKLCH-Farbwerte**:
+| Token | Light Mode | Dark Mode | Hue |
+|-------|------------|-----------|-----|
+| `--success` | `oklch(0.55 0.18 145)` | `oklch(0.6 0.2 145)` | Grün (145°) |
+| `--warning` | `oklch(0.7 0.18 85)` | `oklch(0.75 0.18 85)` | Amber (85°) |
+| `--info` | `oklch(0.55 0.15 240)` | `oklch(0.6 0.15 240)` | Blau (240°) |
+
 **Verwendung in der Codebase**:
 
+- `tech-stack-table.tsx`: Security-Status (success = aktuell, warning = update verfügbar, destructive = security patch nötig)
 - `app-status/page.tsx`: Status-Icons und Badges (operational = success, degraded = warning)
 - `saveable-input.tsx`: Button-Hintergrund bei erfolgreichem Speichern
-- `profile/page.tsx`: Erfolgs-Meldungen
 - `features/page.tsx`: Feature-Status (planned = info, in-progress = warning, released = success)
 - `bugs/page.tsx`: Bug-Status (in-progress = warning, fixed = success, medium = warning)
-- `payment/page.tsx`: Erfolgs-Icons
-- `dashboard/page.tsx`: Statistik-Änderungen (positive = success)
 
 ### Border & Input
 
@@ -201,12 +212,16 @@ Alle semantischen Tokens werden im `@theme inline` Block registriert, um Tailwin
   --color-primary: var(--primary);
   --color-background: var(--background);
   /* ... */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  /* ... */
   --radius-sm: max(0px, calc(var(--radius) - 4px));
   /* ... */
 }
 ```
 
-Dies ermöglicht die Verwendung von Tailwind-Klassen wie `bg-primary`, `text-foreground`, `rounded-md`, etc.
+Dies ermöglicht die Verwendung von Tailwind-Klassen wie `bg-primary`, `text-foreground`, `bg-success`, `text-warning`, `rounded-md`, etc.
 
 ---
 
@@ -267,11 +282,3 @@ Nach dem Import werden detaillierte Statistiken zurückgegeben:
 - Der Importer parst **alle** CSS-Variablen aus `:root` und `.dark` Blöcken (via Regex: `--([a-z0-9-]+):\s*([^;]+);`)
 - Standard-Variablen werden erkannt und validiert
 - Nicht-Standard-Variablen werden ebenfalls importiert, aber möglicherweise nicht verwendet
-
----
-
-## Erweiterte Token-Verwaltung (Geplant)
-
-Siehe Memory: [AI Theme Editing](memory:12630810)
-
-Geplantes Feature: Strukturierte Token-Verwaltung via `theme_tokens` Tabelle, um AI-gesteuerte CRUD-Operationen zu ermöglichen.
