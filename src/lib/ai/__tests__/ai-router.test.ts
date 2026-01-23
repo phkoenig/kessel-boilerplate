@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { CoreMessage } from "ai"
-import { routeWithAI, type RouteCategory } from "../ai-router"
+import { routeWithAI } from "../ai-router"
 
 // Mock generateText von AI SDK
 vi.mock("ai", async () => {

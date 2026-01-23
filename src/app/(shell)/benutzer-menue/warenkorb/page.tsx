@@ -44,7 +44,7 @@ export default function PaymentPage(): React.ReactElement {
               <CreditCard className="size-5" />
               Zahlungsmethoden
             </h3>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" data-ai-exempt="true">
               <Plus className="mr-2 size-4" />
               Hinzufügen
             </Button>
@@ -72,11 +72,11 @@ export default function PaymentPage(): React.ReactElement {
                 </div>
                 <div className="flex items-center gap-2">
                   {!method.isDefault && (
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" data-ai-exempt="true">
                       Als Standard
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" data-ai-exempt="true">
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
@@ -102,7 +102,9 @@ export default function PaymentPage(): React.ReactElement {
                 </p>
                 <p className="text-muted-foreground mt-2 text-sm">Nächste Abrechnung: 01.01.2025</p>
               </div>
-              <Button variant="outline">Plan ändern</Button>
+              <Button variant="outline" data-ai-exempt="true">
+                Plan ändern
+              </Button>
             </div>
           </div>
         </div>
@@ -125,7 +127,7 @@ export default function PaymentPage(): React.ReactElement {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-medium">{invoice.amount}</span>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" data-ai-exempt="true">
                       Download
                     </Button>
                   </div>

@@ -126,6 +126,7 @@ export function CollapsibleFooterSection({
         className="text-muted-foreground flex h-auto w-full items-center justify-between px-4 py-4 text-xs font-semibold tracking-wider uppercase"
         aria-expanded={isOpen}
         aria-label={`${title} ${isOpen ? "ausblenden" : "einblenden"}`}
+        data-ai-exempt="true"
       >
         <span>{title}</span>
         <ChevronUp

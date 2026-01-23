@@ -39,7 +39,7 @@ try {
   console.log("")
   console.log("✅ Secrets erfolgreich geladen!")
   console.log("")
-} catch (error) {
+} catch {
   console.log("")
   console.log("⚠️  pull-env fehlgeschlagen (nicht kritisch).")
   console.log("   Du kannst später manuell 'pnpm pull-env' ausführen.")

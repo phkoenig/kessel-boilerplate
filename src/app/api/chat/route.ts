@@ -289,7 +289,7 @@ export async function POST(req: Request) {
       htmlDump,
       route,
       interactions,
-      availableActions: _availableActions,
+      availableActions: _availableActions, // eslint-disable-line @typescript-eslint/no-unused-vars
       model,
       dryRun,
     } = body

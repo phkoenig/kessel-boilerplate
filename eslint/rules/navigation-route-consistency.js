@@ -26,12 +26,10 @@ function getNavigationConfig() {
       routes.add(match[1])
     }
 
-    // Extrahiere auch buildNavHref Aufrufe
-    const buildNavHrefMatches = navContent.matchAll(/buildNavHref\([^)]+\)/g)
-    // Diese werden zur Laufzeit generiert, daher können wir sie nicht statisch prüfen
+    // buildNavHref Aufrufe werden zur Laufzeit generiert, daher können wir sie nicht statisch prüfen
 
     return { routes: Array.from(routes) }
-  } catch (error) {
+  } catch {
     // Fallback wenn Navigation nicht geladen werden kann
     return { routes: [] }
   }
@@ -47,16 +45,8 @@ const ALLOWED_PATTERNS = [
   /^\/signup/, // Auth-Routen
 ]
 
-// Hardcodierte Routen, die wir finden wollen
-const ROUTE_PATTERNS = [
-  /href\s*[:=]\s*["'`]([^"'`]+)["'`]/g, // href="/path"
-  /target\s*[:=]\s*["'`]([^"'`]+)["'`]/g, // target="/path"
-  /to\s*[:=]\s*["'`]([^"'`]+)["'`]/g, // to="/path" (React Router)
-  /pathname\s*[:=]\s*["'`]([^"'`]+)["'`]/g, // pathname="/path"
-  /path\s*[:=]\s*["'`]([^"'`]+)["'`]/g, // path="/path"
-  /router\.push\(["'`]([^"'`]+)["'`]\)/g, // router.push("/path")
-  /router\.replace\(["'`]([^"'`]+)["'`]\)/g, // router.replace("/path")
-]
+// Route patterns (reserved for future AST-based route detection)
+// Currently using Literal node visitor for route detection
 
 module.exports = {
   meta: {
@@ -97,9 +87,6 @@ module.exports = {
     ) {
       return {}
     }
-
-    const sourceCode = context.getSourceCode()
-    const text = sourceCode.getText()
 
     return {
       // Prüfe auf hardcodierte Routen

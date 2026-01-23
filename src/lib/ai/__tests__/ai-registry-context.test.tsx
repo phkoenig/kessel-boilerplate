@@ -3,7 +3,7 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { AIRegistryProvider, useAIRegistry } from "../ai-registry-context"
 import type { AIAction } from "../ai-registry-context"

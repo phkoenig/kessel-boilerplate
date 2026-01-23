@@ -396,7 +396,12 @@ export default function DatasourcesPage(): React.ReactElement {
                   {filter.selectedDatabases.length > 0 ? " (gefiltert)" : ""}
                 </CardDescription>
               </div>
-              <Button onClick={loadInfraDataSources} variant="outline" size="sm">
+              <Button
+                onClick={loadInfraDataSources}
+                variant="outline"
+                size="sm"
+                data-ai-exempt="true"
+              >
                 <RefreshCw className="mr-2 size-4" />
                 Aktualisieren
               </Button>
@@ -447,6 +452,7 @@ export default function DatasourcesPage(): React.ReactElement {
                                 size="sm"
                                 className="hover:bg-muted h-6 w-6 p-0"
                                 onClick={() => toggleRow(ds.id)}
+                                data-ai-exempt="true"
                               >
                                 {isExpanded ? (
                                   <ChevronDown className="size-4" />
@@ -486,6 +492,7 @@ export default function DatasourcesPage(): React.ReactElement {
                                 toggleEnabled(ds.id, checked, ds.database_type)
                               }
                               disabled={ds.database_type === "dev"}
+                              data-ai-exempt="true"
                             />
                             <Label className="text-sm">{ds.is_enabled ? "Aktiv" : "Inaktiv"}</Label>
                           </div>
@@ -497,6 +504,7 @@ export default function DatasourcesPage(): React.ReactElement {
                               updateAccessLevel(ds.id, value as AccessLevel, ds.database_type)
                             }
                             disabled={ds.database_type === "dev"}
+                            data-ai-exempt="true"
                           >
                             <SelectTrigger className="w-48">
                               <SelectValue />

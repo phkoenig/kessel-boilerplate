@@ -218,6 +218,7 @@ export function MonochromeIcon({
 
       {/* Fehler: Original-Bild als Fallback */}
       {error && (
+        // eslint-disable-next-line @next/next/no-img-element -- Dynamische URL aus Canvas-Verarbeitung
         <img
           src={src}
           alt={alt}
@@ -233,6 +234,7 @@ export function MonochromeIcon({
 
       {/* Verarbeitetes Bild mit CSS-Filter für Theme-Anpassung */}
       {!error && !isProcessing && processedImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- Dynamische Blob-URL aus Canvas-Verarbeitung
         <img
           src={processedImageUrl}
           alt={alt}

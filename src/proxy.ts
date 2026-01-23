@@ -40,12 +40,9 @@ export default async function proxy(request: NextRequest) {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LOCAL DEV BYPASS - Aktiviert DevUserSelector auf Login-Seite
-  // ═══════════════════════════════════════════════════════════════════════════
-  const isDev = process.env.NODE_ENV === "development"
-  const bypassEnabled = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true"
-  const shouldBypassAuth = isDev && bypassEnabled
   // Hinweis: Auch mit Bypass wird der Auth-Check durchgeführt
   // Der Unterschied: Auf /login wird DevUserSelector statt normalem Formular angezeigt
+  // Config: NEXT_PUBLIC_AUTH_BYPASS=true in .env.local (nur wenn NODE_ENV=development)
   // ═══════════════════════════════════════════════════════════════════════════
 
   const supabase = createServerClient(

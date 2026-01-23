@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
-import { type AIProps, AI_DEFAULTS, extractAIProps, hasAIProps } from "@/lib/ai/ai-props"
+import { type AIProps, AI_DEFAULTS } from "@/lib/ai/ai-props"
 import { AIInteractable } from "@/components/ai/AIInteractable"
 
 const buttonVariants = cva(

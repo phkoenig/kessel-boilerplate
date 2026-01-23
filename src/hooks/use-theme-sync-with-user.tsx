@@ -6,11 +6,6 @@ import { useTheme } from "@/lib/themes"
 import { createClient } from "@/utils/supabase/client"
 
 /**
- * LocalStorage Key (muss mit theme-provider.tsx übereinstimmen)
- */
-const THEME_STORAGE_KEY = "tweakcn-theme"
-
-/**
  * Hook zur Synchronisierung des Themes mit dem User-Profil.
  *
  * Funktionsweise:

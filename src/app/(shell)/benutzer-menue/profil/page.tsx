@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth"
 import { PageContent } from "@/components/shell/PageContent"
-import { User, Mail, Lock, RefreshCw, Check, Bot } from "lucide-react"
+import { User, RefreshCw, Check, Bot } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SaveableInput } from "@/components/ui/saveable-input"
@@ -451,6 +451,7 @@ export default function ProfilePage(): React.ReactElement {
                         size="sm"
                         onClick={() => setPreviewAvatarSeed(avatarSeed)}
                         disabled={savingAvatar}
+                        data-ai-exempt="true"
                       >
                         Zurücksetzen
                       </Button>
@@ -508,6 +509,7 @@ export default function ProfilePage(): React.ReactElement {
                     disabled={savingField === "password"}
                     placeholder="Mindestens 6 Zeichen"
                     className="!bg-muted"
+                    data-ai-exempt="true"
                   />
                 </div>
 
@@ -569,6 +571,7 @@ export default function ProfilePage(): React.ReactElement {
                     onClick={() => setPreviewChatbotAvatarSeed(randomizeSeed())}
                     disabled={savingChatbotAvatar}
                     className="gap-2"
+                    data-ai-exempt="true"
                   >
                     <RefreshCw className="size-4" />
                     Neu generieren
@@ -581,6 +584,7 @@ export default function ProfilePage(): React.ReactElement {
                         onClick={handleSaveChatbotAvatar}
                         disabled={savingChatbotAvatar}
                         className="gap-2"
+                        data-ai-exempt="true"
                       >
                         {savingChatbotAvatar ? (
                           <Loader2 className="size-4 animate-spin" />
@@ -594,6 +598,7 @@ export default function ProfilePage(): React.ReactElement {
                         size="sm"
                         onClick={() => setPreviewChatbotAvatarSeed(chatbotAvatarSeed)}
                         disabled={savingChatbotAvatar}
+                        data-ai-exempt="true"
                       >
                         Zurücksetzen
                       </Button>
@@ -610,6 +615,7 @@ export default function ProfilePage(): React.ReactElement {
                   <RadioGroup
                     value={chatbotTone}
                     onValueChange={(value) => setChatbotTone(value as "formal" | "casual")}
+                    data-ai-exempt="true"
                   >
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="formal" id="tone-formal" />
@@ -634,6 +640,7 @@ export default function ProfilePage(): React.ReactElement {
                     onValueChange={(value) =>
                       setChatbotDetailLevel(value as "brief" | "balanced" | "detailed")
                     }
+                    data-ai-exempt="true"
                   >
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="brief" id="detail-brief" />
@@ -664,6 +671,7 @@ export default function ProfilePage(): React.ReactElement {
                     onValueChange={(value) =>
                       setChatbotEmojiUsage(value as "none" | "moderate" | "many")
                     }
+                    data-ai-exempt="true"
                   >
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="none" id="emoji-none" />
@@ -693,6 +701,7 @@ export default function ProfilePage(): React.ReactElement {
                     onClick={handleSaveChatbotSettings}
                     disabled={savingChatbotSettings}
                     className="gap-2"
+                    data-ai-exempt="true"
                   >
                     {savingChatbotSettings ? (
                       <Loader2 className="size-4 animate-spin" />

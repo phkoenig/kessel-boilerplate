@@ -417,6 +417,7 @@ export default function BugsPage(): React.ReactElement {
                             size="sm"
                             onClick={() => setDeleteDialog(bug)}
                             className="text-destructive hover:text-destructive"
+                            data-ai-exempt="true"
                           >
                             <Trash2 className="size-4" />
                           </Button>

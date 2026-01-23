@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -356,6 +356,7 @@ export default function ThemeManagementPage(): React.ReactElement {
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className="size-5 transition-transform hover:scale-110"
+                            data-ai-exempt="true"
                           />
                         </TableCell>
                         <TableCell className="font-medium">{theme.name}</TableCell>
@@ -373,6 +374,7 @@ export default function ThemeManagementPage(): React.ReactElement {
                               onClick={() => handleEditTheme(theme)}
                               disabled={theme.id === "default"}
                               className={cn(theme.id === "default" && "opacity-50")}
+                              data-ai-exempt="true"
                             >
                               <Edit className="size-4" />
                             </Button>
@@ -409,6 +411,7 @@ export default function ThemeManagementPage(): React.ReactElement {
                                 size="icon"
                                 disabled
                                 className="text-destructive opacity-50"
+                                data-ai-exempt="true"
                               >
                                 <Trash2 className="size-4" />
                               </Button>

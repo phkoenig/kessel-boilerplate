@@ -12,8 +12,9 @@ import type { ToolExecutionContext } from "./tool-executor"
 /**
  * Generiert Theme-Tools für AI-Chatbot
  *
- * @param ctx - Execution Context (userId, sessionId, dryRun)
+ * @param _ctx - Execution Context (userId, sessionId, dryRun) - reserviert für zukünftige Nutzung
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- ctx wird für zukünftige Tool-Erweiterungen benötigt
 export function generateThemeTools(_ctx: ToolExecutionContext): ToolSet {
   return {
     get_theme_tokens: tool({

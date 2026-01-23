@@ -98,7 +98,7 @@ function getPreservedVariables(envPath) {
         preserved[trimmedKey] = value.replace(/^["']|["']$/g, "")
       }
     }
-  } catch (e) {
+  } catch {
     // Ignoriere Lesefehler
   }
 

@@ -149,9 +149,8 @@ const eslintConfig = defineConfig([
       local: localPlugin,
     },
     rules: {
-      // WARNUNG statt ERROR für sanfte Migration
-      // Nach Migration auf "error" setzen!
-      "local/require-ai-wrapper": "warn",
+      // AI-Wrapper ist PFLICHT - alle interaktiven Komponenten müssen KI-steuerbar sein
+      "local/require-ai-wrapper": "error",
     },
   },
   // Navigation Route Consistency: Prüft Konsistenz zwischen Routen und Navigation

@@ -1,0 +1,37 @@
+---
+description: AI-Interactable - KI-steuerbare UI-Komponenten
+globs: ["**/components/**/*.tsx", "**/app/**/*.tsx"]
+alwaysApply: false
+---
+
+# AI-Interactable
+
+Doku: `docs/specifications/ai-interactable-system.md`
+
+## Pflicht-Props (alle 3)
+
+- `aiId` - Eindeutige ID
+- `aiDescription` - KI-lesbare Beschreibung
+- `aiKeywords` - Suchbegriffe Array
+
+## Patterns
+
+BEVORZUGT:
+<Button aiId="x" aiDescription="y" aiKeywords={["z"]}>
+
+LEGACY (nur Navigation):
+<AIInteractable id="x" action="navigate" ...><Link>
+
+EXEMPT:
+<Button data-ai-exempt="true">
+
+## ESLint
+
+Rule: `local/require-ai-wrapper` = error
+Fix: AI-Props setzen ODER data-ai-exempt="true"
+
+## Files
+
+- `@/lib/ai/ai-props.ts`
+- `@/components/ai/AIInteractable.tsx`
+- `ai-manifest.json`

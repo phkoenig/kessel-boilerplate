@@ -654,6 +654,7 @@ export default function UsersPage(): React.ReactElement {
                                 className="size-8"
                                 onClick={() => toggleUserExpansion(userItem.id)}
                                 title={isExpanded ? "Apps ausblenden" : "Apps anzeigen"}
+                                data-ai-exempt="true"
                               >
                                 {isExpanded ? (
                                   <ChevronDown className="size-4" />
@@ -749,6 +750,7 @@ export default function UsersPage(): React.ReactElement {
                                       ? "Eigener Account kann nicht gelöscht werden"
                                       : "User löschen"
                                   }
+                                  data-ai-exempt="true"
                                 >
                                   <Trash2 className="size-4" />
                                 </Button>
@@ -810,6 +812,7 @@ export default function UsersPage(): React.ReactElement {
                                                         checked
                                                       )
                                                     }
+                                                    data-ai-exempt="true"
                                                     disabled={isDisabled}
                                                   />
                                                   {isAdminLocal && (

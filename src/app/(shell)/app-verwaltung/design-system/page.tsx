@@ -496,6 +496,8 @@ export default function DesignSystemPage(): React.ReactElement {
         previewToken(token, dynamicShadow, dynamicShadow)
       })
     },
+    // SHADOW_TOKENS is a module-level constant, safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [previewToken]
   )
 

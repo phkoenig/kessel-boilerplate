@@ -10,7 +10,7 @@
 
 import type { CoreMessage } from "ai"
 import { DEFAULT_CHAT_MODEL, DEFAULT_TOOL_MODEL } from "./openrouter-provider"
-import { routeWithAI, type RouteCategory } from "./ai-router"
+import { routeWithAI } from "./ai-router"
 
 /**
  * Router-Entscheidung

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Image, RefreshCw, Check, Loader2 } from "lucide-react"
+import { Image as ImageIcon, RefreshCw, Check, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,6 +13,11 @@ import { MonochromeIcon } from "@/components/ui/monochrome-icon"
 import { InlineEditInput } from "@/components/ui/inline-edit-input"
 import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
+
+/**
+ * Default-Werte aus Kessel Boilerplate, die auf ENV-Variable fallen sollen
+ */
+const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
 
 /**
  * AppIconGenerator Komponente
@@ -35,7 +40,7 @@ export function AppIconGenerator(): React.ReactElement {
 
   // Icon States
   const [currentIconUrl, setCurrentIconUrl] = useState<string | null>(null)
-  const [_iconVariants, setIconVariants] = useState<Array<{ url: string }>>([])
+  const [, setIconVariants] = useState<Array<{ url: string }>>([])
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
 
   // Generation States
@@ -59,9 +64,6 @@ export function AppIconGenerator(): React.ReactElement {
   const [availableProviders, setAvailableProviders] = useState<
     Array<{ id: string; name: string; models: string[]; defaultModel: string }>
   >([])
-
-  // Default-Werte aus Kessel Boilerplate, die auf ENV-Variable fallen sollen
-  const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
 
   // Lade app_settings beim Mount
   useEffect(() => {
@@ -440,7 +442,7 @@ export function AppIconGenerator(): React.ReactElement {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Image className="size-5" />
+          <ImageIcon className="size-5" aria-hidden="true" />
           App-Icon Generator
         </CardTitle>
       </CardHeader>

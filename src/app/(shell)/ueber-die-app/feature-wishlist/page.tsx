@@ -490,6 +490,7 @@ export default function FeaturesPage(): React.ReactElement {
                           className={cn(
                             feature.hasVoted && "bg-primary/20 text-primary hover:bg-primary/30"
                           )}
+                          data-ai-exempt="true"
                         >
                           <ThumbsUp
                             className={cn("mr-2 size-4", feature.hasVoted && "fill-current")}
@@ -504,6 +505,7 @@ export default function FeaturesPage(): React.ReactElement {
                             size="sm"
                             onClick={() => setDeleteDialog(feature)}
                             className="text-destructive hover:text-destructive"
+                            data-ai-exempt="true"
                           >
                             <Trash2 className="size-4" />
                           </Button>

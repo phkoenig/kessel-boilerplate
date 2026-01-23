@@ -108,7 +108,7 @@ export default function ShellLayout({
   const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
   const isDatasourcesPage = pathname === "/app-verwaltung/datenquellen"
   const isComponentsPage = pathname === "/app-verwaltung/ui-komponenten"
-  const isUsersPage = pathname === "/app-verwaltung/benutzer"
+  // const isUsersPage = pathname === "/app-verwaltung/benutzer" // Reserved for future use
 
   // Gemeinsamer Shell-Inhalt mit einheitlicher ExplorerAutoOpen-Instanz
   const shellContent = (

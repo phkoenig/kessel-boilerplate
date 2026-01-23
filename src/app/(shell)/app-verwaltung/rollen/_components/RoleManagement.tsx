@@ -359,6 +359,7 @@ export function RoleManagement({
                           onClick={() => handleEditRole(role)}
                           disabled={role.is_system}
                           className={cn(role.is_system && "opacity-50")}
+                          data-ai-exempt="true"
                         >
                           <Edit className="size-4" />
                         </Button>
@@ -404,6 +405,7 @@ export function RoleManagement({
                             size="icon"
                             disabled
                             className="text-destructive opacity-50"
+                            data-ai-exempt="true"
                           >
                             <Trash2 className="size-4" />
                           </Button>

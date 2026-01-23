@@ -63,6 +63,7 @@ export function ThemeDetailPanel(): React.ReactElement {
 
   // Für Color-Editor: Aktuelle Hex-Werte
   const [currentHex, setCurrentHex] = useState("#808080")
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- OKLCH-Wert wird für zukünftige Color-Editor Features benötigt
   const [currentOklch, setCurrentOklch] = useState("")
 
   // Lade Werte wenn Element ausgewählt wird

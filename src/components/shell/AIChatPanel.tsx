@@ -55,6 +55,12 @@ interface AIChatPanelProps {
   className?: string
 }
 
+/**
+ * Write-Tool Prefixes die DB-Änderungen auslösen
+ * Wird für Auto-Reload nach Write-Operations verwendet
+ */
+const WRITE_TOOL_PREFIXES = ["insert_", "update_", "delete_", "create_user", "delete_user"]
+
 // Transport-Instanz außerhalb der Komponente erstellen
 // (wird nur einmal erstellt, keine Refs nötig)
 const chatTransport = new AssistantChatTransport({
@@ -277,9 +283,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
       cancelled = true
     }
   }, [pathname]) // Re-run bei Route-Wechsel
-
-  // Write-Tool Prefixes die DB-Änderungen auslösen
-  const WRITE_TOOL_PREFIXES = ["insert_", "update_", "delete_", "create_user", "delete_user"]
 
   // Callback für Auto-Reload nach Write-Tool-Calls und UI-Actions
   const handleFinish = useCallback(

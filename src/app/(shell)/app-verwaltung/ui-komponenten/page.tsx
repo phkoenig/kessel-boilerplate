@@ -4,16 +4,7 @@ import * as React from "react"
 import { PageContent, PageHeader } from "@/components/shell"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 import { useAuth } from "@/components/auth"
-import {
-  Loader2,
-  Mail,
-  BellRing,
-  Check,
-  Info,
-  AlertTriangle,
-  AlertCircle,
-  Terminal,
-} from "lucide-react"
+import { Loader2, Mail, BellRing, Check, AlertCircle, Terminal } from "lucide-react"
 
 // UI Components Imports
 import { Button } from "@/components/ui/button"
@@ -44,7 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
+// Separator available but not currently used
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Accordion,
