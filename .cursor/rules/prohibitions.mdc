@@ -35,20 +35,31 @@ Du bist ein KI-Assistent, der strikten, nicht verhandelbaren Regeln unterliegt. 
 - **VERBOTEN:** Deaktiviere NIEMALS Row Level Security (RLS) komplett.
 - **VERBOTEN:** Speichere NIEMALS Secrets außerhalb des Supabase Vault (kein Doppler, kein .env commit).
 
+## UMGEBUNGSVARIABLEN & SECRETS
+
+- **VERBOTEN:** Verwende NIEMALS Fallback-Defaults für Secrets im Code (`|| "default-value"`).
+- **VERBOTEN:** Erstelle NIEMALS neue Umgebungsvariablen ohne sie ZUERST im Supabase Vault zu speichern.
+- **VERBOTEN:** Schreibe NIEMALS Secrets manuell in `.env.local` - immer via Vault + `pnpm pull-env`!
+- **PFLICHT:** Bei neuen Umgebungsvariablen diesen Workflow befolgen:
+  1. Secret im Vault erstellen (siehe `.cursor/rules/secrets.mdc` für Copy-Paste-Befehle)
+  2. `pnpm pull-env` ausführen
+  3. In `src/env.mjs` registrieren (Zod-Schema)
+  4. Dev-Server neustarten
+
 ## PFLICHT-DOKUMENTATION
 
 Bei folgenden Stichworten MUSS ZUERST die Dokumentation gelesen werden, BEVOR irgendwelche Aktionen durchgeführt werden:
 
 ### Secrets, Vault, API-Keys, Credentials, Environment Variables, .env.local
 
-- **PFLICHT:** `.cursor/rules/secrets.mdc` - Secrets-Regeln, Workflows und Best Practices
+- **PFLICHT:** `.cursor/rules/secrets.mdc` - Copy-Paste-Ready Befehle für Vault-Operationen
 - **PFLICHT:** `docs/guides/secrets-management.md` - Vollständige Secrets-Architektur
 
-**Wichtige Punkte:**
-- ALLE Secrets im KESSEL Vault (zentrale Infra-DB)
+**KESSEL Vault** (Project Ref: `ufqlocxqizmiaozkashi`):
+- ALLE Secrets zentral gespeichert
 - `pnpm pull-env` lädt Secrets aus Vault in `.env.local`
 
-**VERBOTEN:**
-- **NIEMALS** Secrets manuell in `.env.local` schreiben!
-- **IMMER** zuerst im Vault speichern (`insert_secret`), dann `pnpm pull-env`
-- Bei fehlendem Secret: **NICHT** manuell hinzufügen, sondern Vault-Workflow nutzen
+**Bei fehlendem Secret:**
+1. **NICHT** manuell in `.env.local` hinzufügen!
+2. Secret im Vault erstellen (Befehle in `secrets.mdc`)
+3. `pnpm pull-env` ausführen
