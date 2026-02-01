@@ -17,9 +17,12 @@ const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
 /**
  * Hook zum Laden der App-Einstellungen aus der Datenbank
  *
+ * Die Settings werden pro App (tenant_slug) gespeichert.
+ * Die API filtert automatisch nach NEXT_PUBLIC_TENANT_SLUG.
+ *
  * Priorität für App-Name:
- * 1. NEXT_PUBLIC_APP_NAME (wenn gesetzt) - Single Source of Truth
- * 2. DB-Wert (wenn nicht Default-Wert)
+ * 1. DB-Wert (wenn vom User geändert, nicht Default)
+ * 2. NEXT_PUBLIC_APP_NAME (ENV-Variable)
  * 3. Fallback: "APP"
  *
  * @example
@@ -28,7 +31,7 @@ const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
  * ```
  */
 export function useAppSettings(): AppSettings {
-  // ENV-Variable hat höchste Priorität
+  // ENV-Variable als Fallback
   const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
 
   const [appName, setAppName] = useState<string>(envAppName.toUpperCase() || "APP")
