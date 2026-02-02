@@ -9,7 +9,7 @@
 
 import { detectToolNeedWithAI, type RouterDecision } from "@/lib/ai/model-router"
 import { createClient } from "@/utils/supabase/server"
-import type { CoreMessage } from "ai"
+import type { ModelMessage } from "ai"
 
 /**
  * Request-Body für Router-Requests
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Messages konvertieren
-    const modelMessages: CoreMessage[] = messages.map((m) => {
+    const modelMessages: ModelMessage[] = messages.map((m) => {
       let textContent = ""
       if (typeof m.content === "string") {
         textContent = m.content

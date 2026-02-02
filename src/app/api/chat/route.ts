@@ -12,7 +12,7 @@
  * Provider: OpenRouter
  */
 
-import { streamText, stepCountIs, type CoreMessage, type ImagePart, type TextPart } from "ai"
+import { streamText, stepCountIs, type ModelMessage, type ImagePart, type TextPart } from "ai"
 import { openrouter } from "@/lib/ai/openrouter-provider"
 import { detectToolNeedWithAI, type RouterDecision } from "@/lib/ai/model-router"
 import { generateAllTools } from "@/lib/ai/tool-registry"
@@ -183,8 +183,8 @@ interface ChatRequestBody {
  * Unterstützt multimodale Inhalte (Text + Bilder).
  * AI SDK v5 verwendet "parts", ältere Versionen "content".
  */
-function convertMessages(messages: ClientMessage[], screenshot?: string | null): CoreMessage[] {
-  const converted: CoreMessage[] = messages
+function convertMessages(messages: ClientMessage[], screenshot?: string | null): ModelMessage[] {
+  const converted: ModelMessage[] = messages
     .filter((m) => m && m.role)
     .map((m) => {
       // Support sowohl String-Content als auch Array-Content
@@ -233,7 +233,7 @@ function convertMessages(messages: ClientMessage[], screenshot?: string | null):
         converted[lastUserMessageIndex] = {
           role: "user",
           content: multimodalContent,
-        } as CoreMessage
+        } as ModelMessage
       } else if (Array.isArray(lastUserMessage.content)) {
         // Füge Screenshot zu bestehendem multimodalem Content hinzu
         const multimodalContent: Array<TextPart | ImagePart> = [
@@ -246,7 +246,7 @@ function convertMessages(messages: ClientMessage[], screenshot?: string | null):
         converted[lastUserMessageIndex] = {
           role: "user",
           content: multimodalContent,
-        } as CoreMessage
+        } as ModelMessage
       }
     }
   }

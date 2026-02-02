@@ -2,7 +2,7 @@
 
 import { type ReactNode, useRef, useEffect, useCallback, useState } from "react"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
-import { type ImperativePanelHandle } from "react-resizable-panels"
+import type { ImperativePanelHandle } from "react-resizable-panels"
 import { cn } from "@/lib/utils"
 import {
   ShellProvider,
@@ -74,7 +74,7 @@ function ShellInner({
   // Detail-Drawer wird angezeigt wenn: Content vorhanden UND State offen
   const hasDetailDrawer = detailDrawerContent !== null && detailDrawerOpen
 
-  // Ref für imperative Panel-Kontrolle
+  // Ref für imperative Panel-Kontrolle (v3 API)
   const navbarPanelRef = useRef<ImperativePanelHandle>(null)
 
   // Flag um Drag-initiierte Expands zu erkennen (verhindert doppeltes Expand)

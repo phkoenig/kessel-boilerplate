@@ -23,7 +23,8 @@ const searchButtonVariants = cva(
 )
 
 interface ExpandableSearchProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange">,
+  extends
+    Omit<React.HTMLAttributes<HTMLDivElement>, "onChange">,
     VariantProps<typeof searchButtonVariants> {
   value?: string
   onChange?: (value: string) => void

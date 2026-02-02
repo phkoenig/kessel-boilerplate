@@ -1,6 +1,6 @@
 {
   "name": "kessel-boilerplate",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "B2B App Boilerplate mit Next.js 16, Supabase, ShadCN UI und Multi-Tenant Architektur",
   "repository": "https://github.com/phkoenig/kessel-boilerplate",
   "author": "Philip König",

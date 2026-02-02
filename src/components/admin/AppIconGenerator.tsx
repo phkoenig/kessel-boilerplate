@@ -399,9 +399,7 @@ export function AppIconGenerator(): React.ReactElement {
           )
         }
 
-        throw new Error(
-          `Fehler beim Speichern: ${responseData.error || "Unbekannter Fehler"}`
-        )
+        throw new Error(`Fehler beim Speichern: ${responseData.error || "Unbekannter Fehler"}`)
       }
 
       console.log("[AppIconGenerator] Successfully saved:", responseData)

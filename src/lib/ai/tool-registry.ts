@@ -102,7 +102,7 @@ function postgresTypeToZod(postgresType: string): z.ZodTypeAny {
 
     case "json":
     case "jsonb":
-      return z.record(z.unknown())
+      return z.record(z.string(), z.unknown())
 
     case "array":
     case "text[]":
@@ -169,7 +169,7 @@ async function generateToolsForDataSource(
       description: `Liest Daten aus "${ds.display_name}". ${ds.description ?? ""}`,
       inputSchema: z.object({
         filters: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe("Filter-Bedingungen als Key-Value Paare (optional)"),
         select: z
@@ -239,7 +239,7 @@ async function generateToolsForDataSource(
       description: `Aktualisiert Einträge in "${ds.display_name}". VORSICHT: Filter müssen mindestens eine Bedingung enthalten!`,
       inputSchema: z.object({
         filters: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .describe("Filter für die zu ändernden Zeilen (PFLICHT - mindestens eine Bedingung!)"),
         data: z.object(columnProperties).describe("Die neuen Werte"),
       }),
@@ -262,7 +262,7 @@ async function generateToolsForDataSource(
       description: `Löscht Einträge aus "${ds.display_name}". VORSICHT: Nicht rückgängig machbar! Filter müssen mindestens eine Bedingung enthalten.`,
       inputSchema: z.object({
         filters: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .describe("Filter für die zu löschenden Zeilen (PFLICHT - mindestens eine Bedingung!)"),
         confirm: z.boolean().describe("Muss true sein, um das Löschen zu bestätigen"),
       }),

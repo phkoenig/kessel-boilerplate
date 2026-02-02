@@ -17,7 +17,7 @@
 import { generateText } from "ai"
 import { openrouter } from "./openrouter-provider"
 import { DEFAULT_CHAT_MODEL } from "./openrouter-provider"
-import type { CoreMessage } from "ai"
+import type { ModelMessage } from "ai"
 
 /**
  * Routing-Kategorien
@@ -27,7 +27,7 @@ export type RouteCategory = "UI_ACTION" | "DB_QUERY" | "VISION" | "CHAT"
 /**
  * Extrahiert Text aus einer CoreMessage
  */
-function extractTextFromMessage(message: CoreMessage): string {
+function extractTextFromMessage(message: ModelMessage): string {
   if (typeof message.content === "string") {
     return message.content
   }
@@ -45,7 +45,7 @@ function extractTextFromMessage(message: CoreMessage): string {
 /**
  * Formatiert Chatverlauf für den Router-Prompt
  */
-function formatConversationContext(messages: CoreMessage[]): string {
+function formatConversationContext(messages: ModelMessage[]): string {
   return messages
     .map((m) => {
       const text = extractTextFromMessage(m)
@@ -83,7 +83,7 @@ WICHTIG:
  * @param messages - Chatverlauf
  * @returns RouteCategory
  */
-export async function routeWithAI(messages: CoreMessage[]): Promise<RouteCategory> {
+export async function routeWithAI(messages: ModelMessage[]): Promise<RouteCategory> {
   // Nur letzte 6 Nachrichten für Kontext (3 Turns)
   const recentMessages = messages.slice(-6)
 

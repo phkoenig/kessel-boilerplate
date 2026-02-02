@@ -8,7 +8,7 @@
  * Die Entscheidung basiert auf Heuristiken (Keywords, Entities, Patterns).
  */
 
-import type { CoreMessage } from "ai"
+import type { ModelMessage } from "ai"
 import { DEFAULT_CHAT_MODEL, DEFAULT_TOOL_MODEL } from "./openrouter-provider"
 import { routeWithAI } from "./ai-router"
 
@@ -31,7 +31,7 @@ export interface RouterDecision {
 /**
  * Extrahiert Text aus einer CoreMessage (unterstützt String und Content-Array)
  */
-function extractTextFromMessage(message: CoreMessage): string {
+function extractTextFromMessage(message: ModelMessage): string {
   if (typeof message.content === "string") {
     return message.content
   }
@@ -318,7 +318,7 @@ function analyzeForToolNeed(text: string): {
  * @param messages - Nachrichtenverlauf
  * @returns RouterDecision mit Modell und Konfiguration
  */
-export function detectToolNeed(messages: CoreMessage[]): RouterDecision {
+export function detectToolNeed(messages: ModelMessage[]): RouterDecision {
   // Finde letzte User-Nachricht
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
 
@@ -417,7 +417,7 @@ export function modelSupportsTools(modelId: string): boolean {
  * @param messages - Chatverlauf
  * @returns RouterDecision mit Modell, Tools und Screenshot-Anforderung
  */
-export async function detectToolNeedWithAI(messages: CoreMessage[]): Promise<RouterDecision> {
+export async function detectToolNeedWithAI(messages: ModelMessage[]): Promise<RouterDecision> {
   const category = await routeWithAI(messages)
 
   console.log(`[AI-Router] Classified as: ${category}`)

@@ -27,8 +27,7 @@ const addButtonVariants = cva(
 )
 
 interface AddButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof addButtonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof addButtonVariants> {
   /** Text, der beim Hover erscheinen soll */
   text?: string
   /** Label für Accessibility (falls kein Text vorhanden) */
