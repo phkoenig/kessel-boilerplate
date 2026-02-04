@@ -62,6 +62,8 @@ export interface ThemeContextValue {
   setCornerStyle: (style: CornerStyle) => void
   /** Prüft ob Browser Squircle unterstützt */
   supportsSquircle: boolean
+  /** Theme-CSS neu laden (z.B. nach Speichern) */
+  refreshThemeCSS: () => Promise<void>
 }
 
 /**
@@ -94,32 +96,64 @@ interface CustomThemeProviderProps {
  * Prüft zuerst, ob das CSS bereits serverseitig oder client-seitig geladen wurde.
  *
  * Multi-Tenant: Themes liegen im tenant-spezifischen Ordner.
+ *
+ * WICHTIG: Verwendet IMMER einen Cache-Buster (Session-basiert), um sicherzustellen,
+ * dass Änderungen sofort sichtbar sind. Der Session-Buster wird einmal pro
+ * Page-Load generiert und bleibt während der Session konstant.
+ *
+ * @param themeId - Die Theme-ID
+ * @param forceReload - Wenn true, wird das CSS mit neuem Timestamp neu geladen
  */
-async function loadDynamicThemeCSS(themeId: string): Promise<void> {
+async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promise<void> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) return
 
   // Prüfe, ob das CSS bereits serverseitig geladen wurde (als <style> Tag)
   const existingStyle = document.getElementById("default-theme-css")
-  if (themeId === "default" && existingStyle) {
+  if (themeId === "default" && existingStyle && !forceReload) {
     return
   }
-
-  // Prüfe, ob das CSS bereits als <link> geladen wurde
-  const existingLink = document.querySelector(`link[data-theme-id="${themeId}"]`)
-  if (existingLink) return
 
   // Multi-Tenant: Tenant-basierter Storage-Pfad
   const tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null
   const storagePath =
     tenantSlug && tenantSlug !== "public" ? `${tenantSlug}/${themeId}.css` : `${themeId}.css`
 
+  // Cache-Buster: IMMER verwenden um Browser-Cache zu umgehen
+  // Bei forceReload: neuer Timestamp, sonst Session-basierter Timestamp
+  const cacheBuster = `?t=${forceReload ? Date.now() : getSessionCacheBuster()}`
+
+  // Prüfe, ob das CSS bereits als <link> geladen wurde
+  const existingLink = document.querySelector(`link[data-theme-id="${themeId}"]`) as HTMLLinkElement
+
+  if (existingLink) {
+    if (forceReload) {
+      // Update href mit neuem Cache-Buster um CSS neu zu laden
+      existingLink.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}${cacheBuster}`
+    }
+    return
+  }
+
   const link = document.createElement("link")
   link.rel = "stylesheet"
-  link.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}`
+  link.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}${cacheBuster}`
   link.setAttribute("data-theme-id", themeId)
 
   document.head.appendChild(link)
+}
+
+/**
+ * Session-basierter Cache-Buster.
+ * Wird einmal pro Page-Load generiert und bleibt während der Session konstant.
+ * Das verhindert übermäßige Requests bei Navigation innerhalb der App,
+ * stellt aber sicher, dass nach einem Hard-Reload die aktuelle Version geladen wird.
+ */
+let sessionCacheBuster: number | null = null
+function getSessionCacheBuster(): number {
+  if (sessionCacheBuster === null) {
+    sessionCacheBuster = Date.now()
+  }
+  return sessionCacheBuster
 }
 
 /**
@@ -273,6 +307,14 @@ const CustomThemeProvider = ({
     localStorage.setItem(CORNER_STYLE_STORAGE_KEY, style)
   }, [])
 
+  /**
+   * Lädt das Theme-CSS neu (z.B. nach Speichern).
+   * Verwendet einen Cache-Buster um Browser-Cache zu umgehen.
+   */
+  const refreshThemeCSS = useCallback(async (): Promise<void> => {
+    await loadDynamicThemeCSS(theme, true)
+  }, [theme])
+
   // Bestimme den aktuellen colorMode für den Context
   const colorMode = colorModeValue ?? "system"
 
@@ -287,6 +329,7 @@ const CustomThemeProvider = ({
     cornerStyle,
     setCornerStyle,
     supportsSquircle,
+    refreshThemeCSS,
   }
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>

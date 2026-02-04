@@ -16,7 +16,73 @@ import { useTheme } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { ColorPairSwatch } from "@/components/theme/ColorPairSwatch"
 import { CornerStyleSwitch } from "@/components/theme/CornerStyleSwitch"
+import { FontSelect } from "@/components/theme/FontSelect"
+import { loadGoogleFont } from "@/lib/fonts/dynamic-loader"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
+
+/**
+ * Konvertiert beliebige CSS-Farbe zu OKLCH.
+ * Unterstützt: oklch(), lab(), rgb(), hex, hsl(), etc.
+ */
+function anyColorToOklch(cssColor: string): { l: number; c: number; h: number } | null {
+  if (!cssColor || typeof document === "undefined") return null
+
+  // Bereits OKLCH? Parsen
+  const oklchMatch = cssColor.match(/oklch\(([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\)/)
+  if (oklchMatch) {
+    return {
+      l: parseFloat(oklchMatch[1]),
+      c: parseFloat(oklchMatch[2]),
+      h: parseFloat(oklchMatch[3]),
+    }
+  }
+
+  try {
+    // Canvas nutzen um beliebige CSS-Farbe zu RGB zu konvertieren
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+
+    ctx.fillStyle = cssColor
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+
+    // sRGB zu Linear RGB
+    const toLinear = (val: number) => {
+      const v = val / 255
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+    }
+
+    const lr = toLinear(r)
+    const lg = toLinear(g)
+    const lb = toLinear(b)
+
+    // Linear RGB zu XYZ (D65)
+    const x = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb
+    const y = 0.2126729 * lr + 0.7151522 * lg + 0.072175 * lb
+    const z = 0.0193339 * lr + 0.119192 * lg + 0.9503041 * lb
+
+    // XYZ zu OKLab
+    const l_ = Math.cbrt(0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z)
+    const m_ = Math.cbrt(0.0329845436 * x + 0.9293118715 * y + 0.0361456387 * z)
+    const s_ = Math.cbrt(0.0482003018 * x + 0.2643662691 * y + 0.633851707 * z)
+
+    const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_
+    const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
+    const okb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
+
+    // OKLab zu OKLCH
+    const C = Math.sqrt(a * a + okb * okb)
+    let H = Math.atan2(okb, a) * (180 / Math.PI)
+    if (H < 0) H += 360
+
+    return { l: L, c: C, h: H }
+  } catch {
+    return null
+  }
+}
 
 /**
  * Konvertiert OKLCH zu Hex
@@ -53,7 +119,40 @@ function hexToRgb(hex: string): string {
 }
 
 /**
+ * Konvertiert eine beliebige CSS-Farbe zu OKLCH-String.
+ */
+function anyColorToOklchString(cssColor: string): string {
+  const oklch = anyColorToOklch(cssColor)
+  if (!oklch) return "oklch(0.5 0 0)"
+  return `oklch(${oklch.l.toFixed(3)} ${oklch.c.toFixed(3)} ${oklch.h.toFixed(1)})`
+}
+
+/**
+ * Konvertiert eine beliebige CSS-Farbe zu Hex.
+ */
+function anyColorToHex(cssColor: string): string {
+  if (!cssColor || typeof document === "undefined") return "#808080"
+  if (cssColor.startsWith("#") && cssColor.length === 7) return cssColor
+
+  try {
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return "#808080"
+
+    ctx.fillStyle = cssColor
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
+  } catch {
+    return "#808080"
+  }
+}
+
+/**
  * SingleColorSwatch - Einzelne Farbe (Border, Chart, etc.)
+ * Mit Real-Time OKLCH-Anzeige.
  */
 function SingleColorSwatch({
   tokenName,
@@ -71,34 +170,51 @@ function SingleColorSwatch({
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
   const originalValueRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
-  const hasLoaded = useRef(false)
+  const hasLoadedOriginals = useRef(false)
 
-  // Anzeige-Werte (erst nach Mount geladen, um Hydration-Mismatch zu vermeiden)
-  const [oklch, setOklch] = useState("")
+  // Anzeige-Werte - immer OKLCH
+  const [oklchStr, setOklchStr] = useState("")
   const [hex, setHex] = useState("#808080")
 
+  /**
+   * Liest den aktuellen computed CSS-Wert und konvertiert zu OKLCH.
+   */
+  const updateDisplayValues = useCallback(() => {
+    if (typeof window === "undefined") return
+
+    const computedStyle = getComputedStyle(document.documentElement)
+    const computedValue = computedStyle.getPropertyValue(tokenName).trim()
+
+    if (computedValue) {
+      setOklchStr(anyColorToOklchString(computedValue))
+      setHex(anyColorToHex(computedValue))
+    }
+  }, [tokenName])
+
+  // Lade Originalwerte einmal beim Mount
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (hasLoaded.current) return
+    if (hasLoadedOriginals.current) return
 
-    const loadValue = () => {
+    const loadOriginals = () => {
       const tokens = getCurrentTokens()
       const token = tokens[tokenName] || { light: "", dark: "" }
       originalValueRef.current = { light: token.light, dark: token.dark }
-
-      // Anzeige-Werte setzen
-      const currentValue = isDarkMode ? token.dark : token.light
-      if (currentValue) {
-        setOklch(currentValue)
-        setHex(oklchToHex(currentValue))
-      }
-
-      hasLoaded.current = true
+      hasLoadedOriginals.current = true
+      updateDisplayValues()
     }
-    const timeout = setTimeout(loadValue, 50)
+
+    const timeout = setTimeout(loadOriginals, 50)
     return () => clearTimeout(timeout)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenName, isDarkMode])
+  }, [tokenName, getCurrentTokens, updateDisplayValues])
+
+  // Real-Time Updates: Polling alle 100ms
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const interval = setInterval(updateDisplayValues, 100)
+    return () => clearInterval(interval)
+  }, [updateDisplayValues])
 
   const handleClick = useCallback(() => {
     const tokens = getCurrentTokens()
@@ -129,8 +245,6 @@ function SingleColorSwatch({
         }
       case "gradient":
         return {
-          // Halbe Breite volle Deckkraft, danach gestufte Opazitäten (Transparent statt Weiß)
-          // Nutzt color-mix mit transparent, damit der Hintergrund durchscheint
           background: `linear-gradient(90deg,
             var(${tokenName}) 0%,
             var(${tokenName}) 50%,
@@ -169,9 +283,9 @@ function SingleColorSwatch({
         <span className="text-foreground text-sm font-medium">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{description}</span>
         <div className="text-muted-foreground flex gap-4 font-mono text-xs">
-          <span title={oklch}>{oklch ? oklch.substring(0, 25) : hex}</span>
+          <span title={oklchStr}>{oklchStr || "oklch(0.5 0 0)"}</span>
           <span className="opacity-50">|</span>
-          <span>{hexToRgb(hex)}</span>
+          <span>{hex}</span>
         </div>
       </div>
     </div>
@@ -222,8 +336,17 @@ const COLOR_TOKENS = [
   "--muted-foreground",
   "--accent",
   "--accent-foreground",
+  // Status Colors
+  "--success",
+  "--success-foreground",
+  "--warning",
+  "--warning-foreground",
+  "--info",
+  "--info-foreground",
   "--destructive",
   "--destructive-foreground",
+  "--neutral",
+  "--neutral-foreground",
   "--border",
   "--input",
   "--ring",
@@ -459,6 +582,25 @@ export default function DesignSystemPage(): React.ReactElement {
     [previewToken]
   )
 
+  // Font-Handler
+  const handleFontChange = useCallback(
+    async (category: "sans" | "mono" | "serif", fontName: string) => {
+      // Lade Font dynamisch
+      await loadGoogleFont(fontName)
+
+      // CSS-Variable setzen
+      const cssVar = `--font-${category}`
+      const fallback =
+        category === "mono" ? "monospace" : category === "serif" ? "serif" : "sans-serif"
+      const value = `${fontName}, ${fallback}`
+      previewToken(cssVar, value, value)
+
+      // UI aktualisieren
+      setFontNames((prev) => ({ ...prev, [category]: fontName }))
+    },
+    [previewToken]
+  )
+
   // Shadow-Variablen und ihre Base-Werte
   const SHADOW_TOKENS = [
     { token: "--shadow-2xs", baseBlur: 1, baseOffsetY: 1 },
@@ -645,6 +787,77 @@ export default function DesignSystemPage(): React.ReactElement {
     [applyChartHarmonize]
   )
 
+  // Status Colors: Harmonize mit Success
+  /**
+   * Überträgt Sättigung (Chroma) und Helligkeit (Lightness) von Success
+   * auf die anderen Status-Farben, während deren Farbwinkel (Hue) erhalten bleibt.
+   *
+   * Der Benutzer kann so den Farbwinkel selbst einstellen und dann mit
+   * einem Klick eine harmonische Abstimmung der Sättigung/Helligkeit erreichen.
+   *
+   * Neutral: Behält Helligkeit von Success, aber Chroma = 0 (Grau).
+   */
+  const harmonizeStatusColors = useCallback(() => {
+    if (typeof window === "undefined") return
+    const tokens = getCurrentTokens()
+    const successValue = isDarkMode ? tokens["--success"]?.dark : tokens["--success"]?.light
+    if (!successValue) return
+
+    // Konvertiere Success zu OKLCH
+    const successOklch = anyColorToOklch(successValue)
+    if (!successOklch) return
+
+    const targetL = successOklch.l // Ziel-Helligkeit
+    const targetC = successOklch.c // Ziel-Sättigung
+
+    // Status-Tokens zum Harmonisieren (ohne Success selbst)
+    const statusTokens = ["--warning", "--info", "--destructive"]
+
+    statusTokens.forEach((token) => {
+      const currentValue = isDarkMode ? tokens[token]?.dark : tokens[token]?.light
+      if (!currentValue) return
+
+      // Aktuelle Farbe zu OKLCH konvertieren
+      const currentOklch = anyColorToOklch(currentValue)
+      if (!currentOklch) return
+
+      // Hue behalten, Lightness und Chroma von Success übernehmen
+      const newValue = `oklch(${targetL.toFixed(3)} ${targetC.toFixed(3)} ${currentOklch.h.toFixed(1)})`
+
+      if (isDarkMode) {
+        previewToken(token, undefined, newValue)
+      } else {
+        previewToken(token, newValue)
+      }
+    })
+
+    // Neutral: Gleiche Helligkeit wie Success, aber Chroma = 0
+    const neutralValue = `oklch(${targetL.toFixed(3)} 0 0)`
+    if (isDarkMode) {
+      previewToken("--neutral", undefined, neutralValue)
+    } else {
+      previewToken("--neutral", neutralValue)
+    }
+
+    // Foreground-Farben: Inverse Helligkeit für Lesbarkeit
+    const fgL = targetL > 0.5 ? 0.1 : 0.95
+    const foregroundTokens = [
+      "--warning-foreground",
+      "--info-foreground",
+      "--destructive-foreground",
+      "--neutral-foreground",
+    ]
+
+    foregroundTokens.forEach((token) => {
+      const fgValue = `oklch(${fgL} 0 0)`
+      if (isDarkMode) {
+        previewToken(token, undefined, fgValue)
+      } else {
+        previewToken(token, fgValue)
+      }
+    })
+  }, [getCurrentTokens, previewToken, isDarkMode])
+
   // Global Adjustments - WICHTIG: Immer von ORIGINAL-Werten ausgehen!
   const applyGlobalAdjustments = useCallback(
     (hue: number, sat: number, light: number) => {
@@ -760,11 +973,38 @@ export default function DesignSystemPage(): React.ReactElement {
       name: "Accent",
       description: "Hover-States, Highlights, ausgewählte Items",
     },
+  ]
+
+  const statusColorPairs = [
+    {
+      token: "--success",
+      foreground: "--success-foreground",
+      name: "Success",
+      description: "Erfolg, Bestätigung, positive Aktionen",
+    },
+    {
+      token: "--warning",
+      foreground: "--warning-foreground",
+      name: "Warning",
+      description: "Warnungen, Achtung, auslaufende Sessions",
+    },
+    {
+      token: "--info",
+      foreground: "--info-foreground",
+      name: "Info",
+      description: "Informationen, Hinweise, Tooltips",
+    },
     {
       token: "--destructive",
       foreground: "--destructive-foreground",
       name: "Destructive",
       description: "Fehler, Löschen, destruktive Aktionen",
+    },
+    {
+      token: "--neutral",
+      foreground: "--neutral-foreground",
+      name: "Neutral",
+      description: "Neutrale Status-Anzeigen ohne Wertung",
     },
   ]
 
@@ -899,6 +1139,41 @@ export default function DesignSystemPage(): React.ReactElement {
                 name={token.name}
                 description={token.description}
                 variant="border"
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Status Colors */}
+        <section>
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Status Colors</h2>
+
+          {/* Harmonize Button */}
+          <div style={{ marginBottom: "16px" }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={harmonizeStatusColors}
+              style={{ width: "256px" }}
+            >
+              <Palette className="mr-2 size-4" />
+              Harmonize (Success)
+            </Button>
+            <p className="text-muted-foreground mt-2 text-xs" style={{ maxWidth: "256px" }}>
+              Überträgt Sättigung und Helligkeit von Success auf die anderen Status-Farben. Der
+              Farbwinkel bleibt erhalten.
+            </p>
+          </div>
+
+          {/* Farb-Swatches */}
+          <div className="space-y-4">
+            {statusColorPairs.map((pair) => (
+              <ColorPairSwatch
+                key={pair.token}
+                tokenName={pair.token}
+                foregroundTokenName={pair.foreground}
+                name={pair.name}
+                description={pair.description}
               />
             ))}
           </div>
@@ -1069,12 +1344,18 @@ export default function DesignSystemPage(): React.ReactElement {
               >
                 Aa Bb Cc Dd Ee
               </div>
-              <div className="flex min-w-0 flex-1 flex-col py-1">
-                <span className="text-foreground text-sm font-medium">Sans ({fontNames.sans})</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 py-1">
+                <div className="flex items-center gap-4">
+                  <FontSelect
+                    category="sans"
+                    value={fontNames.sans}
+                    onChange={(font) => handleFontChange("sans", font)}
+                  />
+                  <span className="text-muted-foreground font-mono text-xs">--font-sans</span>
+                </div>
                 <span className="text-muted-foreground text-xs">
                   Hauptschrift für UI-Text und Überschriften
                 </span>
-                <span className="text-muted-foreground font-mono text-xs">--font-sans</span>
               </div>
             </div>
             <div className="flex items-start gap-6">
@@ -1084,12 +1365,18 @@ export default function DesignSystemPage(): React.ReactElement {
               >
                 Aa Bb Cc Dd Ee
               </div>
-              <div className="flex min-w-0 flex-1 flex-col py-1">
-                <span className="text-foreground text-sm font-medium">Mono ({fontNames.mono})</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 py-1">
+                <div className="flex items-center gap-4">
+                  <FontSelect
+                    category="mono"
+                    value={fontNames.mono}
+                    onChange={(font) => handleFontChange("mono", font)}
+                  />
+                  <span className="text-muted-foreground font-mono text-xs">--font-mono</span>
+                </div>
                 <span className="text-muted-foreground text-xs">
                   Code-Blöcke, technische Werte, Keyboard-Shortcuts
                 </span>
-                <span className="text-muted-foreground font-mono text-xs">--font-mono</span>
               </div>
             </div>
             <div className="flex items-start gap-6">
@@ -1099,14 +1386,18 @@ export default function DesignSystemPage(): React.ReactElement {
               >
                 Aa Bb Cc Dd Ee
               </div>
-              <div className="flex min-w-0 flex-1 flex-col py-1">
-                <span className="text-foreground text-sm font-medium">
-                  Serif ({fontNames.serif})
-                </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 py-1">
+                <div className="flex items-center gap-4">
+                  <FontSelect
+                    category="serif"
+                    value={fontNames.serif}
+                    onChange={(font) => handleFontChange("serif", font)}
+                  />
+                  <span className="text-muted-foreground font-mono text-xs">--font-serif</span>
+                </div>
                 <span className="text-muted-foreground text-xs">
                   Längere Texte, Artikel, Zitate
                 </span>
-                <span className="text-muted-foreground font-mono text-xs">--font-serif</span>
               </div>
             </div>
           </div>

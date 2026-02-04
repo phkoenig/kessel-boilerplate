@@ -136,23 +136,65 @@ export async function saveTheme(theme: ThemeData): Promise<{ success: boolean; e
 }
 
 /**
- * Aktualisiert Theme-Metadaten.
+ * Aktualisiert Theme-Metadaten und/oder CSS.
+ * Builtin-Themes ("default") können nicht überschrieben werden.
  */
 export async function updateTheme(
   themeId: string,
-  updates: { name?: string; description?: string }
+  updates: {
+    name?: string
+    description?: string
+    dynamicFonts?: string[]
+    lightCSS?: string
+    darkCSS?: string
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient()
 
-  const { error } = await supabase
+  // Prüfe ob Theme existiert und nicht builtin ist
+  const { data: theme, error: fetchError } = await supabase
     .from("themes")
-    .update(updates)
+    .select("id, is_builtin")
     .eq("id", themeId)
-    .eq("is_builtin", false) // Builtin-Themes können nicht bearbeitet werden
+    .single()
 
-  if (error) {
-    console.error("Fehler beim Aktualisieren des Themes:", error)
-    return { success: false, error: error.message }
+  if (fetchError || !theme) {
+    return { success: false, error: "Theme nicht gefunden" }
+  }
+
+  if (theme.is_builtin) {
+    return { success: false, error: "Builtin-Themes können nicht überschrieben werden" }
+  }
+
+  // CSS aktualisieren
+  if (updates.lightCSS && updates.darkCSS) {
+    const storagePath = getTenantStoragePath(`${themeId}.css`)
+    const cssContent = `/* Theme: ${themeId} (aktualisiert) */\n\n/* Light Mode */\n${updates.lightCSS}\n\n/* Dark Mode */\n${updates.darkCSS}`
+
+    const { error: storageError } = await supabase.storage
+      .from("themes")
+      .upload(storagePath, cssContent, {
+        contentType: "text/css",
+        upsert: true,
+      })
+
+    if (storageError) {
+      return { success: false, error: `CSS-Update fehlgeschlagen: ${storageError.message}` }
+    }
+  }
+
+  // Metadaten aktualisieren
+  const metaUpdates: Record<string, unknown> = {}
+  if (updates.name) metaUpdates.name = updates.name
+  if (updates.description) metaUpdates.description = updates.description
+  if (updates.dynamicFonts) metaUpdates.dynamic_fonts = updates.dynamicFonts
+
+  if (Object.keys(metaUpdates).length > 0) {
+    const { error: dbError } = await supabase.from("themes").update(metaUpdates).eq("id", themeId)
+
+    if (dbError) {
+      return { success: false, error: `Metadaten-Update fehlgeschlagen: ${dbError.message}` }
+    }
   }
 
   return { success: true }
