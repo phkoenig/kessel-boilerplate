@@ -1,11 +1,15 @@
 /**
  * API Route: User Theme Preference
  *
- * Lädt und speichert das Theme für den aktuellen User.
+ * Lädt und speichert Theme und Color Scheme für den aktuellen User.
  * Berücksichtigt die Berechtigung `can_select_theme`.
  *
- * GET: Lädt das effektive Theme für den User
- * PUT: Speichert das ausgewählte Theme
+ * GET: Lädt das effektive Theme und Color Scheme für den User
+ * PUT: Speichert das ausgewählte Theme und/oder Color Scheme
+ *
+ * Architektur:
+ * - selected_theme: Brand-Theme (App-Level mit optionalem User-Override)
+ * - color_scheme: Dark/Light Mode Präferenz (User-global über alle Apps)
  */
 
 import { createClient } from "@/utils/supabase/server"
@@ -36,16 +40,17 @@ export async function GET() {
       // Nicht eingeloggt - Default-Theme zurückgeben
       return NextResponse.json({
         theme: "default",
+        colorScheme: "system",
         canSelectTheme: false,
         isAdmin: false,
         isAuthenticated: false,
       })
     }
 
-    // User-Profil abrufen
+    // User-Profil abrufen (inkl. color_scheme)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("selected_theme, can_select_theme, role")
+      .select("selected_theme, can_select_theme, color_scheme, role")
       .eq("id", user.id)
       .single()
 
@@ -53,6 +58,7 @@ export async function GET() {
       console.error("[User Theme API] Profil-Fehler:", profileError)
       return NextResponse.json({
         theme: "default",
+        colorScheme: "system",
         canSelectTheme: false,
         isAdmin: false,
         isAuthenticated: true,
@@ -76,6 +82,7 @@ export async function GET() {
 
       return NextResponse.json({
         theme: adminProfile?.selected_theme || "default",
+        colorScheme: profile.color_scheme || "system",
         canSelectTheme: false,
         isAdmin: false,
         isAuthenticated: true,
@@ -85,6 +92,7 @@ export async function GET() {
 
     return NextResponse.json({
       theme: profile.selected_theme || "default",
+      colorScheme: profile.color_scheme || "system",
       canSelectTheme: canSelectTheme || isAdmin,
       isAdmin,
       isAuthenticated: true,
@@ -98,15 +106,15 @@ export async function GET() {
 /**
  * PUT /api/user/theme
  *
- * Speichert das ausgewählte Theme für den aktuellen User.
- * Nur wenn User eingeloggt und berechtigt ist.
+ * Speichert das ausgewählte Theme und/oder Color Scheme für den aktuellen User.
+ * Nur wenn User eingeloggt und berechtigt ist (für Theme, Color Scheme ist immer erlaubt).
  *
- * Body: { theme: string }
+ * Body: { theme?: string, colorScheme?: "dark" | "light" | "system" }
  *
  * Response:
- * - 200: { success: true, theme: string }
+ * - 200: { success: true, theme?: string, colorScheme?: string }
  * - 401: Nicht eingeloggt
- * - 403: Keine Berechtigung
+ * - 403: Keine Berechtigung (nur für Theme, nicht für Color Scheme)
  * - 400: Ungültige Anfrage
  * - 500: Server-Fehler
  */
@@ -126,46 +134,80 @@ export async function PUT(request: Request) {
 
     // Request-Body parsen
     const body = await request.json()
-    const { theme } = body
+    const { theme, colorScheme } = body
 
-    if (!theme || typeof theme !== "string") {
-      return NextResponse.json({ error: "Theme-ID fehlt oder ungültig" }, { status: 400 })
+    // Validierung
+    if (theme !== undefined && (typeof theme !== "string" || theme.length === 0)) {
+      return NextResponse.json({ error: "Theme-ID ungültig" }, { status: 400 })
     }
 
-    // User-Profil abrufen um Berechtigung zu prüfen
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("can_select_theme, role")
-      .eq("id", user.id)
-      .single()
-
-    if (profileError) {
-      console.error("[User Theme API] Profil-Fehler:", profileError)
-      return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 500 })
+    if (
+      colorScheme !== undefined &&
+      !["dark", "light", "system"].includes(colorScheme)
+    ) {
+      return NextResponse.json(
+        { error: "colorScheme muss 'dark', 'light' oder 'system' sein" },
+        { status: 400 }
+      )
     }
 
-    const isAdmin = profile.role === "admin"
-    const canSelectTheme = profile.can_select_theme ?? true
+    // Wenn Theme gesetzt werden soll: Berechtigung prüfen
+    if (theme !== undefined) {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("can_select_theme, role")
+        .eq("id", user.id)
+        .single()
 
-    // Berechtigung prüfen
-    if (!canSelectTheme && !isAdmin) {
-      return NextResponse.json({ error: "Keine Berechtigung zur Theme-Auswahl" }, { status: 403 })
+      if (profileError) {
+        console.error("[User Theme API] Profil-Fehler:", profileError)
+        return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 500 })
+      }
+
+      const isAdmin = profile.role === "admin"
+      const canSelectTheme = profile.can_select_theme ?? true
+
+      // Berechtigung prüfen (nur für Theme, nicht für Color Scheme)
+      if (!canSelectTheme && !isAdmin) {
+        return NextResponse.json(
+          { error: "Keine Berechtigung zur Theme-Auswahl" },
+          { status: 403 }
+        )
+      }
     }
 
-    // Theme speichern
+    // Update-Objekt zusammenstellen (nur gesetzte Felder)
+    const updateData: { selected_theme?: string; color_scheme?: string } = {}
+    if (theme !== undefined) {
+      updateData.selected_theme = theme
+    }
+    if (colorScheme !== undefined) {
+      updateData.color_scheme = colorScheme
+    }
+
+    // Wenn nichts zu updaten ist
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "Keine Daten zum Aktualisieren" }, { status: 400 })
+    }
+
+    // Speichern
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ selected_theme: theme })
+      .update(updateData)
       .eq("id", user.id)
 
     if (updateError) {
       console.error("[User Theme API] Update-Fehler:", updateError)
-      return NextResponse.json({ error: "Theme konnte nicht gespeichert werden" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Daten konnten nicht gespeichert werden" },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      theme,
+      ...(theme !== undefined && { theme }),
+      ...(colorScheme !== undefined && { colorScheme }),
     })
   } catch (error) {
     console.error("[User Theme API] Fehler:", error)

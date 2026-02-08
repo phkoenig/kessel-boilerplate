@@ -41,12 +41,13 @@ export const metadata: Metadata = {
  */
 async function getDefaultThemeCSS(): Promise<string> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
   if (!supabaseUrl) {
     return ""
   }
 
   try {
-    const cssUrl = `${supabaseUrl}/storage/v1/object/public/themes/default.css`
+    const cssUrl = `${supabaseUrl}/storage/v1/object/public/themes/${defaultThemeId}.css`
     const response = await fetch(cssUrl, {
       next: { revalidate: 3600 }, // Cache für 1 Stunde
     })
@@ -78,19 +79,22 @@ export default async function RootLayout({
 }>): Promise<React.ReactElement> {
   // Lade Default-Theme CSS serverseitig
   const defaultThemeCSS = await getDefaultThemeCSS()
+  const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
 
   return (
-    <html lang="de" suppressHydrationWarning className={fontVariables} data-theme="default">
+    <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>
       <head>
         {/*
           FOUC Prevention: Inline-Script setzt data-theme BEVOR React hydrated.
           Das stellt sicher, dass die CSS-Selektoren sofort greifen.
+          Verwendet NEXT_PUBLIC_DEFAULT_THEME als Fallback statt hardcoded 'default'.
         */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                var theme = localStorage.getItem('tweakcn-theme') || 'default';
+                var defaultTheme = '${defaultThemeId}';
+                var theme = localStorage.getItem('tweakcn-theme') || defaultTheme;
                 document.documentElement.setAttribute('data-theme', theme);
               })();
             `,

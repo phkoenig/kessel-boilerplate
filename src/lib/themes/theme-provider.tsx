@@ -17,8 +17,9 @@ const CORNER_STYLE_STORAGE_KEY = "corner-style"
 
 /**
  * Default Theme ID (Fallback).
+ * Kann über NEXT_PUBLIC_DEFAULT_THEME Environment-Variable überschrieben werden.
  */
-const DEFAULT_THEME_ID = "default"
+const DEFAULT_THEME_ID = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
 
 /**
  * Corner-Style Typ.
@@ -44,16 +45,16 @@ export interface ThemeMeta {
 export interface ThemeContextValue {
   /** Aktuelle Theme-ID */
   theme: string
-  /** Theme wechseln */
-  setTheme: (id: string) => void
+  /** Theme wechseln. skipValidation=true überspringt die Existenzprüfung (z.B. direkt nach Import) */
+  setTheme: (id: string, options?: { skipValidation?: boolean }) => void
   /** Alle verfügbaren Themes (builtin + dynamisch) */
   themes: ThemeMeta[]
   /** Aktueller Color-Mode (light/dark/system) */
   colorMode: string
   /** Color-Mode wechseln */
   setColorMode: (mode: "light" | "dark" | "system") => void
-  /** Themes neu laden (nach Import/Delete) */
-  refreshThemes: () => Promise<void>
+  /** Themes neu laden (nach Import/Delete). Gibt die aktualisierte Liste zurück. */
+  refreshThemes: () => Promise<ThemeMeta[]>
   /** Lädt gerade Themes */
   isLoading: boolean
   /** Aktueller Corner-Style (rounded | squircle) */
@@ -62,8 +63,8 @@ export interface ThemeContextValue {
   setCornerStyle: (style: CornerStyle) => void
   /** Prüft ob Browser Squircle unterstützt */
   supportsSquircle: boolean
-  /** Theme-CSS neu laden (z.B. nach Speichern) */
-  refreshThemeCSS: () => Promise<void>
+  /** Theme-CSS neu laden (z.B. nach Speichern). Gibt true bei Erfolg zurück. */
+  refreshThemeCSS: () => Promise<boolean>
 }
 
 /**
@@ -103,15 +104,16 @@ interface CustomThemeProviderProps {
  *
  * @param themeId - Die Theme-ID
  * @param forceReload - Wenn true, wird das CSS mit neuem Timestamp neu geladen
+ * @returns true wenn CSS erfolgreich geladen wurde, false bei Fehler
  */
-async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promise<void> {
+async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promise<boolean> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!supabaseUrl) return
+  if (!supabaseUrl) return false
 
   // Prüfe, ob das CSS bereits serverseitig geladen wurde (als <style> Tag)
   const existingStyle = document.getElementById("default-theme-css")
-  if (themeId === "default" && existingStyle && !forceReload) {
-    return
+  if (themeId === DEFAULT_THEME_ID && existingStyle && !forceReload) {
+    return true
   }
 
   // Multi-Tenant: Tenant-basierter Storage-Pfad
@@ -131,7 +133,7 @@ async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promis
       // Update href mit neuem Cache-Buster um CSS neu zu laden
       existingLink.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}${cacheBuster}`
     }
-    return
+    return true
   }
 
   const link = document.createElement("link")
@@ -139,7 +141,15 @@ async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promis
   link.href = `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}${cacheBuster}`
   link.setAttribute("data-theme-id", themeId)
 
-  document.head.appendChild(link)
+  // Prüfe ob CSS erfolgreich geladen wurde
+  return new Promise((resolve) => {
+    link.onload = () => resolve(true)
+    link.onerror = () => {
+      console.warn(`[ThemeProvider] Failed to load CSS for theme: ${themeId}`)
+      resolve(false)
+    }
+    document.head.appendChild(link)
+  })
 }
 
 /**
@@ -179,8 +189,9 @@ const CustomThemeProvider = ({
 
   /**
    * Lädt Themes aus der Supabase API.
+   * Gibt die aktualisierte Theme-Liste zurück (für await-basierte Nutzung).
    */
-  const refreshThemes = useCallback(async (): Promise<void> => {
+  const refreshThemes = useCallback(async (): Promise<ThemeMeta[]> => {
     setIsLoading(true)
     try {
       const response = await fetch("/api/themes/list")
@@ -191,7 +202,7 @@ const CustomThemeProvider = ({
         console.warn("API-Route /api/themes/list liefert kein JSON:", contentType)
         // Fallback: Leeres Array setzen
         setThemes([])
-        return
+        return []
       }
 
       if (response.ok) {
@@ -207,19 +218,23 @@ const CustomThemeProvider = ({
             })
           )
           setThemes(apiThemes)
+          return apiThemes
         } else {
           // Fallback: Leeres Array wenn keine Themes vorhanden
           setThemes([])
+          return []
         }
       } else {
         console.warn(`API-Route /api/themes/list fehlgeschlagen: ${response.status}`)
         // Fallback: Leeres Array setzen
         setThemes([])
+        return []
       }
     } catch (error) {
       console.error("Fehler beim Laden der Themes:", error)
       // Fallback: Leeres Array setzen statt zu crashen
       setThemes([])
+      return []
     } finally {
       setIsLoading(false)
     }
@@ -229,11 +244,9 @@ const CustomThemeProvider = ({
   useEffect(() => {
     setMounted(true)
 
-    // Gespeichertes Theme laden
-    const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY)
-    if (savedThemeId) {
-      setThemeState(savedThemeId)
-    }
+    // Gespeichertes Theme laden (mit Fallback auf Default)
+    const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY) || defaultTheme
+    setThemeState(savedThemeId)
 
     // Gespeicherten Corner-Style laden
     const savedCornerStyle = localStorage.getItem(CORNER_STYLE_STORAGE_KEY) as CornerStyle | null
@@ -270,9 +283,29 @@ const CustomThemeProvider = ({
     }
 
     // Lade Theme-CSS aus Supabase Storage (für alle Themes)
-    loadDynamicThemeCSS(theme).catch((err) => {
-      console.error("Fehler beim Laden des Theme-CSS:", err)
-    })
+    loadDynamicThemeCSS(theme)
+      .then((success) => {
+        // Wenn CSS nicht geladen werden konnte und es nicht das Default-Theme ist,
+        // fallback auf Default-Theme
+        if (!success && theme !== DEFAULT_THEME_ID) {
+          console.warn(
+            `[ThemeProvider] Theme CSS nicht geladen, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
+          )
+          setThemeState(DEFAULT_THEME_ID)
+          localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
+        }
+      })
+      .catch((err) => {
+        console.error("Fehler beim Laden des Theme-CSS:", err)
+        // Fallback auf Default-Theme bei Fehler
+        if (theme !== DEFAULT_THEME_ID) {
+          console.warn(
+            `[ThemeProvider] CSS-Load-Fehler, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
+          )
+          setThemeState(DEFAULT_THEME_ID)
+          localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
+        }
+      })
   }, [theme, themes, mounted])
 
   // Corner-Style Attribut setzen
@@ -284,12 +317,26 @@ const CustomThemeProvider = ({
   }, [cornerStyle, mounted])
 
   const setTheme = useCallback(
-    (id: string): void => {
+    (id: string, { skipValidation = false }: { skipValidation?: boolean } = {}): void => {
+      // Wenn skipValidation gesetzt ist (z.B. direkt nach Import), Theme sofort setzen
+      if (skipValidation) {
+        setThemeState(id)
+        localStorage.setItem(THEME_STORAGE_KEY, id)
+        return
+      }
+
       // Prüfe, ob Theme in der aktuellen Liste existiert
       const isValid = themes.some((t) => t.id === id)
       if (isValid) {
         setThemeState(id)
         localStorage.setItem(THEME_STORAGE_KEY, id)
+      } else {
+        // Theme existiert nicht → Fallback auf Default-Theme
+        console.warn(
+          `[ThemeProvider] Theme "${id}" existiert nicht, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
+        )
+        setThemeState(DEFAULT_THEME_ID)
+        localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
       }
     },
     [themes]
@@ -310,9 +357,10 @@ const CustomThemeProvider = ({
   /**
    * Lädt das Theme-CSS neu (z.B. nach Speichern).
    * Verwendet einen Cache-Buster um Browser-Cache zu umgehen.
+   * Gibt true zurück wenn erfolgreich, false bei Fehler.
    */
-  const refreshThemeCSS = useCallback(async (): Promise<void> => {
-    await loadDynamicThemeCSS(theme, true)
+  const refreshThemeCSS = useCallback(async (): Promise<boolean> => {
+    return await loadDynamicThemeCSS(theme, true)
   }, [theme])
 
   // Bestimme den aktuellen colorMode für den Context

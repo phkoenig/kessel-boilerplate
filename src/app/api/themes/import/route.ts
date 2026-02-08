@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
+import { getTenantStoragePath } from "@/lib/utils/tenant"
 
 /**
  * Import-Statistiken für detailliertes Feedback.
@@ -116,10 +117,11 @@ export async function POST(request: NextRequest) {
 
     warnings.push(...fontValidationWarnings)
 
-    // 1. CSS in Supabase Storage speichern
+    // 1. CSS in Supabase Storage speichern (Multi-Tenant: tenant-spezifischer Ordner)
+    const storagePath = getTenantStoragePath(`${themeData.themeId}.css`)
     const { error: storageError } = await supabase.storage
       .from("themes")
-      .upload(`${themeData.themeId}.css`, fullCSS, {
+      .upload(storagePath, fullCSS, {
         contentType: "text/css",
         upsert: false,
       })
@@ -143,8 +145,8 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error("Fehler beim Speichern der Theme-Metadaten:", dbError)
-      // Rollback: CSS löschen
-      await supabase.storage.from("themes").remove([`${themeData.themeId}.css`])
+      // Rollback: CSS löschen (gleicher tenant-spezifischer Pfad)
+      await supabase.storage.from("themes").remove([storagePath])
       return NextResponse.json(
         { error: `Metadaten-Speicherung fehlgeschlagen: ${dbError.message}` },
         { status: 500 }

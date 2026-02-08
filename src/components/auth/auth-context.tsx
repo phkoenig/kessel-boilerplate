@@ -18,7 +18,10 @@ export interface User {
   role: UserRole
   roleId?: string // UUID der Rolle aus roles Tabelle
   createdAt?: string // ISO timestamp string
-  themePreference?: string // Bevorzugtes Theme des Users
+  themePreference?: string // DEPRECATED: Verwende selectedTheme statt themePreference
+  selectedTheme?: string // Ausgewähltes Brand-Theme (wenn canSelectTheme = true)
+  canSelectTheme?: boolean // Ob User eigenes Theme wählen darf
+  colorScheme?: "dark" | "light" | "system" // Dark/Light Mode Präferenz (global über alle Apps)
   // Chatbot-Einstellungen
   chatbotAvatarSeed?: string // Seed für DiceBear Chatbot-Avatar (bottts)
   chatbotTone?: "formal" | "casual" // Ansprache: formal (Sie) oder casual (Du)
@@ -64,6 +67,9 @@ async function loadUserProfile(supabaseUser: SupabaseUser): Promise<User> {
       role,
       role_id,
       theme_preference,
+      selected_theme,
+      can_select_theme,
+      color_scheme,
       chatbot_avatar_seed,
       chatbot_tone,
       chatbot_detail_level,
@@ -129,7 +135,10 @@ async function loadUserProfile(supabaseUser: SupabaseUser): Promise<User> {
     role: roleName as UserRole,
     roleId: roleId,
     createdAt: profile?.created_at || undefined,
-    themePreference: profile?.theme_preference || undefined,
+    themePreference: profile?.theme_preference || undefined, // DEPRECATED: Für Rückwärtskompatibilität
+    selectedTheme: profile?.selected_theme || undefined,
+    canSelectTheme: profile?.can_select_theme ?? true,
+    colorScheme: (profile?.color_scheme as "dark" | "light" | "system") || "system",
     // Chatbot-Einstellungen
     chatbotAvatarSeed: profile?.chatbot_avatar_seed || undefined,
     chatbotTone: (profile?.chatbot_tone as "formal" | "casual") || undefined,
