@@ -5,10 +5,12 @@
  * PATCH: Aktualisiert App-Settings (upsert - erstellt falls nicht vorhanden)
  *
  * Identifikation erfolgt über NEXT_PUBLIC_TENANT_SLUG
+ * Schutz: requireAuth (Admin-Bereich)
  */
 
 import { createClient } from "@/utils/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth/guards"
 
 /**
  * Tenant-Slug aus Environment - identifiziert die App eindeutig
@@ -22,6 +24,9 @@ function getTenantSlug(): string {
  * Filtert nach tenant_slug der aktuellen App
  */
 export async function GET(): Promise<NextResponse> {
+  const userOrErr = await requireAuth()
+  if (userOrErr instanceof Response) return userOrErr
+
   try {
     const supabase = await createClient()
     const tenantSlug = getTenantSlug()
@@ -65,6 +70,9 @@ export async function GET(): Promise<NextResponse> {
  * Verwendet Upsert - erstellt Eintrag falls nicht vorhanden
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
+  const userOrErr = await requireAuth()
+  if (userOrErr instanceof Response) return userOrErr
+
   try {
     const supabase = await createClient()
     const tenantSlug = getTenantSlug()

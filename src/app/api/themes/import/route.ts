@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
+import { requireAdmin } from "@/lib/auth/guards"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 
@@ -44,6 +45,9 @@ interface ThemeImportResponse {
  * - CSS in `themes` Storage Bucket
  */
 export async function POST(request: NextRequest) {
+  const userOrErr = await requireAdmin()
+  if (userOrErr instanceof Response) return userOrErr
+
   try {
     const { css, name } = await request.json()
 

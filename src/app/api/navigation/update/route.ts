@@ -12,6 +12,7 @@ import { promises as fs } from "fs"
 import path from "path"
 import { z } from "zod"
 
+import { requireAdmin } from "@/lib/auth/guards"
 import type { NavigationSuggestion } from "@/lib/ai/types/tool-metadata"
 import {
   generateNavigationCode,
@@ -71,7 +72,6 @@ function getWorkspaceRoot(): string {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<SuccessResponse | ErrorResponse>> {
-  // Sicherheitscheck: Nur im Development-Modus erlaubt
   if (!isDevelopment()) {
     return NextResponse.json(
       {
@@ -81,6 +81,9 @@ export async function POST(
       { status: 403 }
     )
   }
+
+  const userOrErr = await requireAdmin()
+  if (userOrErr instanceof Response) return userOrErr
 
   try {
     // 1. Request validieren

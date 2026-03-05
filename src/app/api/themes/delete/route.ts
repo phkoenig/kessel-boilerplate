@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
+import { requireAdmin } from "@/lib/auth/guards"
 
 /**
  * API-Route zum Löschen eines Themes.
  * Entfernt das Theme aus der Supabase-Datenbank und dem Storage.
+ * Schutz: requireAdmin
  */
 export async function POST(request: NextRequest) {
+  const userOrErr = await requireAdmin()
+  if (userOrErr instanceof Response) return userOrErr
+
   try {
     const { themeId } = await request.json()
 

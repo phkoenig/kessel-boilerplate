@@ -2,20 +2,27 @@
  * Debug API: Screenshot speichern
  *
  * Speichert Screenshots temporär für Debugging-Zwecke.
+ * Nur in Development, nur für eingeloggte User.
  */
 
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
+import { requireAuth } from "@/lib/auth/guards"
+import { NextResponse } from "next/server"
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse | Response> {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Nur im Entwicklungsmodus verfügbar" }, { status: 403 })
+  }
+
+  const userOrErr = await requireAuth()
+  if (userOrErr instanceof Response) return userOrErr
+
   try {
     const { screenshot } = await req.json()
 
     if (!screenshot) {
-      return new Response(JSON.stringify({ error: "No screenshot provided" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      })
+      return NextResponse.json({ error: "No screenshot provided" }, { status: 400 })
     }
 
     // Zielordner: public/debug-screenshots (damit man sie im Browser ansehen kann)
@@ -34,25 +41,14 @@ export async function POST(req: Request) {
 
     const publicUrl = `/debug-screenshots/${filename}`
 
-    console.log("[Debug] Screenshot saved:", filepath)
-    console.log("[Debug] View at:", publicUrl)
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        filename,
-        url: publicUrl,
-        size: buffer.length,
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    )
+    return NextResponse.json({
+      success: true,
+      filename,
+      url: publicUrl,
+      size: buffer.length,
+    })
   } catch (error) {
     console.error("[Debug] Failed to save screenshot:", error)
-    return new Response(JSON.stringify({ error: "Failed to save screenshot" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    })
+    return NextResponse.json({ error: "Failed to save screenshot" }, { status: 500 })
   }
 }
