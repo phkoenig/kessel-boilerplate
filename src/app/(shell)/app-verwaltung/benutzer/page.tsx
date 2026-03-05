@@ -210,17 +210,18 @@ export default function UsersPage(): React.ReactElement {
     setError(null)
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false })
+      const response = await fetch("/api/admin/users", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
 
-      if (fetchError) {
-        setError(fetchError.message)
+      const payload = (await response.json()) as { error?: string; users?: UserProfile[] }
+      if (!response.ok) {
+        setError(payload.error || "Fehler beim Laden der User")
         return
       }
 
-      setUsers(data || [])
+      setUsers(payload.users ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden der User")
     } finally {
