@@ -13,6 +13,7 @@ import { MonochromeIcon } from "@/components/ui/monochrome-icon"
 import { InlineEditInput } from "@/components/ui/inline-edit-input"
 import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
+import { emitMockEvent } from "@/lib/realtime"
 
 /**
  * AppIconGenerator Komponente
@@ -408,10 +409,9 @@ export function AppIconGenerator(): React.ReactElement {
       setIconVariants(generatedVariants.map((img) => ({ url: img.url })))
       setSaved(true)
 
-      // Kurz warten, damit der User die Erfolgsmeldung sieht,
-      // dann Seite vollständig neu laden für korrektes Icon-Update überall
+      // Realtime-Invalidierung für Icon-Update
       setTimeout(() => {
-        window.location.reload()
+        emitMockEvent("app:invalidate", "db-modified", {})
       }, 500)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Fehler beim Speichern"
@@ -557,7 +557,7 @@ export function AppIconGenerator(): React.ReactElement {
               label="Beschreibung *"
               value={description}
               onSave={(value) => handleSaveField("app_description", value)}
-              onSaveSuccess={() => window.location.reload()}
+              onSaveSuccess={() => emitMockEvent("app:invalidate", "db-modified", {})}
               placeholder="z.B. Boilerplate für B2B-Apps"
               disabled={isGenerating}
             />

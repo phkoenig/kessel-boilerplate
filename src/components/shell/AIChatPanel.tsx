@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation"
 import { AssistantRuntimeProvider } from "@assistant-ui/react"
 import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk"
 import { cn } from "@/lib/utils"
+import { emitMockEvent } from "@/lib/realtime"
 import { Thread } from "@/components/thread"
 import { useScreenshotCache } from "@/hooks/use-screenshot-cache"
 import {
@@ -493,17 +494,15 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
       })
 
       if (hasWriteToolCall) {
-        // Kurze Verzögerung für DB-Konsistenz, dann Seite refreshen
-        console.warn("[AIChatPanel] 🔄 Triggering page refresh after DB modification...")
+        // Realtime-Invalidierung: app:invalidate triggert router.refresh() in Shell Layout
+        console.warn("[AIChatPanel] 🔄 Emitting app:invalidate after DB modification...")
         setTimeout(() => {
-          // router.refresh() invalidiert nur den Cache, lädt aber keine Server Components neu
-          // Verwende stattdessen window.location.reload() für echte Daten-Aktualisierung
-          // Dies ist robuster, da es die Seite wirklich neu lädt
-          window.location.reload()
+          emitMockEvent("app:invalidate", "db-modified", {})
         }, 500)
       }
     },
-    [router]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- emitMockEvent ist module-level, kein router nötig
+    []
   )
 
   // Callback für Tool-Calls während des Streamings

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { mockAdapter } from "@/lib/realtime"
+import { getRealtimeAdapter } from "@/lib/realtime"
 import type { RealtimeEvent } from "@/lib/realtime"
 
 /**
@@ -25,7 +25,8 @@ export function useRealtimeSubscription<T = unknown>(
   }, [onEvent])
 
   useEffect(() => {
-    const sub = mockAdapter.subscribe<T>(topic, (event) => {
+    const adapter = getRealtimeAdapter()
+    const sub = adapter.subscribe<T>(topic, (event) => {
       setData(event.payload)
       onEventRef.current?.(event)
     })

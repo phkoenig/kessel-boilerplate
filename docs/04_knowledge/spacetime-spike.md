@@ -47,3 +47,9 @@ Ein Bereich (z.B. Nav-Notification-Zaehler oder Chat-Sync-Status) mit:
 ## Mock-Adapter
 
 Ohne SpacetimeDB: `src/lib/realtime/mock-adapter.ts` fuer lokale Entwicklung und Tests.
+
+## Spike-Status
+
+- **Infrastruktur:** types, config, mock-adapter, getRealtimeAdapter, useRealtimeSubscription
+- **Tests:** `mock-adapter.test.ts` – Subscription, Event-Ordering, Unsubscribe, Duplikat-IDs
+- **Echte SpacetimeDB:** Modul deployen, `spacetime generate --lang typescript`, Bindings in `spacetime-adapter.ts` integrieren

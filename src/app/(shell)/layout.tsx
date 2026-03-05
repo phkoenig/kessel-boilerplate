@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
+import { useAppInvalidation } from "@/hooks/use-app-invalidation"
 import {
   AppShell,
   ExplorerPanel,
@@ -105,6 +106,7 @@ export default function ShellLayout({
   children: React.ReactNode
 }): React.ReactElement {
   const pathname = usePathname()
+  useAppInvalidation()
   const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
   const isDatasourcesPage = pathname === "/app-verwaltung/datenquellen"
   const isComponentsPage = pathname === "/app-verwaltung/ui-komponenten"
