@@ -4,19 +4,20 @@ import { z } from "zod"
 
 // 1. Server-Schema definieren UND EXPORTIEREN
 export const serverSchema = z.object({
-  // Beispiel: serverseitiger API-Schlüssel aus dem Vault
-  // STRIPE_SECRET_KEY: z.string().min(1),
   SERVICE_ROLE_KEY: z.string().min(1),
-  // OpenRouter API Key für AI Chat
   OPENROUTER_API_KEY: z.string().optional(),
-  // Optional: fal.ai API Key für Image-Generierung
   FAL_API_KEY: z.string().optional(),
+  // Clerk (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
+  CLERK_SECRET_KEY: z.string().optional(),
+  CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(),
 })
 
 // 2. Client-Schema definieren UND EXPORTIEREN
 export const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  // Clerk Auth (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
 })
 
 // 3. Das kombinierte Schema für die Validierung im Skript
@@ -31,9 +32,12 @@ export const env = createEnv({
   runtimeEnv: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     SERVICE_ROLE_KEY: process.env.SERVICE_ROLE_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     FAL_API_KEY: process.env.FAL_API_KEY,
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    CLERK_WEBHOOK_SIGNING_SECRET: process.env.CLERK_WEBHOOK_SIGNING_SECRET,
   },
 
   // Validierung überspringen, falls in Build-Umgebungen (z.B. Vercel)

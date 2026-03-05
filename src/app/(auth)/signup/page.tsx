@@ -1,101 +1,49 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Auth } from "@supabase/auth-ui-react"
-import { ThemeSupa } from "@supabase/auth-ui-shared"
+import { SignUp } from "@clerk/nextjs"
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { createClient } from "@/utils/supabase/client"
-
-/**
- * Signup Auth UI Component
- */
-function SignupUI(): React.ReactElement {
-  const router = useRouter()
-  const supabase = createClient()
-
-  // Listen für erfolgreiche Registrierung
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        router.push("/")
-        router.refresh()
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase, router])
-
-  const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "/"
+function SignUpContent(): React.ReactElement {
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get("redirect_url") || searchParams.get("redirect") || "/"
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Registrieren</CardTitle>
-        <CardDescription>Erstelle ein neues Konto</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Auth
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Multi-Tenant Schema-Typ ist nicht mit Auth-UI kompatibel
-          supabaseClient={supabase as any}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: "hsl(var(--primary))",
-                  brandAccent: "hsl(var(--primary))",
-                  inputBackground: "transparent",
-                  inputText: "hsl(var(--foreground))",
-                  inputBorder: "hsl(var(--border))",
-                  inputBorderFocus: "hsl(var(--ring))",
-                  inputBorderHover: "hsl(var(--border))",
-                },
-                borderWidths: {
-                  buttonBorderWidth: "1px",
-                  inputBorderWidth: "1px",
-                },
-                radii: {
-                  borderRadiusButton: "var(--radius)",
-                  buttonBorderRadius: "var(--radius)",
-                  inputBorderRadius: "var(--radius)",
-                },
-              },
-            },
-          }}
-          localization={{
-            variables: {
-              sign_up: {
-                email_label: "E-Mail",
-                password_label: "Passwort",
-                email_input_placeholder: "name@beispiel.de",
-                password_input_placeholder: "Dein Passwort",
-                button_label: "Registrieren",
-                loading_button_label: "Wird registriert...",
-                link_text: "Noch kein Konto? Registrieren",
-                confirmation_text: "Prüfe deine E-Mails für den Bestätigungslink",
-              },
-              sign_in: {
-                link_text: "Bereits ein Konto? Anmelden",
-              },
-            },
-          }}
-          providers={[]}
-          redirectTo={redirectUrl}
-          view="sign_up"
-          showLinks={true}
-        />
-      </CardContent>
-    </Card>
+    <SignUp
+      appearance={{
+        elements: {
+          rootBox: "w-full",
+          card: "shadow-none w-full border border-border bg-white text-slate-900",
+          headerTitle: "text-slate-900",
+          headerSubtitle: "text-slate-600",
+          socialButtonsBlockButton: "border border-slate-300 text-slate-900 hover:bg-slate-50",
+          formButtonPrimary: "bg-slate-900 text-white hover:bg-slate-800",
+          formFieldInput:
+            "border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500",
+          formFieldLabel: "text-slate-800",
+          footerActionText: "text-slate-600",
+          footerActionLink: "text-slate-900 underline",
+        },
+        variables: {
+          colorPrimary: "#0f172a",
+          colorBackground: "#ffffff",
+          colorText: "#0f172a",
+          colorInputBackground: "#ffffff",
+          colorInputText: "#0f172a",
+          colorNeutral: "#64748b",
+          colorDanger: "#dc2626",
+        },
+      }}
+      forceRedirectUrl={redirectUrl}
+      signInUrl="/login"
+    />
   )
 }
 
 /**
- * Signup Seite mit Supabase Auth UI
+ * Signup-Seite mit Clerk SignUp.
  */
 export default function SignupPage(): React.ReactElement {
   return (
@@ -114,7 +62,7 @@ export default function SignupPage(): React.ReactElement {
         </Card>
       }
     >
-      <SignupUI />
+      <SignUpContent />
     </Suspense>
   )
 }

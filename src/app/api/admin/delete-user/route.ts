@@ -1,6 +1,6 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-import { createClient } from "@/utils/supabase/server"
+import { requireAdmin } from "@/lib/auth/guards"
 
 /**
  * POST /api/admin/delete-user
@@ -9,26 +9,9 @@ import { createClient } from "@/utils/supabase/server"
  */
 export async function POST(request: Request) {
   try {
-    // Authentifizierung prüfen
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "super-user")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
+    const userOrErr = await requireAdmin()
+    if (userOrErr instanceof Response) return userOrErr
+    const adminUser = userOrErr
 
     // Request Body lesen
     const { userId } = await request.json()
@@ -38,19 +21,21 @@ export async function POST(request: Request) {
     }
 
     // Verhindere Selbstlöschung
-    if (userId === user.id) {
+    if (userId === adminUser.profileId || userId === adminUser.clerkUserId) {
       return NextResponse.json(
         { error: "Du kannst deinen eigenen Account nicht löschen" },
         { status: 400 }
       )
     }
 
-    // Service Role Client für Admin-Operationen
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Server-Konfiguration fehlt" }, { status: 500 })
+      return NextResponse.json(
+        { error: "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY fehlen" },
+        { status: 500 }
+      )
     }
 
     const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {

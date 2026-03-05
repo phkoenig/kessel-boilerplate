@@ -1,124 +1,77 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
 
 /**
- * Öffentliche Routen (keine Auth erforderlich)
- * Nur rechtlich notwendige Seiten (Impressum) und Wiki
+ * Auth-Routen: Login, Signup, Verify und Clerk-interne Sub-Routen.
+ * Eingeloggte User werden zu / redirected.
  */
-const PUBLIC_ROUTES = [
+const isClerkInternalRoute = createRouteMatcher([
+  "/login/sso-callback(.*)",
+  "/login/factor(.*)",
+  "/signup/sso-callback(.*)",
+  "/signup/verify(.*)",
+])
+
+const isAuthRoute = createRouteMatcher(["/login(.*)", "/signup(.*)", "/verify(.*)"])
+const isApiRoute = createRouteMatcher(["/api(.*)"])
+const isPublicRoute = createRouteMatcher([
   "/wiki",
   "/llms.txt",
   "/.well-known/ai-index.json",
   "/ueber-die-app/impressum",
   "/ueber-die-app/datenschutzerklaerung",
-]
+])
 
 /**
- * Auth-Routen (Login, Signup, Verify)
+ * Bestimmt die Proxy-Aktion basierend auf Pfad und Auth-Status.
+ * Exportiert fuer Unit-Tests.
+ *
+ * API-Routes werden immer durchgelassen (auth() prüft dort selbst).
+ * Webhook-Routen brauchen keine Auth.
  */
-const AUTH_ROUTES = ["/login", "/signup", "/verify"]
-
-/**
- * Next.js 16 Proxy - verwaltet Supabase Auth Session und Route Protection.
- *
- * WICHTIG: Diese Datei muss in `src/` liegen (auf gleicher Ebene wie `app/`).
- * Ab Next.js 16 wurde "Middleware" in "Proxy" umbenannt.
- * Verwendet `export default` (NICHT nur `export`).
- *
- * @see https://nextjs.org/docs/app/getting-started/proxy
- *
- * Regeln:
- * 1. Nicht eingeloggt + geschützte Route → Redirect zu /login
- * 2. Eingeloggt + Auth-Route → Redirect zu /
- * 3. Öffentliche Routen → Immer erlaubt
- *
- * Local Dev Bypass:
- * - Setze NEXT_PUBLIC_AUTH_BYPASS=true in .env.local
- * - Funktioniert NUR wenn NODE_ENV=development (doppelte Absicherung)
- * - Auch mit Bypass: Auth-Check wird durchgeführt, aber Login-Seite zeigt DevUserSelector
- * - Ohne eingeloggten User → Redirect zu /login (mit DevUserSelector statt normalem Formular)
- */
-export default async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // WICHTIG: Nur EINE Response-Instanz verwenden für Cookie-Konsistenz
-  const response = NextResponse.next({ request })
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // LOCAL DEV BYPASS - Aktiviert DevUserSelector auf Login-Seite
-  // Hinweis: Auch mit Bypass wird der Auth-Check durchgeführt
-  // Der Unterschied: Auf /login wird DevUserSelector statt normalem Formular angezeigt
-  // Config: NEXT_PUBLIC_AUTH_BYPASS=true in .env.local (nur wenn NODE_ENV=development)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    }
-  )
-
-  // WICHTIG: getUser() validiert gegen die Auth API (nicht nur lokale Session)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const isAuthenticated = !!user
-
-  // API-Routen: Session aktualisieren, keine Redirects
-  if (pathname.startsWith("/api/")) {
-    return response
-  }
-
-  // Öffentliche Routen: Immer erlaubt
-  if (PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route + "/"))) {
-    return response
-  }
-
-  // Auth-Routen Handling
-  const isAuthRoute = AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  )
-
-  if (isAuthRoute) {
-    if (isAuthenticated) {
-      // Eingeloggt + auf Auth-Route → Redirect zu Home
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-    // Nicht eingeloggt + auf Auth-Route → Erlaubt
-    return response
-  }
-
-  // Geschützte Routen: Auth erforderlich
-  if (!isAuthenticated) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  // Eingeloggt + geschützte Route → Erlaubt
-  return response
+export function getProxyAction(
+  pathname: string,
+  isAuthenticated: boolean,
+  request: NextRequest
+): "next" | "redirect-login" | "redirect-home" {
+  if (isClerkInternalRoute(request)) return "next"
+  if (isApiRoute(request)) return "next"
+  if (isPublicRoute(request)) return "next"
+  if (isAuthRoute(request)) return isAuthenticated ? "redirect-home" : "next"
+  return isAuthenticated ? "next" : "redirect-login"
 }
+
+/**
+ * Next.js 16 Proxy - Clerk Auth Route Protection.
+ *
+ * Clerk Session-Validierung (await auth()) laeuft nur fuer:
+ * - Shell-Seiten
+ * - Auth-Seiten (/login, /signup, /verify) -> Redirect wenn eingeloggt
+ */
+export default clerkMiddleware(async (auth, request: NextRequest) => {
+  const { pathname } = request.nextUrl
+  const isAuthenticated = await auth().then((r) => !!r.userId)
+  const action = getProxyAction(pathname, isAuthenticated, request)
+
+  if (action === "next") return NextResponse.next()
+  if (action === "redirect-home") return NextResponse.redirect(new URL("/", request.url))
+  const loginUrl = new URL("/login", request.url)
+  loginUrl.searchParams.set("redirect_url", pathname)
+  return NextResponse.redirect(loginUrl)
+})
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - Static assets (svg, png, jpg, etc.)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/",
+    "/app-verwaltung/:path*",
+    "/benutzer-menue/:path*",
+    "/wiki",
+    "/llms.txt",
+    "/.well-known/:path*",
+    "/ueber-die-app/:path*",
+    "/login/:path*",
+    "/signup/:path*",
+    "/verify/:path*",
+    "/api/((?!webhooks).*)",
   ],
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { ClerkProvider } from "@clerk/nextjs"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
@@ -109,9 +110,36 @@ export default async function RootLayout({
         )}
       </head>
       <body className="antialiased">
-        <ThemeProvider defaultTheme="default">
-          <ClientProviders>{children}</ClientProviders>
-        </ThemeProvider>
+        {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
+          <ClerkProvider
+            publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+            signInUrl="/login"
+            signUpUrl="/signup"
+            signInForceRedirectUrl="/"
+            signUpForceRedirectUrl="/"
+            afterSignOutUrl="/login"
+          >
+            <ThemeProvider defaultTheme="default">
+              <ClientProviders>{children}</ClientProviders>
+            </ThemeProvider>
+          </ClerkProvider>
+        ) : (
+          <ThemeProvider defaultTheme="default">
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+              <h1 className="text-2xl font-bold">Clerk nicht konfiguriert</h1>
+              <p className="text-muted-foreground max-w-md">
+                Setze NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY und CLERK_SECRET_KEY in .env.local oder
+                Supabase Vault. Fuehre dann pnpm pull-env aus.
+              </p>
+              <a
+                href="https://clerk.com/docs/quickstarts/nextjs"
+                className="text-primary hover:underline"
+              >
+                Clerk Next.js Quickstart
+              </a>
+            </div>
+          </ThemeProvider>
+        )}
       </body>
     </html>
   )

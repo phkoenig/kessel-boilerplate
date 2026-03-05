@@ -1,150 +1,52 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Auth } from "@supabase/auth-ui-react"
-import { ThemeSupa } from "@supabase/auth-ui-shared"
+import { SignIn } from "@clerk/nextjs"
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { createClient } from "@/utils/supabase/client"
-import { DevUserSelector } from "@/components/auth/dev-user-selector"
-
-/**
- * Auth UI Component
- * Wrapped for Suspense boundary compatibility with useSearchParams
- */
-function AuthUI(): React.ReactElement {
-  const router = useRouter()
+function SignInContent(): React.ReactElement {
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get("redirect") || "/"
-  const supabase = createClient()
-
-  // Listen für erfolgreiche Anmeldung
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        router.push(redirectTo)
-        router.refresh()
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase, router, redirectTo])
-
-  // Redirect-URL für Auth UI (nach Email-Bestätigung etc.)
-  const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}${redirectTo}` : "/"
+  const redirectUrl = searchParams.get("redirect_url") || searchParams.get("redirect") || "/"
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Willkommen</CardTitle>
-        <CardDescription>Melde dich an oder erstelle ein neues Konto</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Auth
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Multi-Tenant Schema-Typ ist nicht mit Auth-UI kompatibel
-          supabaseClient={supabase as any}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: "hsl(var(--primary))",
-                  brandAccent: "hsl(var(--primary))",
-                  inputBackground: "transparent",
-                  inputText: "hsl(var(--foreground))",
-                  inputBorder: "hsl(var(--border))",
-                  inputBorderFocus: "hsl(var(--ring))",
-                  inputBorderHover: "hsl(var(--border))",
-                },
-                borderWidths: {
-                  buttonBorderWidth: "1px",
-                  inputBorderWidth: "1px",
-                },
-                radii: {
-                  borderRadiusButton: "var(--radius)",
-                  buttonBorderRadius: "var(--radius)",
-                  inputBorderRadius: "var(--radius)",
-                },
-              },
-            },
-            className: {
-              container: "auth-container",
-              button: "auth-button",
-              input: "auth-input",
-            },
-          }}
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: "E-Mail",
-                password_label: "Passwort",
-                email_input_placeholder: "name@beispiel.de",
-                password_input_placeholder: "Dein Passwort",
-                button_label: "Anmelden",
-                loading_button_label: "Wird angemeldet...",
-                link_text: "Bereits ein Konto? Anmelden",
-              },
-              sign_up: {
-                email_label: "E-Mail",
-                password_label: "Passwort",
-                email_input_placeholder: "name@beispiel.de",
-                password_input_placeholder: "Dein Passwort",
-                button_label: "Registrieren",
-                loading_button_label: "Wird registriert...",
-                link_text: "Noch kein Konto? Registrieren",
-                confirmation_text: "Prüfe deine E-Mails für den Bestätigungslink",
-              },
-              forgotten_password: {
-                email_label: "E-Mail",
-                password_label: "Passwort",
-                email_input_placeholder: "name@beispiel.de",
-                button_label: "Passwort-Reset senden",
-                loading_button_label: "Wird gesendet...",
-                link_text: "Passwort vergessen?",
-                confirmation_text: "Prüfe deine E-Mails für den Reset-Link",
-              },
-            },
-          }}
-          providers={[]}
-          redirectTo={redirectUrl}
-          view="sign_in"
-          showLinks={true}
-        />
-      </CardContent>
-    </Card>
+    <SignIn
+      appearance={{
+        elements: {
+          rootBox: "w-full",
+          card: "shadow-none w-full border border-border bg-white text-slate-900",
+          headerTitle: "text-slate-900",
+          headerSubtitle: "text-slate-600",
+          socialButtonsBlockButton: "border border-slate-300 text-slate-900 hover:bg-slate-50",
+          formButtonPrimary: "bg-slate-900 text-white hover:bg-slate-800",
+          formFieldInput:
+            "border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500",
+          formFieldLabel: "text-slate-800",
+          footerActionText: "text-slate-600",
+          footerActionLink: "text-slate-900 underline",
+          identityPreviewText: "text-slate-700",
+        },
+        variables: {
+          colorPrimary: "#0f172a",
+          colorBackground: "#ffffff",
+          colorText: "#0f172a",
+          colorInputBackground: "#ffffff",
+          colorInputText: "#0f172a",
+          colorNeutral: "#64748b",
+          colorDanger: "#dc2626",
+        },
+      }}
+      forceRedirectUrl={redirectUrl}
+      signUpUrl="/signup"
+    />
   )
 }
 
 /**
- * Login Seite mit Conditional Rendering:
- * - Dev-Mode mit Bypass: DevUserSelector (User-Liste)
- * - Production/Standard: Supabase Auth UI (E-Mail/Passwort)
- *
- * WICHTIG: Verwendet useState + useEffect um Hydration-Mismatch zu vermeiden.
- * Die Prüfung läuft nur client-seitig, nach dem initialen Render.
+ * Login-Seite mit Clerk SignIn.
  */
 export default function LoginPage(): React.ReactElement {
-  const [isDevMode, setIsDevMode] = useState<boolean | null>(null)
-
-  // Prüfe Dev-Mode nur client-seitig (nach Hydration)
-  useEffect(() => {
-    const bypassEnabled = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true"
-    const isDev = process.env.NODE_ENV === "development"
-    const isLocalhost =
-      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Notwendig um Hydration-Mismatch zu vermeiden
-    setIsDevMode(bypassEnabled && (isDev || isLocalhost))
-  }, [])
-
-  // Während initialem Render: Zeige immer AuthUI (vermeidet Hydration-Mismatch)
-  // Nach Hydration: Wechsle zu DevUserSelector wenn Dev-Mode aktiviert ist
-  const showDevSelector = isDevMode === true
-
   return (
     <Suspense
       fallback={
@@ -161,7 +63,7 @@ export default function LoginPage(): React.ReactElement {
         </Card>
       }
     >
-      {showDevSelector ? <DevUserSelector /> : <AuthUI />}
+      <SignInContent />
     </Suspense>
   )
 }

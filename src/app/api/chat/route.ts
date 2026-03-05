@@ -19,7 +19,8 @@ import { generateAllTools } from "@/lib/ai/tool-registry"
 import type { ToolExecutionContext } from "@/lib/ai/tool-executor"
 import { generateUIActionTool, type UIAction } from "@/lib/ai/special-tools"
 import { loadWikiContent } from "@/lib/ai-chat/wiki-content"
-import { createClient } from "@/utils/supabase/server"
+import { createServiceClient } from "@/utils/supabase/service"
+import { requireAuth } from "@/lib/auth/guards"
 import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
 import { generateNavigationToolSet } from "@/lib/ai-chat/navigation-tools"
@@ -261,14 +262,11 @@ function convertMessages(messages: ClientMessage[], screenshot?: string | null):
 export async function POST(req: Request) {
   try {
     // 1. Auth prüfen
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userOrErr = await requireAuth()
+    if (userOrErr instanceof Response) return userOrErr
+    const user = userOrErr
 
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const supabase = createServiceClient()
 
     // 2. Prüfe Environment Variable
     if (!process.env.OPENROUTER_API_KEY) {
@@ -347,7 +345,7 @@ export async function POST(req: Request) {
 
     if (routerDecision.needsTools) {
       const toolContext: ToolExecutionContext = {
-        userId: user.id,
+        userId: user.profileId,
         sessionId: crypto.randomUUID(),
         dryRun: dryRun ?? false,
       }
@@ -428,7 +426,7 @@ export async function POST(req: Request) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("chatbot_tone, chatbot_detail_level, chatbot_emoji_usage")
-      .eq("id", user.id)
+      .eq("clerk_user_id", user.clerkUserId)
       .single()
 
     // 11. Kontext und System-Prompt aufbauen

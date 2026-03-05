@@ -1,11 +1,17 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { createClient } from "@/utils/supabase/client"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react"
+import { useUser, useAuth as useClerkAuth } from "@clerk/nextjs"
 
 /** User-Rollen */
-// System-Rollen sind immer verfügbar, zusätzliche Rollen können dynamisch hinzugefügt werden
 export type UserRole = "admin" | "user" | "superuser" | "NoUser" | string
 
 /** User Interface */
@@ -14,19 +20,18 @@ export interface User {
   email: string
   name: string
   avatar?: string
-  avatarSeed?: string // Seed für DiceBear Avatar-Generierung (avataaars)
+  avatarSeed?: string
   role: UserRole
-  roleId?: string // UUID der Rolle aus roles Tabelle
-  createdAt?: string // ISO timestamp string
-  themePreference?: string // DEPRECATED: Verwende selectedTheme statt themePreference
-  selectedTheme?: string // Ausgewähltes Brand-Theme (wenn canSelectTheme = true)
-  canSelectTheme?: boolean // Ob User eigenes Theme wählen darf
-  colorScheme?: "dark" | "light" | "system" // Dark/Light Mode Präferenz (global über alle Apps)
-  // Chatbot-Einstellungen
-  chatbotAvatarSeed?: string // Seed für DiceBear Chatbot-Avatar (bottts)
-  chatbotTone?: "formal" | "casual" // Ansprache: formal (Sie) oder casual (Du)
-  chatbotDetailLevel?: "brief" | "balanced" | "detailed" // Detailgrad der Antworten
-  chatbotEmojiUsage?: "none" | "moderate" | "many" // Emoji-Verwendung
+  roleId?: string
+  createdAt?: string
+  themePreference?: string
+  selectedTheme?: string
+  canSelectTheme?: boolean
+  colorScheme?: "dark" | "light" | "system"
+  chatbotAvatarSeed?: string
+  chatbotTone?: "formal" | "casual"
+  chatbotDetailLevel?: "brief" | "balanced" | "detailed"
+  chatbotEmojiUsage?: "none" | "moderate" | "many"
 }
 
 /** Auth Context Interface */
@@ -49,232 +54,120 @@ export function useAuth(): AuthContextValue {
   return context
 }
 
-/** Lädt User-Profile aus Supabase profiles-Tabelle mit Rolle aus roles Tabelle */
-async function loadUserProfile(supabaseUser: SupabaseUser): Promise<User> {
-  const supabase = createClient()
-
-  // Lade Profile mit Rolle (JOIN über role_id)
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      `
-      id, 
-      email, 
-      display_name, 
-      avatar_url,
-      avatar_seed,
-      created_at,
-      role,
-      role_id,
-      theme_preference,
-      selected_theme,
-      can_select_theme,
-      color_scheme,
-      chatbot_avatar_seed,
-      chatbot_tone,
-      chatbot_detail_level,
-      chatbot_emoji_usage,
-      roles:role_id (
-        name,
-        display_name
-      )
-    `
-    )
-    .eq("id", supabaseUser.id)
-    .single()
-
-  // Fallback: Wenn keine role_id, versuche alte role Spalte (für Migration)
-  let roleName: string = "user"
-  let roleId: string | undefined = undefined
-
-  if (profile?.role_id && profile?.roles) {
-    // Neue Struktur: Rolle aus roles Tabelle
-    roleId = profile.role_id
-    // roles kann ein Array oder ein einzelnes Objekt sein (je nach JOIN)
-    const rolesData = Array.isArray(profile.roles) ? profile.roles[0] : profile.roles
-    roleName = (rolesData as { name: string })?.name || "user"
-  } else if (profile?.role) {
-    // Fallback: Verwende role Spalte direkt (wenn JOIN fehlgeschlagen ist)
-    roleName = profile.role
-    // Versuche role_id zu finden, wenn role gesetzt ist
-    if (profile.role_id) {
-      roleId = profile.role_id
-    } else {
-      // Versuche role_id basierend auf role Name zu finden
-      const { data: roleData } = await supabase
-        .from("roles")
-        .select("id")
-        .eq("name", profile.role)
-        .single()
-      if (roleData?.id) {
-        roleId = roleData.id
-      }
-    }
-  } else {
-    // Letzter Fallback: Lade role direkt aus profiles
-    const { data: oldProfile } = await supabase
-      .from("profiles")
-      .select("role, role_id")
-      .eq("id", supabaseUser.id)
-      .single()
-
-    if (oldProfile?.role) {
-      roleName = oldProfile.role
-      if (oldProfile.role_id) {
-        roleId = oldProfile.role_id
-      }
-    }
-  }
-
-  return {
-    id: supabaseUser.id,
-    email: profile?.email || supabaseUser.email || "",
-    name: profile?.display_name || supabaseUser.email?.split("@")[0] || "User",
-    avatar: profile?.avatar_url || undefined,
-    avatarSeed: profile?.avatar_seed || undefined,
-    role: roleName as UserRole,
-    roleId: roleId,
-    createdAt: profile?.created_at || undefined,
-    themePreference: profile?.theme_preference || undefined, // DEPRECATED: Für Rückwärtskompatibilität
-    selectedTheme: profile?.selected_theme || undefined,
-    canSelectTheme: profile?.can_select_theme ?? true,
-    colorScheme: (profile?.color_scheme as "dark" | "light" | "system") || "system",
-    // Chatbot-Einstellungen
-    chatbotAvatarSeed: profile?.chatbot_avatar_seed || undefined,
-    chatbotTone: (profile?.chatbot_tone as "formal" | "casual") || undefined,
-    chatbotDetailLevel:
-      (profile?.chatbot_detail_level as "brief" | "balanced" | "detailed") || undefined,
-    chatbotEmojiUsage: (profile?.chatbot_emoji_usage as "none" | "moderate" | "many") || undefined,
-  }
+async function fetchProfile(): Promise<
+  { user: User; isNewUser?: boolean; blocked?: false } | { blocked: true } | null
+> {
+  const res = await fetch("/api/user/profile")
+  if (res.status === 403) return { blocked: true }
+  if (!res.ok) return null
+  const data = await res.json()
+  return { ...data, blocked: false }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// LOCAL DEV AUTO-LOGIN - Automatischer Admin-Login für Entwicklung
-// ═══════════════════════════════════════════════════════════════════════════
-function isDevAutoLoginEnabled(): boolean {
-  // Nur im Browser prüfen (nicht während SSR)
-  if (typeof window === "undefined") return false
-  // Doppelte Absicherung: Nur in Development UND wenn explizit aktiviert
-  const isDev = process.env.NODE_ENV === "development"
-  const autoLoginEnabled = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true"
-  const hasCredentials =
-    !!process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL && !!process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD
-  return isDev && autoLoginEnabled && hasCredentials
-}
-
-function getDevCredentials(): { email: string; password: string } | null {
-  const email = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL
-  const password = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD
-  if (!email || !password) return null
-  return { email, password }
-}
-// ═══════════════════════════════════════════════════════════════════════════
-
-/** Auth Provider - stellt Auth-State für die App bereit */
+/** Auth Provider - Clerk-basiert, Profil aus Supabase via API */
 export function AuthProvider({ children }: { children: ReactNode }): React.ReactElement {
-  // WICHTIG: Immer mit isLoading=true starten für konsistente SSR/Client Hydration
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
+  const { signOut } = useClerkAuth()
+  const [profile, setProfile] = useState<User | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
 
-  // Initial Load + Auth State Listener
-  useEffect(() => {
-    // Async IIFE um ESLint-Regel zu erfüllen (kein synchrones setState im Effect-Body)
-    const initializeAuth = async () => {
-      // Prüfe ob bereits eingeloggt
-      const { data: existingUser } = await supabase.auth.getUser()
-
-      if (existingUser.user) {
-        // Bereits eingeloggt - Profil laden
-        const profile = await loadUserProfile(existingUser.user)
-        setUser(profile)
-        setIsLoading(false)
-        return
-      }
-
-      // Nicht eingeloggt - prüfe Dev Auto-Login
-      if (isDevAutoLoginEnabled()) {
-        const credentials = getDevCredentials()
-        if (credentials) {
-          console.log("[AUTH] Dev Auto-Login aktiv - logge ein als:", credentials.email)
-
-          const { data: loginData, error } = await supabase.auth.signInWithPassword({
-            email: credentials.email,
-            password: credentials.password,
-          })
-
-          if (error) {
-            console.error("[AUTH] Dev Auto-Login fehlgeschlagen:", error.message)
-            // Fallback: Kein User, zeige Login-Screen
-          } else if (loginData.user) {
-            console.log("[AUTH] Dev Auto-Login erfolgreich!")
-            const profile = await loadUserProfile(loginData.user)
-            setUser(profile)
-            setIsLoading(false)
-            return
-          }
-        }
-      }
-
-      // Kein User eingeloggt
-      setIsLoading(false)
+  const loadProfile = useCallback(async () => {
+    if (!clerkUser?.id) {
+      setProfile(null)
+      setProfileLoading(false)
+      return
     }
-
-    let subscription: { unsubscribe: () => void } | null = null
-
-    initializeAuth().then(() => {
-      // Auth State Listener für Login/Logout
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          setUser(await loadUserProfile(session.user))
-        } else if (event === "SIGNED_OUT") {
-          setUser(null)
+    setProfileLoading(true)
+    try {
+      const data = await fetchProfile()
+      if (data && "blocked" in data && data.blocked) {
+        setProfile(null)
+      } else if (data?.user) {
+        const merged: User = {
+          ...data.user,
+          id: clerkUser.id,
+          email: data.user.email || clerkUser.primaryEmailAddress?.emailAddress || "",
+          name:
+            data.user.name ||
+            clerkUser.fullName ||
+            clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+            "User",
+          avatar: data.user.avatar || clerkUser.imageUrl,
         }
+        setProfile(merged)
+      } else {
+        setProfile({
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress || "",
+          name:
+            clerkUser.fullName ||
+            clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+            "User",
+          avatar: clerkUser.imageUrl,
+          role: "user",
+          canSelectTheme: true,
+          colorScheme: "system",
+        })
+      }
+    } catch {
+      setProfile({
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress || "",
+        name: clerkUser.fullName || "User",
+        avatar: clerkUser.imageUrl,
+        role: "user",
+        canSelectTheme: true,
+        colorScheme: "system",
       })
-      subscription = data.subscription
-    })
-
-    return () => {
-      subscription?.unsubscribe()
+    } finally {
+      setProfileLoading(false)
     }
-  }, [supabase])
+  }, [clerkUser?.id, clerkUser?.primaryEmailAddress, clerkUser?.fullName, clerkUser?.imageUrl])
+
+  useEffect(() => {
+    if (!clerkLoaded) return
+    if (!clerkUser) {
+      setProfile(null)
+      setProfileLoading(false)
+      return
+    }
+    loadProfile()
+  }, [clerkLoaded, clerkUser, loadProfile])
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-  }, [supabase])
+    await signOut()
+    setProfile(null)
+  }, [signOut])
 
   const hasRole = useCallback(
     (roles: UserRole | UserRole[]) => {
       const arr = Array.isArray(roles) ? roles : [roles]
-      if (arr.includes("NoUser") && !user) return true
-      return arr.includes(user?.role ?? "NoUser")
+      if (arr.includes("NoUser") && !profile) return true
+      return arr.includes(profile?.role ?? "NoUser")
     },
-    [user]
+    [profile]
   )
 
   const refreshUser = useCallback(async () => {
-    const { data } = await supabase.auth.getUser()
-    if (data.user) {
-      setUser(await loadUserProfile(data.user))
-    } else {
-      setUser(null)
-    }
-  }, [supabase])
+    await loadProfile()
+  }, [loadProfile])
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        role: user?.role ?? "NoUser",
-        isLoading,
-        hasRole,
-        logout,
-        refreshUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const isLoading = !clerkLoaded || (!!clerkUser && profileLoading)
+  const user = clerkUser ? profile : null
+  const isAuthenticated = !!clerkUser && !!user
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isAuthenticated,
+      role: user?.role ?? "NoUser",
+      isLoading,
+      hasRole,
+      logout,
+      refreshUser,
+    }),
+    [user, isAuthenticated, isLoading, hasRole, logout, refreshUser]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
