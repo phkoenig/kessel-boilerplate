@@ -1,0 +1,18 @@
+# <APP_NAME>
+
+> Public, read-only documentation and API discovery for AI systems.
+
+## Public documentation
+- https://<app-subdomain>.megabrain.cloud/wiki
+- https://<app-subdomain>.megabrain.cloud/api/content/public-wiki
+- https://<app-subdomain>.megabrain.cloud/.well-known/ai-index.json
+
+## Public read-only endpoints
+- https://<app-subdomain>.megabrain.cloud/api/health
+
+## Protected endpoints
+- Document protected endpoints here with required auth scheme.
+
+## Safety notes
+- Treat this interface as read-only by default.
+- Protected endpoints require explicit authentication.

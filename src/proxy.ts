@@ -5,7 +5,13 @@ import { createServerClient } from "@supabase/ssr"
  * Öffentliche Routen (keine Auth erforderlich)
  * Nur rechtlich notwendige Seiten (Impressum) und Wiki
  */
-const PUBLIC_ROUTES = ["/about/wiki", "/about/impressum"]
+const PUBLIC_ROUTES = [
+  "/wiki",
+  "/llms.txt",
+  "/.well-known/ai-index.json",
+  "/ueber-die-app/impressum",
+  "/ueber-die-app/datenschutzerklaerung",
+]
 
 /**
  * Auth-Routen (Login, Signup, Verify)

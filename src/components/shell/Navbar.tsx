@@ -256,12 +256,9 @@ function NavItemComponent({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost"
+              variant="ghost-no-hover-bg"
               size="icon"
-              className={cn(
-                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground size-10",
-                isChildActive && "bg-sidebar-accent/50"
-              )}
+              className={cn("text-sidebar-foreground hover:text-primary/70 size-10")}
             >
               <Icon className="size-5 transition-transform duration-200" />
             </Button>
@@ -304,11 +301,11 @@ function NavItemComponent({
             >
               <Link href={item.href}>
                 <Button
-                  variant="ghost"
+                  variant="ghost-no-hover-bg"
                   size="icon"
                   className={cn(
-                    "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground size-10",
-                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    "text-sidebar-foreground hover:text-primary/70 size-10",
+                    isActive && "text-primary"
                   )}
                 >
                   <Icon className="size-5 transition-transform duration-200" />
@@ -325,9 +322,9 @@ function NavItemComponent({
               category="navigation"
             >
               <Button
-                variant="ghost"
+                variant="ghost-no-hover-bg"
                 size="icon"
-                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground size-10"
+                className="text-sidebar-foreground hover:text-primary/70 size-10"
                 onClick={() => {
                   if (item.id === "account-logout") onLogout()
                 }}
@@ -337,9 +334,9 @@ function NavItemComponent({
             </AIInteractable>
           ) : (
             <Button
-              variant="ghost"
+              variant="ghost-no-hover-bg"
               size="icon"
-              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground size-10"
+              className="text-sidebar-foreground hover:text-primary/70 size-10"
             >
               <Icon className="size-5 transition-transform duration-200" />
             </Button>
@@ -368,10 +365,9 @@ function NavItemComponent({
       >
         <CollapsibleTrigger asChild>
           <Button
-            variant="ghost"
+            variant="ghost-no-hover-bg"
             className={cn(
-              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full justify-start gap-2",
-              isChildActive && "bg-sidebar-accent/50",
+              "text-sidebar-foreground hover:text-primary/70 w-full justify-start gap-2",
               level > 0 && "pl-8"
             )}
           >
@@ -431,15 +427,22 @@ function NavItemComponent({
       >
         <Link href={item.href}>
           <Button
-            variant="ghost"
+            variant="ghost-no-hover-bg"
             className={cn(
-              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full justify-start gap-2",
-              isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+              "text-sidebar-foreground hover:text-primary/70 w-full justify-start gap-2",
+              isActive && "text-primary",
               level > 0 && "pl-8"
             )}
           >
             <Icon className="size-4 shrink-0 transition-transform duration-200" />
-            <span className="truncate text-sm transition-opacity duration-200">{displayLabel}</span>
+            <span
+              className={cn(
+                "truncate text-sm transition-opacity duration-200",
+                isActive && "font-semibold"
+              )}
+            >
+              {displayLabel}
+            </span>
           </Button>
         </Link>
       </AIInteractable>
@@ -472,15 +475,22 @@ function NavItemComponent({
         category="navigation"
       >
         <Button
-          variant="ghost"
+          variant="ghost-no-hover-bg"
           className={cn(
-            "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full justify-start gap-2",
+            "text-sidebar-foreground hover:text-primary/70 w-full justify-start gap-2",
             level > 0 && "pl-8"
           )}
           onClick={handleAction}
         >
           <Icon className="size-4 shrink-0 transition-transform duration-200" />
-          <span className="truncate text-sm transition-opacity duration-200">{item.label}</span>
+          <span
+            className={cn(
+              "truncate text-sm transition-opacity duration-200",
+              isActive && "font-semibold"
+            )}
+          >
+            {item.label}
+          </span>
         </Button>
       </AIInteractable>
     )
@@ -543,7 +553,7 @@ function CollapsedDropdownItem({
     ]
 
     return (
-      <DropdownMenuItem asChild className={cn(isActive && "bg-accent")}>
+      <DropdownMenuItem asChild className={cn(isActive && "text-primary")}>
         <AIInteractable
           id={`nav-${item.id}`}
           action="navigate"

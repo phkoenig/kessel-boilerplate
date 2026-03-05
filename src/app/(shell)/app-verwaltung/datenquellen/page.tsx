@@ -32,7 +32,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
-import { useDatasourceFilter, DUMMY_DATABASES } from "@/hooks/use-datasource-filter"
+import { useDatasourceFilter } from "@/hooks/use-datasource-filter"
+import { DatabaseManagerDialog } from "@/components/admin/database-manager-dialog"
 import { cn } from "@/lib/utils"
 
 type AccessLevel = "none" | "read" | "read_write" | "full"
@@ -61,6 +62,8 @@ type UnifiedDataSource = DataSource & {
   database_id: string
   database_name: string
   database_type: "infra" | "dev"
+  /** True wenn Eintrag aus ai_datasources kommt (persistiert), false wenn synthetisch generiert */
+  isPersisted: boolean
 }
 
 // Typ für Tree-View (UnifiedDataSource + Tree-Props)
@@ -105,25 +108,13 @@ function buildDataSourceTree(
   const rootNodes: DataSourceNode[] = []
   const processedChildren = new Set<string>()
 
-  // 2. Beziehungen definieren (Dynamisch + Mock)
+  // 2. Beziehungen definieren (Dynamisch aus Infra-DB + MegaBrain-Struktur)
   const relations: Record<string, string[]> = {
     ...dynamicRelations,
-    // Mock-Logik für Dev-DBs (da wir dort keine RPC haben)
-    users: ["profiles", "posts", "settings", "orders"],
-    posts: ["comments", "likes", "tags"],
-    customers: ["orders", "addresses"],
-    orders: ["order_items", "invoices"],
-    products: ["variants", "inventory", "reviews"],
-    projects: ["tasks", "members"],
-    tasks: ["comments", "attachments", "time_entries"],
+    // MegaBrain-Struktur: Galaxien enthalten Projekte
+    galaxies: ["projects"],
     // Singular Fallback
-    user: ["profile", "post", "setting", "order"],
-    customer: ["order", "address"],
-    post: ["comment", "like", "tag"],
-    order: ["order_item", "invoice"],
-    product: ["variant", "inventory", "review"],
-    project: ["task", "member"],
-    task: ["comment", "attachment", "time_entry"],
+    galaxy: ["project"],
   }
 
   // 3. Baum verknüpfen
@@ -194,7 +185,7 @@ export default function DatasourcesPage(): React.ReactElement {
   const currentNavItem = useCurrentNavItem()
   const pageTitle = currentNavItem?.label ?? "Datenquellen"
 
-  const { databases, setDatabases, filter, isTableVisible } = useDatasourceFilter()
+  const { databases, filter, isTableVisible } = useDatasourceFilter()
 
   const loadInfraDataSources = async () => {
     setLoading(true)
@@ -204,13 +195,7 @@ export default function DatasourcesPage(): React.ReactElement {
       if (error) throw error
       setInfraDataSources(data ?? [])
 
-      const infraDb = DUMMY_DATABASES.find((db) => db.id === "infra-kessel")
-      if (infraDb && data) {
-        const updatedDatabases = DUMMY_DATABASES.map((db) =>
-          db.id === "infra-kessel" ? { ...db, tables: data.map((ds) => ds.table_name) } : db
-        )
-        setDatabases(updatedDatabases)
-      }
+      // Datenbanken werden jetzt aus db_registry geladen (via useDatasourceFilter)
     } catch (error) {
       console.error("Fehler beim Laden der Datasources:", error)
       toast.error("Fehler beim Laden der Datasources")
@@ -256,11 +241,14 @@ export default function DatasourcesPage(): React.ReactElement {
     const sources: UnifiedDataSource[] = []
 
     infraDataSources.forEach((ds) => {
+      const dbId = ds.database_id || "kessel"
+      const db = databases.find((d) => d.id === dbId)
       sources.push({
         ...ds,
-        database_id: "infra-kessel",
-        database_name: "Infra-DB (KESSEL)",
-        database_type: "infra",
+        database_id: dbId,
+        database_name: db?.name || "Unbekannte DB",
+        database_type: dbId === "kessel" ? "infra" : "dev",
+        isPersisted: true, // Kommt aus ai_datasources
       })
     })
 
@@ -268,24 +256,31 @@ export default function DatasourcesPage(): React.ReactElement {
       .filter((db) => db.type === "dev")
       .forEach((db) => {
         db.tables.forEach((tableName) => {
-          sources.push({
-            id: `${db.id}-${tableName}`,
-            table_schema: "public",
-            table_name: tableName,
-            display_name: tableName.charAt(0).toUpperCase() + tableName.slice(1),
-            description: `Tabelle aus ${db.name}`,
-            access_level: "none" as AccessLevel,
-            is_enabled: false,
-            allowed_columns: [],
-            excluded_columns: [],
-            max_rows_per_query: 100,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            created_by: null,
-            database_id: db.id,
-            database_name: db.name,
-            database_type: "dev",
-          })
+          // Nur hinzufügen wenn nicht bereits aus ai_datasources vorhanden
+          const alreadyExists = sources.some(
+            (s) => s.database_id === db.id && s.table_name === tableName
+          )
+          if (!alreadyExists) {
+            sources.push({
+              id: `${db.id}-${tableName}`,
+              table_schema: "public",
+              table_name: tableName,
+              display_name: tableName.charAt(0).toUpperCase() + tableName.slice(1),
+              description: `Tabelle aus ${db.name}`,
+              access_level: "none" as AccessLevel,
+              is_enabled: false,
+              allowed_columns: [],
+              excluded_columns: [],
+              max_rows_per_query: 100,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              created_by: null,
+              database_id: db.id,
+              database_name: db.name,
+              database_type: "dev",
+              isPersisted: false, // Synthetisch generiert
+            })
+          }
         })
       })
 
@@ -317,13 +312,8 @@ export default function DatasourcesPage(): React.ReactElement {
   const updateAccessLevel = async (
     id: string,
     accessLevel: AccessLevel,
-    dbType: "infra" | "dev"
+    _dbType: "infra" | "dev"
   ) => {
-    if (dbType === "dev") {
-      toast.info("Dev-DB Konfiguration wird noch nicht persistiert")
-      return
-    }
-
     try {
       const { error } = await supabase
         .from("ai_datasources")
@@ -339,12 +329,7 @@ export default function DatasourcesPage(): React.ReactElement {
     }
   }
 
-  const toggleEnabled = async (id: string, enabled: boolean, dbType: "infra" | "dev") => {
-    if (dbType === "dev") {
-      toast.info("Dev-DB Konfiguration wird noch nicht persistiert")
-      return
-    }
-
+  const toggleEnabled = async (id: string, enabled: boolean, _dbType: "infra" | "dev") => {
     try {
       const { error } = await supabase
         .from("ai_datasources")
@@ -380,7 +365,8 @@ export default function DatasourcesPage(): React.ReactElement {
 
   return (
     <PageContent>
-      <div className="space-y-6">
+      {/* suppressHydrationWarning wegen Radix UI Dialog IDs */}
+      <div className="space-y-6" suppressHydrationWarning>
         <PageHeader
           title={pageTitle}
           description="Verwalte Datenbank-Tabellen und AI-Zugriffsrechte für alle verbundenen Datenquellen"
@@ -396,15 +382,18 @@ export default function DatasourcesPage(): React.ReactElement {
                   {filter.selectedDatabases.length > 0 ? " (gefiltert)" : ""}
                 </CardDescription>
               </div>
-              <Button
-                onClick={loadInfraDataSources}
-                variant="outline"
-                size="sm"
-                data-ai-exempt="true"
-              >
-                <RefreshCw className="mr-2 size-4" />
-                Aktualisieren
-              </Button>
+              <div className="flex gap-2">
+                <DatabaseManagerDialog />
+                <Button
+                  onClick={loadInfraDataSources}
+                  variant="outline"
+                  size="sm"
+                  data-ai-exempt="true"
+                >
+                  <RefreshCw className="mr-2 size-4" />
+                  Aktualisieren
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -491,7 +480,7 @@ export default function DatasourcesPage(): React.ReactElement {
                               onCheckedChange={(checked) =>
                                 toggleEnabled(ds.id, checked, ds.database_type)
                               }
-                              disabled={ds.database_type === "dev"}
+                              disabled={!ds.isPersisted}
                               data-ai-exempt="true"
                             />
                             <Label className="text-sm">{ds.is_enabled ? "Aktiv" : "Inaktiv"}</Label>
@@ -503,7 +492,7 @@ export default function DatasourcesPage(): React.ReactElement {
                             onValueChange={(value) =>
                               updateAccessLevel(ds.id, value as AccessLevel, ds.database_type)
                             }
-                            disabled={ds.database_type === "dev"}
+                            disabled={!ds.isPersisted}
                             data-ai-exempt="true"
                           >
                             <SelectTrigger className="w-48">

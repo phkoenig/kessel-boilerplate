@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@/utils/supabase/server"
+import { createDatabaseClient } from "@/lib/database/db-registry"
 import { validateToolCall, type DataSource } from "./tool-registry"
 
 // Types
@@ -37,7 +38,7 @@ async function executeQuery(
     order_by?: string
   }
 ): Promise<ToolExecutionResult> {
-  const supabase = await createClient()
+  const supabase = await createDatabaseClient(ds.database_id)
 
   let query = supabase
     .from(ds.table_name)
@@ -96,7 +97,7 @@ async function executeInsert(
     }
   }
 
-  const supabase = await createClient()
+  const supabase = await createDatabaseClient(ds.database_id)
   const { data, error } = await supabase.from(ds.table_name).insert(cleanData).select()
 
   if (error) {
@@ -137,7 +138,7 @@ async function executeUpdate(
     }
   }
 
-  const supabase = await createClient()
+  const supabase = await createDatabaseClient(ds.database_id)
   let query = supabase.from(ds.table_name).update(cleanData)
 
   for (const [key, value] of Object.entries(args.filters)) {
@@ -184,7 +185,7 @@ async function executeDelete(
     }
   }
 
-  const supabase = await createClient()
+  const supabase = await createDatabaseClient(ds.database_id)
   let query = supabase.from(ds.table_name).delete()
 
   for (const [key, value] of Object.entries(args.filters)) {

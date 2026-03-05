@@ -19,6 +19,7 @@ export type AccessLevel = "none" | "read" | "read_write" | "full"
 
 export interface DataSource {
   id: string
+  database_id: string
   table_schema: string
   table_name: string
   display_name: string
@@ -54,26 +55,63 @@ export async function loadDataSources(): Promise<DataSource[]> {
     throw error
   }
 
-  return data ?? []
+  // Stelle sicher, dass database_id gesetzt ist (Fallback für alte Einträge)
+  return (data ?? []).map((ds) => ({
+    ...ds,
+    database_id: ds.database_id ?? "kessel",
+  })) as DataSource[]
 }
 
 /**
  * Lädt Spalten-Informationen für eine Tabelle
  */
-async function getTableColumns(schema: string, table: string): Promise<TableColumn[]> {
-  const supabase = await createClient()
+async function getTableColumns(
+  schema: string,
+  table: string,
+  databaseId: string
+): Promise<TableColumn[]> {
+  const { createDatabaseClient } = await import("@/lib/database/db-registry")
+  const supabase = await createDatabaseClient(databaseId)
 
-  const { data, error } = await supabase.rpc("get_table_columns", {
-    p_schema: schema,
-    p_table: table,
-  })
+  // Für KESSEL: Nutze RPC-Funktion
+  if (databaseId === "kessel") {
+    const { data, error } = await supabase.rpc("get_table_columns", {
+      p_schema: schema,
+      p_table: table,
+    })
 
-  if (error) {
-    console.error(`[ToolRegistry] Fehler beim Laden der Spalten für ${schema}.${table}:`, error)
-    return []
+    if (error) {
+      console.error(`[ToolRegistry] Fehler beim Laden der Spalten für ${schema}.${table}:`, error)
+      return []
+    }
+
+    return (data ?? []) as TableColumn[]
   }
 
-  return (data ?? []) as TableColumn[]
+  // Für externe DBs: Versuche RPC-Funktion (falls vorhanden)
+  // Falls nicht verfügbar: Leeres Array zurückgeben (Tools werden ohne Schema-Validation erstellt)
+  try {
+    const { data, error } = await supabase.rpc("get_table_columns", {
+      p_schema: schema,
+      p_table: table,
+    })
+
+    if (error) {
+      console.warn(
+        `[ToolRegistry] RPC get_table_columns nicht verfügbar für ${databaseId}.${schema}.${table}. ` +
+          `Tools werden ohne Schema-Validation erstellt.`
+      )
+      return []
+    }
+
+    return (data ?? []) as TableColumn[]
+  } catch (error) {
+    console.warn(
+      `[ToolRegistry] Fehler beim Laden der Spalten für ${databaseId}.${schema}.${table}:`,
+      error
+    )
+    return []
+  }
 }
 
 /**
@@ -159,7 +197,7 @@ async function generateToolsForDataSource(
   ctx: ToolExecutionContext
 ): Promise<ToolSet> {
   const tools: ToolSet = {}
-  const columns = await getTableColumns(ds.table_schema, ds.table_name)
+  const columns = await getTableColumns(ds.table_schema, ds.table_name, ds.database_id)
   const filteredColumns = columns.filter((c) => !ds.excluded_columns.includes(c.column_name))
   const columnProperties = columnsToZodSchema(filteredColumns, ds.excluded_columns)
 

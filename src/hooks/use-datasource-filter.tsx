@@ -1,37 +1,8 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { DatabaseNode, DatasourceFilter } from "@/components/admin/datasource-explorer"
-
-/**
- * Dummy-Datenbanken für Entwicklung
- *
- * In Production werden diese durch echte DB-Connections ersetzt.
- * Die Infra-DB (KESSEL) wird immer aus ai_datasources geladen.
- */
-export const DUMMY_DATABASES: DatabaseNode[] = [
-  {
-    id: "infra-kessel",
-    name: "Infra-DB (KESSEL)",
-    type: "infra",
-    tables: [], // Wird dynamisch aus ai_datasources geladen
-    description: "Boilerplate-Infrastruktur: Auth, Profiles, Themes, Roles",
-  },
-  {
-    id: "dev-db-1",
-    name: "Dev-DB 1 (Demo)",
-    type: "dev",
-    tables: ["customers", "orders", "products", "invoices"],
-    description: "Beispiel-Datenbank für E-Commerce",
-  },
-  {
-    id: "dev-db-2",
-    name: "Dev-DB 2 (Demo)",
-    type: "dev",
-    tables: ["projects", "tasks", "comments", "attachments"],
-    description: "Beispiel-Datenbank für Projektmanagement",
-  },
-]
+import { createClient } from "@/utils/supabase/client"
 
 interface DatasourceFilterContextValue {
   databases: DatabaseNode[]
@@ -55,12 +26,67 @@ export function DatasourceFilterProvider({
 }: {
   children: ReactNode
 }): React.ReactElement {
-  const [databases, setDatabases] = useState<DatabaseNode[]>(DUMMY_DATABASES)
+  const [databases, setDatabases] = useState<DatabaseNode[]>([])
   const [filter, setFilter] = useState<DatasourceFilter>({
     selectedDatabases: [],
     selectedTables: [],
     searchQuery: "",
   })
+
+  // Lade Datenbanken aus db_registry
+  useEffect(() => {
+    async function loadDatabases() {
+      try {
+        const supabase = createClient()
+        const { data: dbRegistry, error: dbError } = await supabase
+          .from("db_registry")
+          .select("*")
+          .eq("is_enabled", true)
+          .order("is_default", { ascending: false })
+          .order("name")
+
+        if (dbError) {
+          console.error("[DatasourceFilter] Fehler beim Laden der DB-Registry:", dbError)
+          return
+        }
+
+        // Lade Tabellen aus ai_datasources für jede DB
+        const { data: datasources, error: dsError } = await supabase
+          .from("ai_datasources")
+          .select("database_id, table_name")
+
+        if (dsError) {
+          console.error("[DatasourceFilter] Fehler beim Laden der Datasources:", dsError)
+        }
+
+        // Gruppiere Tabellen nach database_id
+        const tablesByDb: Record<string, string[]> = {}
+        datasources?.forEach((ds) => {
+          const dbId = ds.database_id || "kessel"
+          if (!tablesByDb[dbId]) {
+            tablesByDb[dbId] = []
+          }
+          tablesByDb[dbId].push(ds.table_name)
+        })
+
+        // Konvertiere zu DatabaseNode[]
+        const dbNodes: DatabaseNode[] =
+          dbRegistry?.map((db) => ({
+            id: db.id,
+            name: db.name,
+            type: db.id === "kessel" ? "infra" : "dev",
+            tables: tablesByDb[db.id] || [],
+            description: db.description || undefined,
+          })) || []
+
+        setDatabases(dbNodes)
+      } catch (error) {
+        console.error("[DatasourceFilter] Unerwarteter Fehler:", error)
+      }
+    }
+
+    loadDatabases()
+  }, [])
 
   const isTableVisible = (dbId: string, tableName: string): boolean => {
     // Wenn keine Filter aktiv sind, zeige alles

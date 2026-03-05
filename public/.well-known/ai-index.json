@@ -1,0 +1,16 @@
+{
+  "name": "<APP_NAME> Public AI Index",
+  "version": "1.0.0",
+  "base_url": "https://<app-subdomain>.megabrain.cloud",
+  "documentation": [
+    "https://<app-subdomain>.megabrain.cloud/wiki",
+    "https://<app-subdomain>.megabrain.cloud/api/content/public-wiki",
+    "https://<app-subdomain>.megabrain.cloud/llms.txt"
+  ],
+  "public_read_only_endpoints": ["https://<app-subdomain>.megabrain.cloud/api/health"],
+  "protected_endpoints": [],
+  "notes": [
+    "No secrets are published in discovery endpoints.",
+    "List only explicitly approved public endpoints."
+  ]
+}

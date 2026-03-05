@@ -22,6 +22,7 @@ import { loadWikiContent } from "@/lib/ai-chat/wiki-content"
 import { createClient } from "@/utils/supabase/server"
 import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
+import { generateNavigationToolSet } from "@/lib/ai-chat/navigation-tools"
 
 // Streaming-Timeout erhöhen
 export const maxDuration = 60
@@ -405,6 +406,18 @@ export async function POST(req: Request) {
         requiresNavigation.length,
         "require navigation"
       )
+    }
+
+    // 8.7. Navigation Tools: Für das Anlegen von Navigation-Einträgen (nur in Dev)
+    if (process.env.NODE_ENV === "development") {
+      const navigationToolSet = generateNavigationToolSet()
+      if (tools) {
+        Object.assign(tools, navigationToolSet)
+      } else {
+        tools = navigationToolSet
+      }
+      availableToolNames.push(...Object.keys(navigationToolSet))
+      console.log("[Chat API] Navigation Tools loaded:", Object.keys(navigationToolSet).join(", "))
     }
 
     // 9. Modell aus Router-Decision verwenden (oder explizit überschrieben)

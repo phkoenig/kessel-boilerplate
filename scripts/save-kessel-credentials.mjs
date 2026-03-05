@@ -5,22 +5,27 @@
 import { createClient } from "@supabase/supabase-js"
 import { config } from "dotenv"
 
-// .env laden (Vault-Credentials)
+// .env laden (Vault-Credentials + Ziel-Projekt)
 config()
 
 const VAULT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL // Vault-URL
 const VAULT_SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY // Vault Service Role Key
 
-// Neue Kessel-Projekt Credentials
-const KESSEL_PROJECT_REF = "ufqlocxqizmiaozkashi"
-const KESSEL_URL = `https://${KESSEL_PROJECT_REF}.supabase.co`
-const KESSEL_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmcWxvY3hxaXptaWFvemthc2hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMzExMTEsImV4cCI6MjA4MDgwNzExMX0.Un94TG_Kh_wrwv2686ZhVxPWU7Jyu56PMMuwltNHwkg"
-const KESSEL_SERVICE_ROLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmcWxvY3hxaXptaWFvemthc2hpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTIzMTExMSwiZXhwIjoyMDgwODA3MTExfQ.ntLVeJZZIwVvjOnAkY9DnTuq7WeqkcsMxCZVpkPcktE"
+// Ziel-Projekt Credentials (aus Env, niemals hardcoden!)
+const KESSEL_URL = process.env.TARGET_SUPABASE_URL
+const KESSEL_ANON_KEY = process.env.TARGET_SUPABASE_ANON_KEY
+const KESSEL_SERVICE_ROLE_KEY = process.env.TARGET_SUPABASE_SERVICE_ROLE_KEY
 
 if (!VAULT_URL || !VAULT_SERVICE_ROLE_KEY) {
-  console.error("❌ NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY müssen in .env gesetzt sein")
+  console.error(
+    "❌ VAULT: NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY müssen in .env gesetzt sein"
+  )
+  process.exit(1)
+}
+if (!KESSEL_URL || !KESSEL_ANON_KEY || !KESSEL_SERVICE_ROLE_KEY) {
+  console.error(
+    "❌ ZIEL-PROJEKT: TARGET_SUPABASE_URL, TARGET_SUPABASE_ANON_KEY, TARGET_SUPABASE_SERVICE_ROLE_KEY müssen gesetzt sein (z.B. in .env)"
+  )
   process.exit(1)
 }
 

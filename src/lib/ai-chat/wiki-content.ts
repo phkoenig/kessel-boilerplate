@@ -8,6 +8,16 @@
 import { readFile } from "fs/promises"
 import { join } from "path"
 
+async function loadMarkdownFile(relativePath: string): Promise<string> {
+  try {
+    const filePath = join(process.cwd(), relativePath)
+    return await readFile(filePath, "utf-8")
+  } catch (error) {
+    console.error(`Failed to load markdown file (${relativePath}):`, error)
+    return ""
+  }
+}
+
 /**
  * Lädt den Wiki-Content als String (Server-seitig)
  *
@@ -17,14 +27,19 @@ import { join } from "path"
  * @returns Wiki-Content als Markdown-String
  */
 export async function loadWikiContent(): Promise<string> {
-  try {
-    const wikiPath = join(process.cwd(), "src/content/wiki.md")
-    const content = await readFile(wikiPath, "utf-8")
-    return content
-  } catch (error) {
-    console.error("Failed to load wiki content:", error)
-    return ""
-  }
+  return loadMarkdownFile("src/content/wiki.md")
+}
+
+/**
+ * Lädt den öffentlichen Wiki-Content als String (Server-seitig)
+ *
+ * Wird von der /api/content/public-wiki Route verwendet und ist für
+ * öffentliche Doku/LLM-Crawling vorgesehen.
+ *
+ * @returns Public-Wiki-Content als Markdown-String
+ */
+export async function loadPublicWikiContent(): Promise<string> {
+  return loadMarkdownFile("src/content/public-wiki.md")
 }
 
 /**

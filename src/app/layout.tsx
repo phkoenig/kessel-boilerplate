@@ -84,6 +84,9 @@ export default async function RootLayout({
   return (
     <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>
       <head>
+        <link rel="service-desc" href="/.well-known/ai-index.json" />
+        <link rel="alternate" type="text/plain" href="/llms.txt" />
+        <meta name="ai-discovery" content="/.well-known/ai-index.json" />
         {/*
           FOUC Prevention: Inline-Script setzt data-theme BEVOR React hydrated.
           Das stellt sicher, dass die CSS-Selektoren sofort greifen.

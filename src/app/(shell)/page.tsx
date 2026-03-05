@@ -46,7 +46,7 @@ export default function HomePage(): React.ReactElement {
             <p>
               Wenn du mehr über diese App wissen möchtest, dann klicke{" "}
               <Link
-                href="/about/wiki"
+                href="/wiki"
                 className="decoration-primary hover:text-primary font-medium underline underline-offset-4 transition-colors"
               >
                 hier

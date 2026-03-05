@@ -16,6 +16,12 @@
  * - Die Enum-Validierung erfolgt intern im execute-Handler
  * - Default-Werte mit `.optional().describe("...")` dokumentieren
  *
+ * ## Navigation-Trigger (NEU!)
+ *
+ * Tools können mit `metadata.affectsNavigation: true` markiert werden,
+ * um automatisch eine Follow-up-Frage zu triggern, ob ein Navigation-Eintrag
+ * erstellt werden soll. Siehe `create_resource_example` für ein Beispiel.
+ *
  * @example
  * ```typescript
  * // In /api/chat/route.ts
@@ -30,6 +36,8 @@
  */
 
 import { z } from "zod"
+import type { ToolMetadata, NavigationAwareToolResult, NavigationSuggestion } from "@/lib/ai/types"
+import { labelToSlug } from "@/lib/navigation/utils"
 
 /**
  * Beispiel-Tool Response Type für typsichere Ergebnisse
@@ -133,8 +141,88 @@ export const boilerplateTools = {
   // ============================================================
   // HIER EIGENE TOOLS HINZUFÜGEN
   // ============================================================
-  //
-  // Beispiel für ein Datenbank-Tool:
+
+  /**
+   * BEISPIEL: Tool mit Navigation-Trigger
+   *
+   * Dieses Tool demonstriert, wie man ein Tool erstellt, das nach
+   * erfolgreicher Ausführung vorschlägt, einen Navigation-Eintrag anzulegen.
+   *
+   * Nach Ausführung fragt die AI den User:
+   * "Soll ich auch einen Navigation-Eintrag für [Name] anlegen?"
+   *
+   * Bei Zustimmung wird automatisch:
+   * 1. Ein Eintrag in navigation.ts erstellt
+   * 2. Eine page.tsx im entsprechenden Verzeichnis erstellt
+   *
+   * HINWEIS: Das Navigation-Tool funktioniert nur im Development-Modus!
+   */
+  create_resource_example: {
+    description:
+      "Beispiel-Tool das eine neue Ressource erstellt. " +
+      "Demonstriert den Navigation-Trigger. Nach Erstellung wird gefragt, " +
+      "ob ein Navigation-Eintrag erstellt werden soll.",
+    inputSchema: z.object({
+      name: z.string().describe("Name der neuen Ressource"),
+      description: z.string().optional().describe("Optionale Beschreibung"),
+    }),
+    // Metadata für Navigation-Trigger
+    metadata: {
+      affectsNavigation: true,
+      category: "example",
+      isWriteOperation: true,
+      navigationSuggestion: (
+        args: { name: string },
+        result: { success: boolean }
+      ): NavigationSuggestion | null => {
+        if (!result.success) return null
+        return {
+          parentPath: "/module-1", // Passe an deine Navigation an
+          suggestedLabel: args.name,
+          suggestedId: `module-1-${labelToSlug(args.name)}`,
+          icon: "FileText",
+        }
+      },
+    } as ToolMetadata,
+    execute: async ({
+      name,
+      description,
+    }: {
+      name: string
+      description?: string
+    }): Promise<NavigationAwareToolResult> => {
+      console.log("[BOILERPLATE TOOLS] create_resource_example aufgerufen:", name)
+
+      // Hier würde normalerweise die Ressource erstellt werden
+      // z.B. Datenbank-Eintrag, API-Call, etc.
+
+      // Simuliere erfolgreiche Erstellung
+      const resourceId = `res-${Date.now()}`
+
+      // Navigation-Suggestion im Result zurückgeben
+      const navigationSuggestion: NavigationSuggestion = {
+        parentPath: "/module-1", // Passe an deine Navigation an
+        suggestedLabel: name,
+        suggestedId: `module-1-${labelToSlug(name)}`,
+        icon: "FileText",
+        description: description || `Seite für ${name}`,
+      }
+
+      return {
+        success: true,
+        data: {
+          id: resourceId,
+          name,
+          description,
+          createdAt: new Date().toISOString(),
+        },
+        message: `Ressource "${name}" wurde erfolgreich erstellt (ID: ${resourceId}).`,
+        navigationSuggestion,
+      }
+    },
+  },
+
+  // Weiteres Beispiel für ein Datenbank-Tool (auskommentiert):
   //
   // list_users: {
   //   description: "Listet alle Benutzer auf.",
