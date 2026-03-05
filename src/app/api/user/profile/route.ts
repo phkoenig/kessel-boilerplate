@@ -40,9 +40,11 @@ const PROFILE_SELECT = `
 function profileRowToUser(row: Record<string, unknown>, clerkUserId: string): User {
   const rolesData = Array.isArray(row.roles) ? row.roles[0] : row.roles
   const roleName = (rolesData as { name?: string })?.name ?? (row.role as string) ?? "user"
+  const profileId = row.id as string | undefined
 
   return {
-    id: clerkUserId,
+    id: profileId || clerkUserId,
+    clerkUserId,
     email: (row.email as string) || "",
     name: (row.display_name as string) || String(row.email).split("@")[0] || "User",
     avatar: row.avatar_url as string | undefined,

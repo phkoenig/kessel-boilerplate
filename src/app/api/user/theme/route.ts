@@ -51,7 +51,7 @@ export async function GET() {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("selected_theme, can_select_theme, color_scheme, role")
-      .eq("id", user.id)
+      .eq("clerk_user_id", user.id)
       .single()
 
     if (profileError) {
@@ -141,10 +141,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Theme-ID ungültig" }, { status: 400 })
     }
 
-    if (
-      colorScheme !== undefined &&
-      !["dark", "light", "system"].includes(colorScheme)
-    ) {
+    if (colorScheme !== undefined && !["dark", "light", "system"].includes(colorScheme)) {
       return NextResponse.json(
         { error: "colorScheme muss 'dark', 'light' oder 'system' sein" },
         { status: 400 }
@@ -156,7 +153,7 @@ export async function PUT(request: Request) {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("can_select_theme, role")
-        .eq("id", user.id)
+        .eq("clerk_user_id", user.id)
         .single()
 
       if (profileError) {
@@ -169,10 +166,7 @@ export async function PUT(request: Request) {
 
       // Berechtigung prüfen (nur für Theme, nicht für Color Scheme)
       if (!canSelectTheme && !isAdmin) {
-        return NextResponse.json(
-          { error: "Keine Berechtigung zur Theme-Auswahl" },
-          { status: 403 }
-        )
+        return NextResponse.json({ error: "Keine Berechtigung zur Theme-Auswahl" }, { status: 403 })
       }
     }
 
@@ -194,14 +188,11 @@ export async function PUT(request: Request) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update(updateData)
-      .eq("id", user.id)
+      .eq("clerk_user_id", user.id)
 
     if (updateError) {
       console.error("[User Theme API] Update-Fehler:", updateError)
-      return NextResponse.json(
-        { error: "Daten konnten nicht gespeichert werden" },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: "Daten konnten nicht gespeichert werden" }, { status: 500 })
     }
 
     return NextResponse.json({

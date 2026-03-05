@@ -17,6 +17,7 @@ export type UserRole = "admin" | "user" | "superuser" | "NoUser" | string
 /** User Interface */
 export interface User {
   id: string
+  clerkUserId?: string
   email: string
   name: string
   avatar?: string
@@ -85,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       } else if (data?.user) {
         const merged: User = {
           ...data.user,
-          id: clerkUser.id,
+          id: data.user.id,
+          clerkUserId: data.user.clerkUserId ?? clerkUser.id,
           email: data.user.email || clerkUser.primaryEmailAddress?.emailAddress || "",
           name:
             data.user.name ||
@@ -98,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       } else {
         setProfile({
           id: clerkUser.id,
+          clerkUserId: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || "",
           name:
             clerkUser.fullName ||
@@ -105,18 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
             "User",
           avatar: clerkUser.imageUrl,
           role: "user",
-          canSelectTheme: true,
+          canSelectTheme: false,
           colorScheme: "system",
         })
       }
     } catch {
       setProfile({
         id: clerkUser.id,
+        clerkUserId: clerkUser.id,
         email: clerkUser.primaryEmailAddress?.emailAddress || "",
         name: clerkUser.fullName || "User",
         avatar: clerkUser.imageUrl,
         role: "user",
-        canSelectTheme: true,
+        canSelectTheme: false,
         colorScheme: "system",
       })
     } finally {

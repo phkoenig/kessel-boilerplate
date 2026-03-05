@@ -25,6 +25,10 @@ export function useColorSchemeSync(): void {
   // Track das letzte Color Scheme, um Änderungen zu erkennen
   const lastColorScheme = useRef<string>(currentColorScheme ?? "system")
 
+  function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC VON DB → CLIENT (bei Login)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -78,10 +82,20 @@ export function useColorSchemeSync(): void {
     const saveToDb = async () => {
       const supabase = createClient()
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ color_scheme: colorSchemeToSave })
-        .eq("id", user.id)
+      const profileId = isUuid(user.id) ? user.id : null
+      const clerkUserId = user.clerkUserId || (user.id.startsWith("user_") ? user.id : null)
+
+      if (!profileId && !clerkUserId) {
+        console.warn("[ColorSchemeSync] Skip DB save: no valid profile identifier", {
+          userId: user.id,
+          clerkUserId: user.clerkUserId,
+        })
+        return
+      }
+
+      let query = supabase.from("profiles").update({ color_scheme: colorSchemeToSave })
+      query = profileId ? query.eq("id", profileId) : query.eq("clerk_user_id", clerkUserId!)
+      const { error } = await query
 
       if (error) {
         console.error("[ColorSchemeSync] Failed to save color scheme to DB:", error.message)

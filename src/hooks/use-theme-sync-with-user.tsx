@@ -31,6 +31,10 @@ export function useThemeSyncWithUser(): void {
   // Track das letzte Theme, um Änderungen zu erkennen
   const lastTheme = useRef<string>(theme)
 
+  function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC VON DB → CLIENT (bei Login)
   // Wird NUR bei User-Wechsel (Login/Logout) ausgeführt, NICHT bei Theme-Änderungen.
@@ -66,9 +70,7 @@ export function useThemeSyncWithUser(): void {
         themeToApply = userTheme
         console.log("[ThemeSync] Applying user theme override:", userTheme)
       } else {
-        console.warn(
-          "[ThemeSync] User theme does not exist, keeping current theme"
-        )
+        console.warn("[ThemeSync] User theme does not exist, keeping current theme")
         // NICHT auf Default zurückfallen - behalte das aktuelle Theme
       }
     }
@@ -107,10 +109,20 @@ export function useThemeSyncWithUser(): void {
     const saveToDb = async () => {
       const supabase = createClient()
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ selected_theme: theme })
-        .eq("id", user.id)
+      const profileId = isUuid(user.id) ? user.id : null
+      const clerkUserId = user.clerkUserId || (user.id.startsWith("user_") ? user.id : null)
+
+      if (!profileId && !clerkUserId) {
+        console.warn("[ThemeSync] Skip DB save: no valid profile identifier", {
+          userId: user.id,
+          clerkUserId: user.clerkUserId,
+        })
+        return
+      }
+
+      let query = supabase.from("profiles").update({ selected_theme: theme })
+      query = profileId ? query.eq("id", profileId) : query.eq("clerk_user_id", clerkUserId!)
+      const { error } = await query
 
       if (error) {
         console.error("[ThemeSync] Failed to save theme to DB:", error.message)
