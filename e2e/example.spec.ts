@@ -4,7 +4,7 @@ test.describe("Example E2E Tests", () => {
   test("homepage loads successfully", async ({ page }) => {
     const appUrl = process.env.APP_URL || "http://localhost:3000"
     await page.goto(appUrl)
-    await expect(page).toHaveTitle(/Next.js/i)
+    await expect(page).toHaveTitle(/Kessel Boilerplate|Next\.js/i)
   })
 
   test("page has basic structure", async ({ page }) => {

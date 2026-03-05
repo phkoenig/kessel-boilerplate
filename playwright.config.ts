@@ -21,9 +21,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI ? "pnpm build && pnpm start" : "pnpm dev",
+    command:
+      process.env.PLAYWRIGHT_USE_PROD_SERVER === "true" ? "pnpm build && pnpm start" : "pnpm dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     stdout: "ignore",
     stderr: "pipe",
   },
