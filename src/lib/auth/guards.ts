@@ -39,11 +39,24 @@ export async function requireAdmin(): Promise<AuthenticatedUser | NextResponse> 
 }
 
 /**
- * requireOrganization - Stub fuer Phase 2/3.
- * Aktuell: Prueft nur Auth, Org-Check folgt mit Clerk Organizations.
+ * Prueft Auth und Organisation.
+ * Wenn orgId uebergeben: User muss in dieser Org sein.
+ * Ohne orgId: User muss in mind. einer Org sein (activeOrgId gesetzt).
  */
 export async function requireOrganization(
-  _orgId?: string
+  orgId?: string
 ): Promise<AuthenticatedUser | NextResponse> {
-  return requireAuth()
+  const userOrErr = await requireAuth()
+  if (userOrErr instanceof Response) return userOrErr
+
+  if (orgId && userOrErr.activeOrgId !== orgId) {
+    const { NextResponse } = await import("next/server")
+    return NextResponse.json({ error: "Forbidden: Organization access denied" }, { status: 403 })
+  }
+
+  if (!orgId && !userOrErr.activeOrgId && !userOrErr.tenantId) {
+    // Optional: Erlaube Zugriff auch ohne Org (z.B. Personal-Space)
+  }
+
+  return userOrErr
 }

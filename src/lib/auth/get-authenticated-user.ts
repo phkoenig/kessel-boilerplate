@@ -34,6 +34,10 @@ export interface AuthenticatedUser {
   role: string
   /** Schnell-Check fuer Admin-Routen */
   isAdmin: boolean
+  /** Aktive Clerk Organization ID (wenn im Org-Kontext) */
+  activeOrgId: string | null
+  /** Aufgeloester tenant_id aus app.tenants (clerk_org_id) */
+  tenantId: string | null
   /** Vollstaendiges Profil aus DB (optional, bei Bedarf) */
   profile: {
     id: string
@@ -54,10 +58,23 @@ export interface AuthenticatedUser {
  * Bei neuem Clerk-User ohne Profil: Auto-Provisioning via Webhook oder on-demand.
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const { userId, sessionClaims } = await auth()
+  const { userId, sessionClaims, orgId } = await auth()
   if (!userId) return null
 
   const supabase = createServiceClient()
+
+  // Tenant aus Clerk Org aufloesen (app.tenants.clerk_org_id)
+  // Fallback: profile.tenant_id wenn kein Org-Kontext
+  let tenantId: string | null = null
+  if (orgId) {
+    const { data: tenant } = await supabase
+      .schema("app")
+      .from("tenants")
+      .select("id")
+      .eq("clerk_org_id", orgId)
+      .single()
+    tenantId = tenant?.id ?? null
+  }
   const { data: initialProfile, error } = await supabase
     .from("profiles")
     .select(PROFILE_SELECT)
@@ -81,11 +98,18 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   const role = (profile.role as string) ?? "user"
   const isAdmin = role === "admin" || role === "superuser" || role === "super-user"
 
+  // Fallback: profile.tenant_id wenn kein Org-Kontext (z.B. Personal/legacy)
+  if (!tenantId && profile.tenant_id) {
+    tenantId = profile.tenant_id as string
+  }
+
   return {
     clerkUserId: userId,
     profileId: profile.id as string,
     role,
     isAdmin,
+    activeOrgId: orgId ?? null,
+    tenantId,
     profile: {
       id: profile.id as string,
       clerk_user_id: profile.clerk_user_id as string | null,

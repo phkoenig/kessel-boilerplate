@@ -1,8 +1,10 @@
 /**
  * Clerk Webhook Endpoint
  *
- * Syncs Clerk User Lifecycle Events -> Supabase profiles.
- * Events: user.created, user.updated, user.deleted
+ * Syncs Clerk Lifecycle Events -> Supabase:
+ * - User: profiles
+ * - Organization: app.tenants (clerk_org_id)
+ * - OrganizationMembership: app.user_tenants
  *
  * Signing Secret: CLERK_WEBHOOK_SIGNING_SECRET (Vault)
  */
@@ -157,6 +159,92 @@ export async function POST(request: NextRequest) {
           { error: "Profil konnte nicht geloescht werden", details: error.message },
           { status: 500 }
         )
+      }
+    } else if (evt.type === "organization.created") {
+      const data = evt.data as { id?: string; name?: string; slug?: string }
+      if (!data?.id) {
+        return NextResponse.json({ error: "Keine Org-ID im Event" }, { status: 400 })
+      }
+      const supabase = createServiceClient()
+      const slug = (data.slug ?? data.name ?? data.id).toLowerCase().replace(/\s+/g, "_")
+      const { error } = await supabase
+        .schema("app")
+        .from("tenants")
+        .insert({
+          clerk_org_id: data.id,
+          slug,
+          name: data.name ?? data.id,
+        })
+      if (error) {
+        return NextResponse.json(
+          { error: "Tenant konnte nicht angelegt werden", details: error.message },
+          { status: 500 }
+        )
+      }
+    } else if (evt.type === "organizationMembership.created") {
+      const data = evt.data as {
+        organization?: { id?: string }
+        public_user_data?: { user_id?: string }
+      }
+      const orgId = data.organization?.id ?? (data as { organization_id?: string }).organization_id
+      const clerkUserId =
+        data.public_user_data?.user_id ??
+        (data as { public_user_data?: { user_id?: string } }).public_user_data?.user_id
+      if (!orgId || !clerkUserId) {
+        return NextResponse.json(
+          { error: "organization_id oder user_id fehlt im Event" },
+          { status: 400 }
+        )
+      }
+      const supabase = createServiceClient()
+      const { data: tenant } = await supabase
+        .schema("app")
+        .from("tenants")
+        .select("id")
+        .eq("clerk_org_id", orgId)
+        .single()
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_user_id", clerkUserId)
+        .single()
+      if (tenant && profile) {
+        await supabase.schema("app").from("user_tenants").upsert(
+          {
+            user_id: profile.id,
+            tenant_id: tenant.id,
+            role: "member",
+          },
+          { onConflict: "user_id,tenant_id" }
+        )
+      }
+    } else if (evt.type === "organizationMembership.deleted") {
+      const data = evt.data as {
+        organization?: { id?: string }
+        public_user_data?: { user_id?: string }
+      }
+      const orgId = data.organization?.id
+      const clerkUserId = data.public_user_data?.user_id
+      if (!orgId || !clerkUserId) return NextResponse.json({ received: true })
+      const supabase = createServiceClient()
+      const { data: tenant } = await supabase
+        .schema("app")
+        .from("tenants")
+        .select("id")
+        .eq("clerk_org_id", orgId)
+        .single()
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_user_id", clerkUserId)
+        .single()
+      if (tenant && profile) {
+        await supabase
+          .schema("app")
+          .from("user_tenants")
+          .delete()
+          .eq("user_id", profile.id)
+          .eq("tenant_id", tenant.id)
       }
     }
 
