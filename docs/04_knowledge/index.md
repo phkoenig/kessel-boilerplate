@@ -34,6 +34,15 @@ Diese Ebene bewahrt Erfahrungswissen und technische Learnings. Sie ist der "Ged�
 - **`TweakCN Tokenisierung und Theme-Entwicklung.md`**: Token-Governance und TweakCN-Workflow
 - **`design-tokens-overview.md`**: Vollständige Übersicht aller Design Tokens (Herkunft, Editierbarkeit)
 
+### Boilerplate 2.0 (Clerk + SpacetimeDB)
+
+- **`boilerplate-2.0-upgrade-guide.md`**: Upgrade von 1.x auf 2.0
+- **`ableitungs-checkliste.md`**: Checkliste für neue Ableitungen
+- **`rollout-test-matrix.md`**: Test-/Smoke-Matrix für Rollout
+- **`clerk-setup.md`**: Clerk-Konfiguration
+- **`clerk-migration-rollback.md`**: Rollback bei Migrationsproblemen
+- **`spacetime-spike.md`**: SpacetimeDB Spike-Validierung
+
 ### Konfiguration & Setup
 
 - **`mcp-setup.md`**: MCP-Server-Konfiguration

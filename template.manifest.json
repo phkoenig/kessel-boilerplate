@@ -1,0 +1,24 @@
+{
+  "version": "2.0",
+  "name": "kessel-boilerplate",
+  "description": "Next.js + Clerk + Supabase + SpacetimeDB UI-Realtime Template",
+  "preset": "clerk-spacetimedb-ui",
+  "requiredEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "CLERK_SECRET_KEY"
+  ],
+  "optionalEnv": [
+    "CLERK_WEBHOOK_SIGNING_SECRET",
+    "NEXT_PUBLIC_SPACETIMEDB_ENABLED",
+    "NEXT_PUBLIC_SPACETIMEDB_URI",
+    "NEXT_PUBLIC_SPACETIMEDB_DATABASE"
+  ],
+  "postSetupHooks": ["pnpm pull-env", "pnpm install"],
+  "healthcheck": {
+    "command": "pnpm dev",
+    "timeoutSeconds": 30
+  }
+}
