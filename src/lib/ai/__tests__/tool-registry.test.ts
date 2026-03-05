@@ -82,7 +82,12 @@ describe("Tool Registry", () => {
       const result = await loadDataSources()
 
       // Assert
-      expect(result).toEqual(mockDataSources)
+      expect(result).toEqual(
+        mockDataSources.map((ds) => ({
+          ...ds,
+          database_id: "kessel",
+        }))
+      )
       expect(mockSupabase.from).toHaveBeenCalledWith("ai_datasources")
       expect(mockSupabase.eq).toHaveBeenCalledWith("is_enabled", true)
       expect(mockSupabase.neq).toHaveBeenCalledWith("access_level", "none")

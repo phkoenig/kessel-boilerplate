@@ -13,6 +13,11 @@ vi.mock("@/utils/supabase/server", () => ({
   createClient: vi.fn(),
 }))
 
+// Mock DB Registry (Multi-DB Adapter)
+vi.mock("@/lib/database/db-registry", () => ({
+  createDatabaseClient: vi.fn(),
+}))
+
 // Mock Tool Registry
 vi.mock("../tool-registry", async () => {
   const actual = await vi.importActual("../tool-registry")
@@ -23,8 +28,17 @@ vi.mock("../tool-registry", async () => {
 })
 
 describe("Tool Executor", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+
+    // Standard: Operations-Client nutzt denselben Mock wie createClient().
+    // Dadurch bleiben bestehende Test-Mocks kompatibel mit Multi-DB-Adapter.
+    const { createClient } = await import("@/utils/supabase/server")
+    const { createDatabaseClient } = await import("@/lib/database/db-registry")
+    vi.mocked(createDatabaseClient).mockImplementation(async () => {
+      const client = await vi.mocked(createClient)()
+      return client as never
+    })
   })
 
   describe("executeTool", () => {

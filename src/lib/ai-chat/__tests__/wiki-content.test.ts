@@ -42,7 +42,10 @@ describe("wiki-content", () => {
       const result = await loadWikiContent()
 
       expect(result).toBe("")
-      expect(consoleSpy).toHaveBeenCalledWith("Failed to load wiki content:", expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Failed to load markdown file (src/content/wiki.md):",
+        expect.any(Error)
+      )
 
       consoleSpy.mockRestore()
     })
