@@ -7,6 +7,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+
+- **Release-Block „Boilerplate 2.0 Stabilisierung“ dokumentiert**
+  - Admin-User-Management über geschützte API konsolidiert
+  - Vitest/jsdom-Resolver für Windows-Pfad-Mix stabilisiert
+  - Lokalen E2E-Webserver-Flow für Playwright vereinheitlicht
+
+### Fixed
+
+- **Mandantenisolierte App-Branding-Daten**
+  - Icon-Generierung schreibt `app_settings` jetzt per `tenant_slug`-upsert statt über eine feste Singleton-ID
+  - Icon-Dateien werden tenant-spezifisch unter `app-icons/<tenant_slug>/...` gespeichert
+  - Änderungen an Logo/Branding einer App wirken nicht mehr auf andere Ableitungen
+- **Dynamische HTML-Metadaten (Title/Description/Icon)**
+  - Root-Metadaten werden tenant-spezifisch aus `app_settings` geladen
+  - Änderungen von App-Name und Beschreibung werden im Head flexibel reflektiert
+
 ### Geplant
 
 - `kessel update` Command für automatisierte Updates

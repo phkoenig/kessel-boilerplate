@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { unstable_noStore as noStore } from "next/cache"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
@@ -28,9 +30,63 @@ const inter = Inter({
  */
 const fontVariables = inter.variable
 
-export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Kessel App",
-  description: "ShadCN UI mit TweakCN Theme-Switching und Tailwind CSS v4",
+interface AppMetadataRow {
+  app_name: string | null
+  app_description: string | null
+  icon_url: string | null
+}
+
+function getTenantSlug(): string {
+  return process.env.NEXT_PUBLIC_TENANT_SLUG || "default"
+}
+
+async function loadAppMetadata(): Promise<AppMetadataRow | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+  if (!supabaseUrl || !anonKey) return null
+
+  const supabase = createSupabaseClient(supabaseUrl, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("app_name, app_description, icon_url")
+    .eq("tenant_slug", getTenantSlug())
+    .maybeSingle()
+
+  if (error) return null
+  return (data as AppMetadataRow | null) ?? null
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  // Metadaten sollen Name/Beschreibung-Updates sofort reflektieren.
+  noStore()
+
+  const data = await loadAppMetadata()
+  const appName = data?.app_name?.trim() || process.env.NEXT_PUBLIC_APP_NAME || "Kessel App"
+  const appDescription =
+    data?.app_description?.trim() || "ShadCN UI mit TweakCN Theme-Switching und Tailwind CSS v4"
+  const iconUrl = data?.icon_url?.trim()
+
+  return {
+    title: appName,
+    description: appDescription,
+    ...(iconUrl
+      ? {
+          icons: {
+            icon: [{ url: iconUrl }],
+            shortcut: [{ url: iconUrl }],
+            apple: [{ url: iconUrl }],
+          },
+        }
+      : {}),
+  }
 }
 
 /**
@@ -78,9 +134,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>): Promise<React.ReactElement> {
+  noStore()
+
   // Lade Default-Theme CSS serverseitig
   const defaultThemeCSS = await getDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
+  const appMetadata = await loadAppMetadata()
+  const appIconUrl = appMetadata?.icon_url?.trim() || null
 
   return (
     <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>
@@ -88,6 +148,13 @@ export default async function RootLayout({
         <link rel="service-desc" href="/.well-known/ai-index.json" />
         <link rel="alternate" type="text/plain" href="/llms.txt" />
         <meta name="ai-discovery" content="/.well-known/ai-index.json" />
+        {appIconUrl && (
+          <>
+            <link rel="icon" href={appIconUrl} />
+            <link rel="shortcut icon" href={appIconUrl} />
+            <link rel="apple-touch-icon" href={appIconUrl} />
+          </>
+        )}
         {/*
           FOUC Prevention: Inline-Script setzt data-theme BEVOR React hydrated.
           Das stellt sicher, dass die CSS-Selektoren sofort greifen.

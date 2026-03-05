@@ -42,6 +42,10 @@ interface GenerateIconResponse {
   }
 }
 
+function getTenantSlug(): string {
+  return process.env.NEXT_PUBLIC_TENANT_SLUG || "default"
+}
+
 /**
  * Konvertiert Base64 Data URL zu Buffer
  */
@@ -80,6 +84,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // 3. Request Body parsen
     const body: GenerateIconRequest = await req.json()
     const { appName, description, prompt, variants = 1, provider = "openrouter", model } = body
+    const tenantSlug = getTenantSlug()
 
     if (!appName || !description || !prompt) {
       return NextResponse.json(
@@ -117,7 +122,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       const isSvg = image.mimeType === "image/svg+xml"
       const fileExtension = isSvg ? "svg" : "png"
       const filename = `icon-${timestamp}-${i + 1}.${fileExtension}`
-      const filePath = filename
+      const filePath = `${tenantSlug}/${filename}`
 
       console.log(`[Generate Icon API] Uploading ${filename} (MIME: ${image.mimeType})`)
 
@@ -155,18 +160,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       )
     }
 
-    // 7. app_settings aktualisieren
+    // 7. app_settings tenant-spezifisch aktualisieren
     const providerInfo = mediaService.getProviderInfo()
-    const { error: updateError } = await supabase
-      .from("app_settings")
-      .update({
+    const { error: updateError } = await supabase.from("app_settings").upsert(
+      {
+        tenant_slug: tenantSlug,
         app_name: appName,
         app_description: description,
         icon_url: uploadedImages[0].url, // Erstes Bild als Standard
         icon_variants: uploadedImages.map((img) => ({ url: img.url })),
         icon_provider: provider,
-      })
-      .eq("id", "00000000-0000-0000-0000-000000000001")
+      },
+      {
+        onConflict: "tenant_slug",
+      }
+    )
 
     if (updateError) {
       console.error("Error updating app_settings:", updateError)
