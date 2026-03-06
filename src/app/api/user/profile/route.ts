@@ -72,6 +72,17 @@ function getEmailFromSessionClaims(sessionClaims: unknown): string | null {
   return null
 }
 
+const PUT_BODY_KEYS = [
+  "display_name",
+  "avatar_seed",
+  "selected_theme",
+  "color_scheme",
+  "chatbot_avatar_seed",
+  "chatbot_tone",
+  "chatbot_detail_level",
+  "chatbot_emoji_usage",
+] as const
+
 async function autoProvisionProfile(
   clerkUserId: string,
   claimsEmail: string | null,
@@ -172,6 +183,79 @@ export async function GET() {
       user: profileRowToUser(profileObj, userId),
       isNewUser: false,
     })
+  } catch (err) {
+    return NextResponse.json({ error: "Server-Fehler", details: String(err) }, { status: 500 })
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const { userId, sessionClaims } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
+    }
+
+    const body = (await request.json()) as Record<string, unknown>
+    const updateData: Record<string, unknown> = {}
+
+    for (const key of PUT_BODY_KEYS) {
+      if (body[key] !== undefined) {
+        updateData[key] = body[key]
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "Keine Felder zum Aktualisieren" }, { status: 400 })
+    }
+
+    const supabase = createServiceClient()
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id, email, role")
+      .eq("clerk_user_id", userId)
+      .single()
+
+    const claimsEmail = getEmailFromSessionClaims(sessionClaims)
+    const effectiveEmail =
+      claimsEmail ?? (existingProfile?.email as string | null | undefined) ?? null
+
+    if (!isAllowedEmail(effectiveEmail)) {
+      return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
+    }
+
+    if (!existingProfile) {
+      await autoProvisionProfile(userId, effectiveEmail, supabase)
+    }
+
+    const mappedRole = getAllowedRoleForEmail(effectiveEmail)
+    if (mappedRole && existingProfile?.role !== mappedRole) {
+      const { data: mappedRoleRow } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("name", mappedRole)
+        .single()
+      updateData.role = mappedRole
+      updateData.role_id = mappedRoleRow?.id ?? null
+    }
+
+    const { data: updatedRows, error } = await supabase
+      .from("profiles")
+      .update(updateData)
+      .eq("clerk_user_id", userId)
+      .select("id")
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Profil konnte nicht aktualisiert werden", details: error.message },
+        { status: 500 }
+      )
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true })
   } catch (err) {
     return NextResponse.json({ error: "Server-Fehler", details: String(err) }, { status: 500 })
   }

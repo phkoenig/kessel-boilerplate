@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react"
 import { useTheme as useNextTheme } from "next-themes"
 import { useAuth } from "@/components/auth"
-import { createClient } from "@/utils/supabase/client"
 
 /**
  * Hook zur Synchronisierung des Color Schemes (Dark/Light Mode) mit dem User-Profil.
@@ -24,10 +23,6 @@ export function useColorSchemeSync(): void {
   const lastUserId = useRef<string | null>(null)
   // Track das letzte Color Scheme, um Änderungen zu erkennen
   const lastColorScheme = useRef<string>(currentColorScheme ?? "system")
-
-  function isUuid(value: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC VON DB → CLIENT (bei Login)
@@ -78,29 +73,23 @@ export function useColorSchemeSync(): void {
       ? (currentColorScheme as "dark" | "light" | "system")
       : "system"
 
-    // Speichere in DB
     const saveToDb = async () => {
-      const supabase = createClient()
-
-      const profileId = isUuid(user.id) ? user.id : null
-      const clerkUserId = user.clerkUserId || (user.id.startsWith("user_") ? user.id : null)
-
-      if (!profileId && !clerkUserId) {
-        console.warn("[ColorSchemeSync] Skip DB save: no valid profile identifier", {
-          userId: user.id,
-          clerkUserId: user.clerkUserId,
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ color_scheme: colorSchemeToSave }),
         })
-        return
-      }
 
-      let query = supabase.from("profiles").update({ color_scheme: colorSchemeToSave })
-      query = profileId ? query.eq("id", profileId) : query.eq("clerk_user_id", clerkUserId!)
-      const { error } = await query
-
-      if (error) {
-        console.error("[ColorSchemeSync] Failed to save color scheme to DB:", error.message)
-      } else {
-        console.log("[ColorSchemeSync] Color scheme saved to DB:", colorSchemeToSave)
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          console.error(
+            "[ColorSchemeSync] Failed to save color scheme to DB:",
+            data.error ?? res.statusText
+          )
+        }
+      } catch (err) {
+        console.error("[ColorSchemeSync] Failed to save color scheme:", err)
       }
     }
 

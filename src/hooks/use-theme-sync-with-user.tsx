@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react"
 import { useAuth } from "@/components/auth"
 import { useTheme } from "@/lib/themes"
-import { createClient } from "@/utils/supabase/client"
 
 /**
  * Hook zur Synchronisierung des Themes mit dem User-Profil.
@@ -30,10 +29,6 @@ export function useThemeSyncWithUser(): void {
   const lastUserId = useRef<string | null>(null)
   // Track das letzte Theme, um Änderungen zu erkennen
   const lastTheme = useRef<string>(theme)
-
-  function isUuid(value: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC VON DB → CLIENT (bei Login)
@@ -107,27 +102,19 @@ export function useThemeSyncWithUser(): void {
 
     // Speichere in DB (selected_theme statt theme_preference)
     const saveToDb = async () => {
-      const supabase = createClient()
-
-      const profileId = isUuid(user.id) ? user.id : null
-      const clerkUserId = user.clerkUserId || (user.id.startsWith("user_") ? user.id : null)
-
-      if (!profileId && !clerkUserId) {
-        console.warn("[ThemeSync] Skip DB save: no valid profile identifier", {
-          userId: user.id,
-          clerkUserId: user.clerkUserId,
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selected_theme: theme }),
         })
-        return
-      }
 
-      let query = supabase.from("profiles").update({ selected_theme: theme })
-      query = profileId ? query.eq("id", profileId) : query.eq("clerk_user_id", clerkUserId!)
-      const { error } = await query
-
-      if (error) {
-        console.error("[ThemeSync] Failed to save theme to DB:", error.message)
-      } else {
-        console.log("[ThemeSync] Theme saved to DB (selected_theme):", theme)
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          console.error("[ThemeSync] Failed to save theme to DB:", data.error ?? res.statusText)
+        }
+      } catch (err) {
+        console.error("[ThemeSync] Failed to save theme:", err)
       }
     }
 

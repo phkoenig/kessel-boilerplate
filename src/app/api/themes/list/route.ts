@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
-import { requireAuth } from "@/lib/auth/guards"
 
 /**
  * Theme-Metadaten Typ.
@@ -18,9 +17,6 @@ interface ThemeMeta {
  * Kombiniert lokale (builtin) Themes mit dynamischen Themes aus Supabase.
  */
 export async function GET() {
-  const userOrErr = await requireAuth()
-  if (userOrErr instanceof Response) return userOrErr
-
   try {
     const supabase = await createClient()
 
