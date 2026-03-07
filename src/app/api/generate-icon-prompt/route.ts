@@ -7,7 +7,7 @@
 import { generateText } from "ai"
 import { openrouter } from "@/lib/ai/openrouter-provider"
 import { loadWikiContent } from "@/lib/ai-chat/wiki-content"
-import { createClient } from "@/utils/supabase/server"
+import { requireAuth } from "@/lib/auth/guards"
 import { NextResponse } from "next/server"
 
 export const maxDuration = 30
@@ -104,13 +104,9 @@ function buildFinalPrompt(dynamicParts: DynamicPromptParts): string {
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const userOrError = await requireAuth()
+    if (userOrError instanceof Response) {
+      return userOrError
     }
 
     const { appName, description } = (await req.json()) as {

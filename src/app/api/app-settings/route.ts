@@ -8,9 +8,9 @@
  * Schutz: requireAuth (Admin-Bereich)
  */
 
-import { createClient } from "@/utils/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
 
 /**
  * Tenant-Slug aus Environment - identifiziert die App eindeutig
@@ -28,21 +28,9 @@ export async function GET(): Promise<NextResponse> {
   if (userOrErr instanceof Response) return userOrErr
 
   try {
-    const supabase = await createClient()
     const tenantSlug = getTenantSlug()
+    const data = await getCoreStore().getAppSettings(tenantSlug)
 
-    const { data, error } = await supabase
-      .from("app_settings")
-      .select("*")
-      .eq("tenant_slug", tenantSlug)
-      .maybeSingle()
-
-    if (error) {
-      console.error("[App Settings API] GET Error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    // Falls keine Settings für diesen Tenant existieren, leeres Objekt zurückgeben
     if (!data) {
       return NextResponse.json({
         tenant_slug: tenantSlug,
@@ -52,7 +40,15 @@ export async function GET(): Promise<NextResponse> {
       })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      tenant_slug: data.tenantSlug,
+      app_name: data.appName,
+      app_description: data.appDescription,
+      icon_url: data.iconUrl,
+      icon_variants: data.iconVariants ?? [],
+      icon_provider: data.iconProvider ?? null,
+      core_runtime_mode: getCoreStore().getMode(),
+    })
   } catch (error) {
     console.error("[App Settings API] GET Error:", error)
     return NextResponse.json(
@@ -74,31 +70,32 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   if (userOrErr instanceof Response) return userOrErr
 
   try {
-    const supabase = await createClient()
     const tenantSlug = getTenantSlug()
     const body = await request.json()
+    const data = await getCoreStore().upsertAppSettings(tenantSlug, {
+      appName: typeof body.app_name === "string" ? body.app_name : undefined,
+      appDescription: typeof body.app_description === "string" ? body.app_description : undefined,
+      iconUrl: typeof body.icon_url === "string" ? body.icon_url : undefined,
+      iconVariants: Array.isArray(body.icon_variants) ? body.icon_variants : undefined,
+      iconProvider: typeof body.icon_provider === "string" ? body.icon_provider : undefined,
+    })
 
-    // Upsert: Update falls vorhanden, Insert falls nicht
-    const { data, error } = await supabase
-      .from("app_settings")
-      .upsert(
-        {
-          ...body,
-          tenant_slug: tenantSlug,
-        },
-        {
-          onConflict: "tenant_slug",
-        }
+    if (!data) {
+      return NextResponse.json(
+        { error: "App-Settings konnten nicht gespeichert werden" },
+        { status: 500 }
       )
-      .select()
-      .single()
-
-    if (error) {
-      console.error("[App Settings API] PATCH Error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      tenant_slug: data.tenantSlug,
+      app_name: data.appName,
+      app_description: data.appDescription,
+      icon_url: data.iconUrl,
+      icon_variants: data.iconVariants ?? [],
+      icon_provider: data.iconProvider ?? null,
+      core_runtime_mode: getCoreStore().getMode(),
+    })
   } catch (error) {
     console.error("[App Settings API] PATCH Error:", error)
     return NextResponse.json(

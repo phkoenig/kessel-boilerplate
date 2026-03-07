@@ -37,14 +37,14 @@ export function FloatingChatButton(): React.ReactElement {
       description="Öffnet oder schließt den KI-Chat"
       keywords={["chat", "ki", "ai", "assistent", "hilfe", "help", "assist", "overlay"]}
       category="layout"
-      className="size-12"
+      className="pointer-events-auto size-12"
     >
       <Button
         onClick={toggle}
         size="icon"
         suppressHydrationWarning
         className={cn(
-          "relative size-12 shrink-0 rounded-full bg-transparent p-0 shadow-lg transition-all",
+          "pointer-events-auto relative size-12 shrink-0 rounded-full bg-transparent p-0 shadow-lg transition-all",
           "hover:scale-110 hover:bg-transparent hover:shadow-xl",
           "focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none"
         )}

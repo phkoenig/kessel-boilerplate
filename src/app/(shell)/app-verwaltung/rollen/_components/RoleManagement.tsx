@@ -36,7 +36,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Edit, Trash2, Loader2 } from "lucide-react"
-import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
 
 export interface Role {
@@ -76,8 +75,6 @@ export function RoleManagement({
   const [editRoleDisplayName, setEditRoleDisplayName] = useState("")
   const [editRoleDescription, setEditRoleDescription] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
-
-  const supabase = createClient()
 
   // Filter Rollen
   const filteredRoles = roles.filter(
@@ -143,15 +140,20 @@ export function RoleManagement({
     setIsSaving(true)
 
     try {
-      const { error: insertError } = await supabase.from("roles").insert({
-        name: generatedSlug,
-        display_name: newRoleDisplayName.trim(),
-        description: newRoleDescription.trim() || null,
-        is_system: false,
+      const response = await fetch("/api/admin/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: generatedSlug,
+          displayName: newRoleDisplayName.trim(),
+          description: newRoleDescription.trim() || null,
+          isSystem: false,
+        }),
       })
 
-      if (insertError) {
-        throw insertError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Anlegen der Rolle")
       }
 
       // Erfolg: Dialog schließen und zurücksetzen
@@ -184,16 +186,20 @@ export function RoleManagement({
     setIsSaving(true)
 
     try {
-      const { error: updateError } = await supabase
-        .from("roles")
-        .update({
-          display_name: editRoleDisplayName.trim(),
+      const response = await fetch("/api/admin/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingRole.name,
+          displayName: editRoleDisplayName.trim(),
           description: editRoleDescription.trim() || null,
-        })
-        .eq("id", editingRole.id)
+          isSystem: editingRole.is_system,
+        }),
+      })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Aktualisieren der Rolle")
       }
 
       // Erfolg: Dialog schließen und zurücksetzen
@@ -218,32 +224,20 @@ export function RoleManagement({
     setError(null)
 
     try {
-      // 1. Finde die Default-Rolle ('user')
-      const { data: defaultRole, error: roleError } = await supabase
-        .from("roles")
-        .select("id")
-        .eq("name", "user")
-        .single()
-
-      if (roleError || !defaultRole) {
-        throw new Error("Default-Rolle 'user' nicht gefunden")
+      const targetRole = roles.find((role) => role.id === roleId)
+      if (!targetRole) {
+        throw new Error("Rolle nicht gefunden")
       }
 
-      // 2. Setze alle User mit dieser Rolle auf die Default-Rolle
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ role_id: defaultRole.id })
-        .eq("role_id", roleId)
+      const response = await fetch("/api/admin/roles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: targetRole.name }),
+      })
 
-      if (updateError) {
-        throw updateError
-      }
-
-      // 3. Jetzt die Rolle löschen
-      const { error: deleteError } = await supabase.from("roles").delete().eq("id", roleId)
-
-      if (deleteError) {
-        throw deleteError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Löschen der Rolle")
       }
 
       // Callback aufrufen (AlertDialog schließt sich automatisch)

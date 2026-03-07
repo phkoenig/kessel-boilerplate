@@ -8,9 +8,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { executeTool, type ToolExecutionContext } from "../tool-executor"
 import { validateToolCall } from "../tool-registry"
 
-// Mock Supabase Client
-vi.mock("@/utils/supabase/server", () => ({
-  createClient: vi.fn(),
+const { mockAppendChatMessage, mockGetSpacetimeServerConnection } = vi.hoisted(() => ({
+  mockAppendChatMessage: vi.fn(),
+  mockGetSpacetimeServerConnection: vi.fn(),
 }))
 
 // Mock DB Registry (Multi-DB Adapter)
@@ -18,33 +18,33 @@ vi.mock("@/lib/database/db-registry", () => ({
   createDatabaseClient: vi.fn(),
 }))
 
+vi.mock("@/lib/spacetime/server-connection", () => ({
+  getSpacetimeServerConnection: mockGetSpacetimeServerConnection,
+}))
+
 // Mock Tool Registry
-vi.mock("../tool-registry", async () => {
-  const actual = await vi.importActual("../tool-registry")
-  return {
-    ...actual,
-    validateToolCall: vi.fn(),
-  }
-})
+vi.mock("../tool-registry", () => ({
+  validateToolCall: vi.fn(),
+}))
 
 describe("Tool Executor", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-
-    // Standard: Operations-Client nutzt denselben Mock wie createClient().
-    // Dadurch bleiben bestehende Test-Mocks kompatibel mit Multi-DB-Adapter.
-    const { createClient } = await import("@/utils/supabase/server")
-    const { createDatabaseClient } = await import("@/lib/database/db-registry")
-    vi.mocked(createDatabaseClient).mockImplementation(async () => {
-      const client = await vi.mocked(createClient)()
-      return client as never
+    mockAppendChatMessage.mockReset()
+    mockGetSpacetimeServerConnection.mockResolvedValue({
+      reducers: {
+        appendChatMessage: mockAppendChatMessage,
+      },
     })
+
+    const { createDatabaseClient } = await import("@/lib/database/db-registry")
+    vi.mocked(createDatabaseClient).mockResolvedValue({} as never)
   })
 
   describe("executeTool", () => {
     it("sollte erfolgreichen Query-Tool-Call ausführen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockData = [{ id: "1", name: "Test Theme" }]
 
       const mockQueryChain = {
@@ -67,18 +67,12 @@ describe("Tool Executor", () => {
       }
 
       const mockSupabase = {
-        from: vi.fn((table) => {
-          if (table === "ai_tool_calls") {
-            return mockInsertChain
-          }
-          return {
-            select: vi.fn().mockReturnValue(mockQueryChain),
-          }
-        }),
+        from: vi.fn(() => ({
+          select: vi.fn().mockReturnValue(mockQueryChain),
+        })),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -113,7 +107,7 @@ describe("Tool Executor", () => {
 
     it("sollte Query-Tool-Call mit Filters ausführen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockData = [{ id: "1", name: "Dark Theme" }]
 
       const mockQueryChain = {
@@ -133,18 +127,12 @@ describe("Tool Executor", () => {
       }
 
       const mockSupabase = {
-        from: vi.fn((table) => {
-          if (table === "ai_tool_calls") {
-            return mockInsertChain
-          }
-          return {
-            select: vi.fn().mockReturnValue(mockQueryChain),
-          }
-        }),
+        from: vi.fn(() => ({
+          select: vi.fn().mockReturnValue(mockQueryChain),
+        })),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -182,7 +170,7 @@ describe("Tool Executor", () => {
 
     it("sollte Insert-Tool-Call im Dry-Run-Modus ausführen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockInsertChain = {
         insert: vi.fn().mockResolvedValue({
           data: null,
@@ -191,19 +179,13 @@ describe("Tool Executor", () => {
       }
 
       const mockSupabase = {
-        from: vi.fn((table) => {
-          if (table === "ai_tool_calls") {
-            return mockInsertChain
-          }
-          return {
-            insert: vi.fn().mockReturnThis(),
-            select: vi.fn().mockReturnThis(),
-          }
-        }),
+        from: vi.fn(() => ({
+          insert: vi.fn().mockReturnThis(),
+          select: vi.fn().mockReturnThis(),
+        })),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -239,13 +221,12 @@ describe("Tool Executor", () => {
       expect(result.dryRunQuery).toBeDefined()
       expect(result.dryRunQuery).toContain("INSERT INTO")
       expect(result.dryRunQuery).toContain("themes")
-      // Audit-Log wird trotzdem geschrieben
-      expect(mockSupabase.from).toHaveBeenCalledWith("ai_tool_calls")
+      expect(mockAppendChatMessage).toHaveBeenCalled()
     })
 
     it("sollte Insert-Tool-Call tatsächlich ausführen wenn nicht Dry-Run", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockSupabase = {
         from: vi.fn().mockReturnThis(),
         insert: vi.fn().mockReturnThis(),
@@ -254,8 +235,7 @@ describe("Tool Executor", () => {
 
       const mockInsertedData = [{ id: "2", name: "New Theme", description: "Test" }]
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
       mockSupabase.select.mockResolvedValue({
         data: mockInsertedData,
         error: null,
@@ -298,7 +278,7 @@ describe("Tool Executor", () => {
 
     it("sollte Update-Tool-Call im Dry-Run-Modus ausführen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockSupabase = {
         from: vi.fn().mockReturnThis(),
         update: vi.fn().mockReturnThis(),
@@ -306,8 +286,7 @@ describe("Tool Executor", () => {
         select: vi.fn().mockReturnThis(),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -348,15 +327,14 @@ describe("Tool Executor", () => {
 
     it("sollte Delete-Tool-Call im Dry-Run-Modus ausführen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockSupabase = {
         from: vi.fn().mockReturnThis(),
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -418,15 +396,14 @@ describe("Tool Executor", () => {
 
     it("sollte Excluded Columns aus Insert-Daten entfernen", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockSupabase = {
         from: vi.fn().mockReturnThis(),
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
       mockSupabase.select.mockResolvedValue({
         data: [{ id: "1", name: "Test" }],
         error: null,
@@ -471,7 +448,7 @@ describe("Tool Executor", () => {
 
     it("sollte Tool-Call in Audit-Log speichern", async () => {
       // Arrange
-      const { createClient } = await import("@/utils/supabase/server")
+      const { createDatabaseClient } = await import("@/lib/database/db-registry")
       const mockData = [{ id: "1", name: "Test Theme" }]
 
       const mockQueryChain = {
@@ -491,18 +468,12 @@ describe("Tool Executor", () => {
       }
 
       const mockSupabase = {
-        from: vi.fn((table) => {
-          if (table === "ai_tool_calls") {
-            return mockInsertChain
-          }
-          return {
-            select: vi.fn().mockReturnValue(mockQueryChain),
-          }
-        }),
+        from: vi.fn(() => ({
+          select: vi.fn().mockReturnValue(mockQueryChain),
+        })),
       }
 
-      // @ts-expect-error -- Mock braucht nicht alle Supabase-Client-Methoden
-      vi.mocked(createClient).mockResolvedValue(mockSupabase)
+      vi.mocked(createDatabaseClient).mockResolvedValue(mockSupabase as never)
 
       vi.mocked(validateToolCall).mockResolvedValue({
         valid: true,
@@ -530,11 +501,14 @@ describe("Tool Executor", () => {
       await executeTool("query_themes", { limit: 10 }, ctx)
 
       // Assert
-      expect(mockSupabase.from).toHaveBeenCalledWith("ai_tool_calls")
-      expect(mockInsertChain.insert).toHaveBeenCalled()
-      const auditLogCall = mockInsertChain.insert.mock.calls[0]?.[0]
-      expect(auditLogCall).toBeDefined()
-      expect(auditLogCall.tool_name).toBe("query_themes")
+      expect(mockAppendChatMessage).toHaveBeenCalled()
+      expect(mockAppendChatMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionKey: "test-session",
+          authorType: "tool",
+          toolName: "query_themes",
+        })
+      )
     })
   })
 })

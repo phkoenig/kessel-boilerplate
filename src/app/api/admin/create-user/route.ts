@@ -1,12 +1,29 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
+
+const splitDisplayName = (
+  value: string | null | undefined
+): { firstName?: string; lastName?: string } => {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return {}
+  }
+
+  const [firstName, ...rest] = normalized.split(/\s+/)
+  return {
+    firstName,
+    lastName: rest.length > 0 ? rest.join(" ") : undefined,
+  }
+}
 
 /**
  * POST /api/admin/create-user
  *
- * Erstellt einen neuen User - nur für Admins.
- * HINWEIS: Erstellt Supabase-Auth-User. Bei Clerk-first: Ggf. Clerk Invitations nutzen.
+ * Erstellt einen neuen User - nur fuer Admins.
+ * Boilerplate 3.0 nutzt dafuer Clerk als Auth-Quelle und schreibt den
+ * Rollen-/Profilzustand anschliessend in den Core-Store.
  */
 export async function POST(request: Request) {
   try {
@@ -26,66 +43,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ungültige E-Mail-Adresse" }, { status: 400 })
     }
 
-    // Passwort-Validierung (min. 6 Zeichen)
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Passwort muss mindestens 6 Zeichen haben" },
+        { error: "Passwort muss mindestens 8 Zeichen haben" },
         { status: 400 }
       )
     }
 
-    // Service Role Client für Admin-Operationen
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY fehlen" },
-        { status: 500 }
-      )
-    }
-
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-
-    // User erstellen - WICHTIG: role in user_metadata übergeben für den Trigger
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email,
+    const normalizedDisplayName = displayName?.trim() || email.split("@")[0] || "User"
+    const nameParts = splitDisplayName(normalizedDisplayName)
+    const clerk = await clerkClient()
+    const newUser = await clerk.users.createUser({
+      emailAddress: [email],
       password,
-      email_confirm: true, // E-Mail als bestätigt markieren
-      user_metadata: {
-        display_name: displayName || null,
-        role: role || "user", // Wird vom handle_new_user Trigger gelesen
-      },
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
     })
 
-    if (createError) {
-      console.error("Fehler beim Erstellen des Users:", createError)
-      return NextResponse.json({ error: createError.message }, { status: 500 })
-    }
+    const primaryEmail =
+      newUser.emailAddresses.find((entry) => entry.id === newUser.primaryEmailAddressId)
+        ?.emailAddress ??
+      newUser.emailAddresses[0]?.emailAddress ??
+      email
 
-    if (!newUser.user) {
-      return NextResponse.json({ error: "User konnte nicht erstellt werden" }, { status: 500 })
-    }
-
-    // HINWEIS: Der Trigger handle_new_user setzt bereits:
-    // - email, display_name, role, role_id
-    // Daher ist kein Post-Creation Update mehr nötig.
-    // Die Rolle wird aus user_metadata.role gelesen.
+    const profile = await getCoreStore().upsertUserFromClerk({
+      clerkUserId: newUser.id,
+      email: primaryEmail,
+      displayName: normalizedDisplayName,
+      avatarUrl: newUser.imageUrl ?? null,
+      role: role || "user",
+      tenantId: null,
+    })
 
     return NextResponse.json({
       success: true,
       user: {
-        id: newUser.user.id,
-        email: newUser.user.email,
+        id: profile?.id ?? newUser.id,
+        clerkUserId: newUser.id,
+        email: primaryEmail,
       },
     })
   } catch (error) {
-    console.error("API Error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unbekannter Fehler" },
       { status: 500 }

@@ -8,6 +8,8 @@
 import { createMediaService } from "@/lib/media"
 import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { requireAdmin } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
 
 // Timeout erhöhen für Image-Generierung (kann länger dauern)
 export const maxDuration = 60
@@ -60,26 +62,12 @@ function base64ToBuffer(base64: string): Buffer {
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    // 1. Auth prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError as NextResponse
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // 2. Prüfe Admin-Rolle
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
-    }
 
     // 3. Request Body parsen
     const body: GenerateIconRequest = await req.json()
@@ -98,7 +86,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     // 5. MediaService erstellen und Bilder generieren
-    console.log("[Generate Icon API] Generating", variants, "variants with provider:", provider)
     const mediaService = createMediaService(provider)
     const generationResult = await mediaService.generateImage(prompt, {
       model,
@@ -106,10 +93,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       size: { width: 512, height: 512 },
     })
     const generatedImages = generationResult.images
-    console.log("[Generate Icon API] Generated", generatedImages.length, "images")
-    if (generationResult.cost) {
-      console.log("[Generate Icon API] Cost:", `$${generationResult.cost.totalCost.toFixed(6)}`)
-    }
 
     // 6. Bilder in Supabase Storage hochladen
     const uploadedImages: Array<{ url: string; base64?: string }> = []
@@ -123,8 +106,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       const fileExtension = isSvg ? "svg" : "png"
       const filename = `icon-${timestamp}-${i + 1}.${fileExtension}`
       const filePath = `${tenantSlug}/${filename}`
-
-      console.log(`[Generate Icon API] Uploading ${filename} (MIME: ${image.mimeType})`)
 
       // Base64 zu Buffer konvertieren
       const buffer = base64ToBuffer(image.base64)
@@ -162,22 +143,15 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     // 7. app_settings tenant-spezifisch aktualisieren
     const providerInfo = mediaService.getProviderInfo()
-    const { error: updateError } = await supabase.from("app_settings").upsert(
-      {
-        tenant_slug: tenantSlug,
-        app_name: appName,
-        app_description: description,
-        icon_url: uploadedImages[0].url, // Erstes Bild als Standard
-        icon_variants: uploadedImages.map((img) => ({ url: img.url })),
-        icon_provider: provider,
-      },
-      {
-        onConflict: "tenant_slug",
-      }
-    )
+    const settings = await getCoreStore().upsertAppSettings(tenantSlug, {
+      appName,
+      appDescription: description,
+      iconUrl: uploadedImages[0].url,
+      iconVariants: uploadedImages.map((img) => ({ url: img.url })),
+      iconProvider: provider,
+    })
 
-    if (updateError) {
-      console.error("Error updating app_settings:", updateError)
+    if (!settings) {
       // Icons wurden hochgeladen, aber DB-Update fehlgeschlagen
       // Das ist nicht kritisch, aber wir loggen es
     }

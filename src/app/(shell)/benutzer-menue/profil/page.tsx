@@ -106,13 +106,15 @@ export default function ProfilePage(): React.ReactElement {
     setSavedAvatarSeed(false)
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_seed: previewAvatarSeed })
-        .eq("id", user.id)
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_seed: previewAvatarSeed }),
+      })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Speichern des Avatars")
       }
 
       setAvatarSeed(previewAvatarSeed)
@@ -135,13 +137,15 @@ export default function ProfilePage(): React.ReactElement {
     setSavedChatbotAvatarSeed(false)
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ chatbot_avatar_seed: previewChatbotAvatarSeed })
-        .eq("id", user.id)
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatbot_avatar_seed: previewChatbotAvatarSeed }),
+      })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Speichern des Chatbot-Avatars")
       }
 
       setChatbotAvatarSeed(previewChatbotAvatarSeed)
@@ -164,17 +168,19 @@ export default function ProfilePage(): React.ReactElement {
     setSavedChatbotSettings(false)
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           chatbot_tone: chatbotTone,
           chatbot_detail_level: chatbotDetailLevel,
           chatbot_emoji_usage: chatbotEmojiUsage,
-        })
-        .eq("id", user.id)
+        }),
+      })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Speichern der Chatbot-Einstellungen")
       }
 
       await refreshUser()
@@ -226,13 +232,15 @@ export default function ProfilePage(): React.ReactElement {
     setSavedDisplayName(false)
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ display_name: displayName.trim() })
-        .eq("id", user.id)
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: displayName.trim() }),
+      })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Fehler beim Speichern des Anzeigenamens")
       }
 
       await refreshUser()

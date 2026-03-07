@@ -14,58 +14,33 @@
 
 import { tool, type ToolSet } from "ai"
 import { z } from "zod"
-import { createClient } from "@supabase/supabase-js"
+import { clerkClient } from "@clerk/nextjs/server"
 import type { ToolExecutionContext } from "./tool-executor"
 import { generateThemeTools } from "./theme-tools"
+import { getCoreStore } from "@/lib/core"
 
 /**
- * Prüft ob der aktuelle User Admin oder Superuser ist
- *
- * Unterstützt sowohl:
- * - Legacy: profiles.role Spalte
- * - Neu: profiles.role_id → roles.name (JOIN)
+ * Prüft ob der aktuelle User Admin oder Superuser ist.
  */
 async function isAdmin(userId: string): Promise<boolean> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  try {
+    const users = await getCoreStore().listUsers()
+    const user = users.find((entry) => entry.id === userId)
+    if (!user) {
+      return false
+    }
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error("[SpecialTools] Missing Supabase credentials")
-    return false
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-
-  // Hole role (legacy) und role_id mit JOIN zur roles-Tabelle
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("role, role_id, roles:role_id(name)")
-    .eq("id", userId)
-    .single()
-
-  if (error || !data) {
+    return user.role === "admin" || user.role === "superuser" || user.role === "super-user"
+  } catch (error) {
     console.error("[SpecialTools] Error checking admin status:", error)
     return false
   }
-
-  // Prüfe zuerst das neue System (role_id → roles.name)
-  // Supabase gibt bei .single() ein Objekt zurück, bei Array-JOINs evtl. ein Array
-  const rolesData = Array.isArray(data.roles) ? data.roles[0] : data.roles
-  if (rolesData?.name) {
-    return rolesData.name === "admin" || rolesData.name === "superuser"
-  }
-
-  // Fallback: Legacy role Spalte
-  return data.role === "admin" || data.role === "superuser"
 }
 
 /**
  * Generiert das create_user Tool
  *
- * Ermöglicht Admins, neue User über die Supabase Admin API anzulegen.
- * Der Trigger erstellt automatisch das Profil.
+ * Ermöglicht Admins, neue User ueber Clerk-Einladungen anzulegen.
  */
 function createUserTool(ctx: ToolExecutionContext): ToolSet {
   return {
@@ -75,9 +50,9 @@ Der Benutzer erhält eine Einladungs-E-Mail mit Passwort-Reset-Link.
 Das Profil wird automatisch durch einen DB-Trigger erstellt.
 
 Workflow:
-1. User wird in auth.users angelegt
-2. DB-Trigger erstellt automatisch Profil in profiles
-3. Optional: Profil wird mit display_name und role aktualisiert`,
+1. Eine Clerk-Einladung wird erzeugt
+2. Die Einladungs-Mail wird optional versendet
+3. Nach Annahme wird der User beim ersten Login in den Boilerplate-Core provisioniert`,
       inputSchema: z.object({
         email: z.string().email().describe("E-Mail-Adresse des neuen Benutzers"),
         display_name: z.string().optional().describe("Anzeigename (optional, sonst Teil vor @)"),
@@ -99,18 +74,6 @@ Workflow:
           throw new Error("Nur Admins können neue Benutzer anlegen")
         }
 
-        // Service Role Client für Admin-API
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-        if (!supabaseUrl || !serviceRoleKey) {
-          throw new Error("Supabase Service Role Key nicht konfiguriert")
-        }
-
-        const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        })
-
         // Dry-Run Modus
         if (ctx.dryRun) {
           return {
@@ -125,59 +88,29 @@ Workflow:
           }
         }
 
-        // User anlegen via Admin API
-        const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-          email: args.email,
-          email_confirm: true, // E-Mail als bestätigt markieren
-          user_metadata: {
+        const clerk = await clerkClient()
+        const invitation = await clerk.invitations.createInvitation({
+          emailAddress: args.email,
+          notify: args.send_invite !== false,
+          ignoreExisting: false,
+          publicMetadata: {
             display_name: args.display_name ?? args.email.split("@")[0],
             role: args.role ?? "user",
           },
         })
 
-        if (authError || !authData.user) {
-          throw new Error(
-            `Fehler beim Anlegen des Users: ${authError?.message ?? "Unbekannter Fehler"}`
-          )
-        }
-
-        // Profil aktualisieren (für display_name und role)
-        // Der Trigger hat das Profil bereits erstellt, wir updaten es nur
-        const { error: profileError } = await adminClient
-          .from("profiles")
-          .update({
-            display_name: args.display_name ?? args.email.split("@")[0],
-            role: args.role ?? "user",
-          })
-          .eq("id", authData.user.id)
-
-        if (profileError) {
-          console.warn("[SpecialTools] Profil-Update fehlgeschlagen:", profileError)
-          // Kein throw - User wurde erfolgreich angelegt
-        }
-
-        // Optional: Einladungs-E-Mail senden
-        if (args.send_invite !== false) {
-          const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(args.email)
-          if (inviteError) {
-            console.warn("[SpecialTools] Einladungs-E-Mail fehlgeschlagen:", inviteError)
-          }
-        }
-
-        // Erfolgsmeldung
         return {
           success: true,
-          user: {
-            id: authData.user.id,
-            email: authData.user.email,
+          invitation: {
+            id: invitation.id,
+            email: invitation.emailAddress,
             display_name: args.display_name ?? args.email.split("@")[0],
             role: args.role ?? "user",
-            created_at: authData.user.created_at,
           },
           message:
             args.send_invite !== false
-              ? `Benutzer "${args.email}" wurde angelegt. Eine Einladungs-E-Mail wurde gesendet.`
-              : `Benutzer "${args.email}" wurde angelegt.`,
+              ? `Einladung fuer "${args.email}" wurde erstellt und versendet.`
+              : `Einladung fuer "${args.email}" wurde erstellt.`,
         }
       },
     }),
@@ -187,8 +120,7 @@ Workflow:
 /**
  * Generiert das delete_user Tool
  *
- * Ermöglicht Admins, User über die Admin API zu löschen.
- * Löscht sowohl auth.users als auch profiles (CASCADE).
+ * Ermöglicht Admins, User ueber Clerk + Boilerplate-Core zu loeschen.
  */
 function deleteUserTool(ctx: ToolExecutionContext): ToolSet {
   return {
@@ -217,18 +149,6 @@ Das Profil wird automatisch durch CASCADE-Delete entfernt.`,
           throw new Error("Du kannst dich nicht selbst löschen")
         }
 
-        // Service Role Client für Admin-API
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-        if (!supabaseUrl || !serviceRoleKey) {
-          throw new Error("Supabase Service Role Key nicht konfiguriert")
-        }
-
-        const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        })
-
         // Dry-Run Modus
         if (ctx.dryRun) {
           return {
@@ -238,28 +158,26 @@ Das Profil wird automatisch durch CASCADE-Delete entfernt.`,
           }
         }
 
-        // User-Info laden für Bestätigung
-        const { data: userData } = await adminClient
-          .from("profiles")
-          .select("email, display_name")
-          .eq("id", args.user_id)
-          .single()
+        const coreStore = getCoreStore()
+        const users = await coreStore.listUsers()
+        const targetUser = users.find((entry) => entry.id === args.user_id)
 
-        // User löschen via Admin API
-        const { error } = await adminClient.auth.admin.deleteUser(args.user_id)
-
-        if (error) {
-          throw new Error(`Fehler beim Löschen des Users: ${error.message}`)
+        if (!targetUser) {
+          throw new Error("Benutzer nicht gefunden")
         }
+
+        const clerk = await clerkClient()
+        await coreStore.deleteUserByClerkId(targetUser.clerkUserId)
+        await clerk.users.deleteUser(targetUser.clerkUserId)
 
         return {
           success: true,
           deleted_user: {
             id: args.user_id,
-            email: userData?.email ?? "Unbekannt",
-            display_name: userData?.display_name ?? "Unbekannt",
+            email: targetUser.email,
+            display_name: targetUser.displayName ?? "Unbekannt",
           },
-          message: `Benutzer "${userData?.email ?? args.user_id}" wurde gelöscht.`,
+          message: `Benutzer "${targetUser.email}" wurde geloescht.`,
         }
       },
     }),

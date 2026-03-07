@@ -9,6 +9,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ### Added
 
+- **Boilerplate 3.0 Core-Abstraktion**
+  - Neue `src/lib/core`-Schicht als feste Grenze zwischen App-Code und Boilerplate-Core
+  - Hybridmodus fuer Spacetime-Einstieg, ohne laufende Ableitungen hart zu brechen
+- **1Password-basierter `pull-env`-Flow**
+  - `scripts/pull-env.manifest.json` definiert den neuen Secrets-Vertrag
+  - `pnpm pull-env` generiert `.env.local` jetzt aus Bootstrap-Werten und 1Password-Referenzen
+- **Core Permissions API**
+  - Neue Route `/api/core/permissions` entkoppelt die Client-Permissions von direkten DB-Reads
 - **Release-Block „Boilerplate 2.0 Stabilisierung“ dokumentiert**
   - Admin-User-Management über geschützte API konsolidiert
   - Vitest/jsdom-Resolver für Windows-Pfad-Mix stabilisiert
@@ -16,6 +24,14 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ### Fixed
 
+- **Clerk/Core-Synchronisierung**
+  - Auth- und Profilauflösung laufen jetzt über die neue Core-Schicht
+  - Clerk-Webhooks pflegen User-, Tenant- und Membership-Daten über denselben Vertrag
+- **Theme- und Branding-Pfade**
+  - Theme-State und App-Settings werden serverseitig über den Core-Vertrag gelesen und geschrieben
+  - App-Icon-Generierung aktualisiert Branding-Metadaten nicht mehr direkt gegen Legacy-Callsites
+- **Realtime-Hybridpfad**
+  - `emitMockEvent` leitet bei aktivem 3.0-Hybridmodus auf den neuen Realtime-Kanal um
 - **Mandantenisolierte App-Branding-Daten**
   - Icon-Generierung schreibt `app_settings` jetzt per `tenant_slug`-upsert statt über eine feste Singleton-ID
   - Icon-Dateien werden tenant-spezifisch unter `app-icons/<tenant_slug>/...` gespeichert

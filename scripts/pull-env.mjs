@@ -1,77 +1,76 @@
 #!/usr/bin/env node
-// scripts/pull-env.mjs
 
 import fs from "fs"
 import path from "path"
+import { execFileSync } from "child_process"
 import { config } from "dotenv"
 import chalk from "chalk"
-import { createClient } from "@supabase/supabase-js"
 import { z } from "zod"
 
-// WICHTIG: .env laden BEVOR wir irgendetwas anderes tun
 config()
 
-// Schema hier definieren, um den Side-Effect-Import von env.mjs zu vermeiden
+const manifestSchema = z.object({
+  entries: z.array(
+    z.object({
+      envName: z.string().min(1),
+      source: z.enum(["bootstrap", "1password"]),
+      bootstrapEnvName: z.string().optional(),
+      opReference: z.string().optional(),
+      opReferenceEnvName: z.string().optional(),
+      required: z.boolean().default(true),
+      description: z.string().optional(),
+    })
+  ),
+})
+
 const combinedSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_SPACETIMEDB_URI: z.string().min(1),
+  NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().min(1),
+  NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: z.literal("spacetime"),
+  SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 })
 
-// Helper für die Ausgabe
-const log = console.log
-const error = (msg) => log(chalk.red.bold(msg))
-const success = (msg) => log(chalk.green.bold(msg))
-
-// Diese Funktion ruft die Secrets ab
-async function fetchSecretsFromSupabase() {
-  // SERVICE_ROLE_KEY wird aus der Umgebung des Entwicklers erwartet
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY müssen in der Umgebung gesetzt sein."
-    )
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
-
-  // Der RPC-Aufruf
-  const { data, error: rpcError } = await supabaseAdmin.rpc("get_all_secrets_for_env")
-
-  if (rpcError) {
-    throw new Error(`RPC-Fehler beim Abrufen der Secrets: ${rpcError.message}`)
-  }
-
-  return data
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LOCAL DEVELOPMENT DEFAULTS
-// Diese Variablen werden automatisch hinzugefügt und sind NICHT im Vault gespeichert.
-// Sie gelten nur für lokale Entwicklung.
-// ═══════════════════════════════════════════════════════════════════════════
 const LOCAL_DEV_DEFAULTS = {
-  // Auth-Bypass aktiviert den DevUserSelector auf der Login-Seite
   NEXT_PUBLIC_AUTH_BYPASS: "true",
+  NEXT_PUBLIC_SPACETIMEDB_ENABLED: "true",
+  NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: "spacetime",
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PRESERVED VARIABLES
-// Diese Variablen werden aus der bestehenden .env.local erhalten und nicht
-// überschrieben. Sie werden von der CLI bei der Projekt-Erstellung gesetzt.
-// ═══════════════════════════════════════════════════════════════════════════
 const PRESERVED_VAR_PREFIXES = [
   "NEXT_PUBLIC_APP_NAME",
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_TENANT_SLUG",
   "NEXT_PUBLIC_DEV_SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  "NEXT_PUBLIC_SPACETIMEDB_URI",
+  "NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+  "NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER",
 ]
 
+const log = console.log
+const success = (message) => log(chalk.green.bold(message))
+const fail = (message) => log(chalk.red.bold(message))
+
 /**
- * Liest bestehende .env.local und extrahiert Variablen die erhalten bleiben sollen
+ * Liest das 1Password-Manifest fuer `pull-env`.
+ *
+ * @returns Das validierte Manifest.
+ */
+function loadManifest() {
+  const manifestPath = path.resolve(process.cwd(), "scripts", "pull-env.manifest.json")
+  const manifestRaw = fs.readFileSync(manifestPath, "utf-8")
+  return manifestSchema.parse(JSON.parse(manifestRaw))
+}
+
+/**
+ * Liest erhaltene Variablen aus einer bestehenden `.env.local`.
+ *
+ * @param envPath - Pfad zur bestehenden `.env.local`.
+ * @returns Ein Objekt mit erhaltenen Variablen.
  */
 function getPreservedVariables(envPath) {
   const preserved = {}
@@ -82,143 +81,214 @@ function getPreservedVariables(envPath) {
 
   try {
     const content = fs.readFileSync(envPath, "utf-8")
-    const lines = content.split("\n")
-
-    for (const line of lines) {
-      // Ignoriere Kommentare und leere Zeilen
-      if (line.startsWith("#") || !line.includes("=")) continue
+    for (const line of content.split("\n")) {
+      if (line.startsWith("#") || !line.includes("=")) {
+        continue
+      }
 
       const [key, ...valueParts] = line.split("=")
       const trimmedKey = key.trim()
-      const value = valueParts.join("=").trim()
-
-      // Prüfe ob diese Variable erhalten bleiben soll
-      if (PRESERVED_VAR_PREFIXES.some((prefix) => trimmedKey.startsWith(prefix))) {
-        // Entferne Anführungszeichen falls vorhanden
-        preserved[trimmedKey] = value.replace(/^["']|["']$/g, "")
+      if (!PRESERVED_VAR_PREFIXES.some((prefix) => trimmedKey.startsWith(prefix))) {
+        continue
       }
+
+      preserved[trimmedKey] = valueParts
+        .join("=")
+        .trim()
+        .replace(/^["']|["']$/g, "")
     }
   } catch {
-    // Ignoriere Lesefehler
+    return preserved
   }
 
   return preserved
 }
 
+/**
+ * Spiegelt bekannte Bootstrap-Aliase vor der Manifest-Aufloesung.
+ * Damit bleibt der Pull-Env-Flow robust, auch wenn aeltere Projekte nur
+ * `NEXT_PUBLIC_SUPABASE_ANON_KEY` oder nur `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+ * gesetzt haben.
+ *
+ * @param preservedVars - Bereits vorhandene Werte aus `.env.local`.
+ */
+function applyBootstrapAliases(preservedVars) {
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    preservedVars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? preservedVars.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && anonKey) {
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = anonKey
+  }
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && publishableKey) {
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = publishableKey
+  }
+}
+
+/**
+ * Prueft, ob die 1Password CLI verfuegbar ist.
+ */
+function ensureOnePasswordCli() {
+  try {
+    execFileSync("op", ["--version"], { stdio: "pipe" })
+    execFileSync("op", ["account", "list", "--format", "json"], {
+      stdio: "pipe",
+      env: process.env,
+    })
+  } catch {
+    throw new Error(
+      "1Password CLI (`op`) ist nicht betriebsbereit. Bitte installiere sie, fuehre einen stabilen CLI-Login aus und pruefe `op vault list`."
+    )
+  }
+}
+
+/**
+ * Liest ein Secret ueber `op read`.
+ *
+ * @param reference - Die 1Password-Referenz im Format `op://vault/item/field`.
+ * @returns Der gelesene Secret-Wert.
+ */
+function readFromOnePassword(reference) {
+  const value = execFileSync("op", ["read", reference], {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: process.env,
+  }).trim()
+
+  return value
+}
+
+/**
+ * Loest einen einzelnen Manifest-Eintrag auf.
+ *
+ * @param entry - Der aufzulösende Manifest-Eintrag.
+ * @returns Ein `[key, value]` Paar oder `null`, wenn der Eintrag optional leer ist.
+ */
+function resolveManifestEntry(entry) {
+  if (entry.source === "bootstrap") {
+    const bootstrapKey = entry.bootstrapEnvName ?? entry.envName
+    const value = process.env[bootstrapKey]
+    if ((!value || value.trim().length === 0) && entry.required) {
+      throw new Error(`Bootstrap-Variable fehlt: ${bootstrapKey}`)
+    }
+    return value ? [entry.envName, value.trim()] : null
+  }
+
+  ensureOnePasswordCli()
+  const reference = process.env[entry.opReferenceEnvName ?? ""] ?? entry.opReference
+  if (!reference && entry.required) {
+    throw new Error(`1Password-Referenz fehlt fuer ${entry.envName}`)
+  }
+  if (!reference) {
+    return null
+  }
+
+  let value
+  try {
+    value = readFromOnePassword(reference)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const isMissingOptionalField =
+      message.includes("does not have a field") ||
+      message.includes("isn't an item") ||
+      message.includes("could not get item")
+
+    if (!entry.required && isMissingOptionalField) {
+      return null
+    }
+
+    throw error
+  }
+
+  if ((!value || value.length === 0) && entry.required) {
+    throw new Error(`Secret konnte nicht gelesen werden: ${entry.envName}`)
+  }
+
+  return value ? [entry.envName, value] : null
+}
+
+/**
+ * Formatiert ein Objekt als `.env`-Zeilen.
+ *
+ * @param values - Key/Value-Paare fuer die Ausgabe.
+ * @returns Formatierte `.env`-Zeilen.
+ */
+function formatEnvLines(values) {
+  return Object.entries(values).map(
+    ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
+  )
+}
+
 async function run() {
   try {
     const envPath = path.resolve(process.cwd(), ".env.local")
-
-    // 1. Bestehende projektspezifische Variablen erhalten
+    const manifest = loadManifest()
     const preservedVars = getPreservedVariables(envPath)
-    const hasPreservedVars = Object.keys(preservedVars).length > 0
+    applyBootstrapAliases(preservedVars)
+    const resolvedEntries = {}
 
-    if (hasPreservedVars) {
-      log(chalk.cyan("📋 Bestehende Projekt-Variablen werden erhalten:\n"))
-      for (const [key, value] of Object.entries(preservedVars)) {
-        const displayValue =
-          key.includes("KEY") || key.includes("SECRET") ? `${value.substring(0, 10)}...` : value
-        log(chalk.gray(`   ${key}=${displayValue}`))
+    for (const entry of manifest.entries) {
+      const result = resolveManifestEntry(entry)
+      if (!result) {
+        continue
       }
-      log("")
+      const [key, value] = result
+      resolvedEntries[key] = value
     }
 
-    // 2. Secrets aus Vault laden
-    log(chalk.blue("🔐 Rufe Secrets aus dem Supabase Vault ab...\n"))
-    const secrets = await fetchSecretsFromSupabase()
-
-    // 3. Vault-Secrets formatieren
-    const vaultEnvLines = Object.entries(secrets).map(
-      ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
-    )
-
-    // 4. Erhaltene Variablen formatieren
-    const preservedEnvLines = Object.entries(preservedVars).map(
-      ([key, value]) => `${key}=${String(value).includes(" ") ? `"${value}"` : value}`
-    )
-
-    // 5. Local Dev Defaults hinzufügen
-    const devDefaultsLines = Object.entries(LOCAL_DEV_DEFAULTS).map(
-      ([key, value]) => `${key}=${value}`
-    )
-
-    // 6. Alles zusammenfügen mit Kommentar-Sektionen
-    const sections = []
-
-    // Projekt-Konfiguration (erhaltene Variablen)
-    if (preservedEnvLines.length > 0) {
-      sections.push(
-        "# ════════════════════════════════════════════════════════════════════",
-        "# Projekt-Konfiguration (von CLI generiert, bleibt erhalten)",
-        "# ════════════════════════════════════════════════════════════════════",
-        ...preservedEnvLines,
-        ""
-      )
+    const mergedValues = {
+      ...resolvedEntries,
+      ...preservedVars,
+      ...LOCAL_DEV_DEFAULTS,
     }
 
-    // Vault-Secrets
-    sections.push(
+    const sections = [
       "# ════════════════════════════════════════════════════════════════════",
-      "# Secrets aus Supabase Vault (via pnpm pull-env)",
+      "# Bootstrap- und Projektvariablen",
       "# ════════════════════════════════════════════════════════════════════",
-      ...vaultEnvLines,
+      ...formatEnvLines({
+        ...Object.fromEntries(
+          Object.entries(mergedValues).filter(([key]) => PRESERVED_VAR_PREFIXES.includes(key))
+        ),
+      }),
       "",
       "# ════════════════════════════════════════════════════════════════════",
-      "# Local Development Defaults (automatisch hinzugefügt)",
+      "# Runtime-Secrets aus 1Password (via pnpm pull-env)",
       "# ════════════════════════════════════════════════════════════════════",
-      ...devDefaultsLines,
-      "" // Trailing newline
-    )
+      ...formatEnvLines(
+        Object.fromEntries(
+          Object.entries(mergedValues).filter(
+            ([key]) =>
+              !PRESERVED_VAR_PREFIXES.includes(key) &&
+              !Object.prototype.hasOwnProperty.call(LOCAL_DEV_DEFAULTS, key)
+          )
+        )
+      ),
+      "",
+      "# ════════════════════════════════════════════════════════════════════",
+      "# Lokale Entwicklungsdefaults",
+      "# ════════════════════════════════════════════════════════════════════",
+      ...formatEnvLines(LOCAL_DEV_DEFAULTS),
+      "",
+    ]
 
-    const envFileContent = sections.join("\n")
-
-    // 5. Secrets in .env.local schreiben
-    fs.writeFileSync(envPath, envFileContent)
-    log(chalk.yellow("📝 .env.local erfolgreich geschrieben.\n"))
-    log(chalk.magenta("🔧 Local Dev Defaults aktiviert: NEXT_PUBLIC_AUTH_BYPASS=true\n"))
-
-    // --- BEGINN DER FAIL-FAST VALIDIERUNG ---
-
-    // 3. Datei *erneut* laden, um Variablen zu isolieren
-    const parsedEnv = config({ path: envPath }).parsed
-
+    fs.writeFileSync(envPath, sections.join("\n"))
+    const parsedEnv = config({ path: envPath, override: true }).parsed
     if (!parsedEnv) {
-      throw new Error("Konnte .env.local nach dem Schreiben nicht parsen.")
+      throw new Error(".env.local konnte nach dem Schreiben nicht gelesen werden.")
     }
 
-    // 4. Manuelle Zod-Validierung durchführen
-    log(chalk.blue("✨ Führe Fail-Fast Zod-Validierung durch...\n"))
     combinedSchema.parse(parsedEnv)
 
-    success("✅ Validierung erfolgreich! Alle erforderlichen Secrets sind vorhanden und gültig.\n")
-    log(chalk.cyan("🚀 Dein lokales Setup ist bereit. Starte mit `pnpm dev`.\n"))
-  } catch (err) {
-    error("\n❌ --- SETUP FEHLGESCHLAGEN (FAIL-FAST) ---\n")
-
-    if (err.name === "ZodError") {
-      error("⚠️  Die Secrets im Supabase Vault sind ungültig oder unvollständig.\n")
-      log(chalk.red("Folgende Fehler wurden gefunden:\n"))
-      err.errors.forEach((e) => {
-        log(chalk.red(`  • Variable: ${e.path.join(".")}, Problem: ${e.message}`))
-      })
-      log(
-        chalk.yellow(
-          "\n💡 Aktion: Bitte korrigiere die Secrets im Vault und führe das Skript erneut aus.\n"
-        )
-      )
-    } else {
-      error("⚠️  Ein unerwarteter Fehler ist aufgetreten:\n")
-      log(chalk.red(err.message + "\n"))
-    }
-
-    // Aufräumen: Die fehlerhafte .env.local entfernen
-    const envPath = path.resolve(process.cwd(), ".env.local")
-    if (fs.existsSync(envPath)) {
-      fs.unlinkSync(envPath)
-      log(chalk.yellow("🧹 Fehlerhafte .env.local wurde entfernt.\n"))
-    }
-
-    process.exit(1) // Wichtig: Prozess mit Fehler beenden
+    success("✅ .env.local erfolgreich aus 1Password und Bootstrap-Variablen erzeugt.\n")
+    log(chalk.cyan("🚀 Dev-Setup bereit. Als Nächstes: `pnpm dev`.\n"))
+  } catch (error) {
+    fail("\n❌ pull-env fehlgeschlagen.\n")
+    log(chalk.red(`${error instanceof Error ? error.message : String(error)}\n`))
+    process.exit(1)
   }
 }
 

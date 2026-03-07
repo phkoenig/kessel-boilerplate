@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { loadDatabaseRegistry } from "@/lib/database/db-registry"
 import type { DatabaseConfig } from "@/lib/database/types"
+import { requireAdmin } from "@/lib/auth/guards"
 
 /**
  * GET /api/admin/databases
@@ -10,25 +11,9 @@ import type { DatabaseConfig } from "@/lib/database/types"
  */
 export async function GET() {
   try {
-    // Authentifizierung prüfen
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
     }
 
     // Lade Registry
@@ -51,26 +36,12 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    // Authentifizierung prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
 
     // Request Body lesen
     const body: Partial<DatabaseConfig> = await request.json()
@@ -130,26 +101,12 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    // Authentifizierung prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
 
     // Request Body lesen
     const body: Partial<DatabaseConfig> & { id: string } = await request.json()
@@ -189,26 +146,12 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    // Authentifizierung prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
 
     // Request Body lesen
     const { id } = await request.json()

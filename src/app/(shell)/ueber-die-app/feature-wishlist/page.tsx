@@ -148,19 +148,15 @@ export default function FeaturesPage(): React.ReactElement {
       let profilesMap: Record<string, string> = {}
 
       if (proposerIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, display_name, email")
-          .in("id", proposerIds)
+        const response = await fetch("/api/core/users/display-names", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: proposerIds }),
+        })
 
-        if (profilesData) {
-          profilesMap = profilesData.reduce(
-            (acc, profile) => {
-              acc[profile.id] = profile.display_name || profile.email || "Unbekannt"
-              return acc
-            },
-            {} as Record<string, string>
-          )
+        if (response.ok) {
+          const payload = (await response.json()) as { names?: Record<string, string> }
+          profilesMap = payload.names ?? {}
         }
       }
 

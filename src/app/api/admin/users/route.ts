@@ -1,9 +1,10 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
 
 interface UserProfileRow {
   id: string
+  clerkUserId: string
   email: string
   display_name: string | null
   role: string
@@ -20,36 +21,20 @@ export async function GET(): Promise<NextResponse> {
   try {
     const userOrErr = await requireAdmin()
     if (userOrErr instanceof Response) return userOrErr
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY fehlen" },
-        { status: 500 }
-      )
-    }
-
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-
-    const { data, error } = await adminClient
-      .from("profiles")
-      .select("id, email, display_name, role, created_at")
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const users = await getCoreStore().listUsers()
 
     return NextResponse.json({
       success: true,
-      users: (data ?? []) as UserProfileRow[],
+      users: users.map(
+        (user): UserProfileRow => ({
+          id: user.id,
+          clerkUserId: user.clerkUserId,
+          email: user.email,
+          display_name: user.displayName,
+          role: user.role,
+          created_at: user.createdAt,
+        })
+      ),
     })
   } catch (error) {
     return NextResponse.json(

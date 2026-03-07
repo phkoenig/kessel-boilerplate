@@ -19,11 +19,12 @@ import { generateAllTools } from "@/lib/ai/tool-registry"
 import type { ToolExecutionContext } from "@/lib/ai/tool-executor"
 import { generateUIActionTool, type UIAction } from "@/lib/ai/special-tools"
 import { loadWikiContent } from "@/lib/ai-chat/wiki-content"
-import { createServiceClient } from "@/utils/supabase/service"
+import { getCoreStore } from "@/lib/core"
 import { requireAuth } from "@/lib/auth/guards"
 import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
 import { generateNavigationToolSet } from "@/lib/ai-chat/navigation-tools"
+import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 
 // Streaming-Timeout erhöhen
 export const maxDuration = 60
@@ -171,6 +172,7 @@ interface ClientMessage {
  */
 interface ChatRequestBody {
   messages: ClientMessage[]
+  sessionId?: string
   screenshot?: string | null
   htmlDump?: string
   route?: string
@@ -256,6 +258,31 @@ function convertMessages(messages: ClientMessage[], screenshot?: string | null):
   return converted
 }
 
+function extractLatestUserText(messages: ModelMessage[]): string | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message.role !== "user") {
+      continue
+    }
+
+    if (typeof message.content === "string") {
+      const trimmed = message.content.trim()
+      return trimmed ? trimmed : null
+    }
+
+    if (Array.isArray(message.content)) {
+      const text = message.content
+        .filter((part): part is TextPart => part.type === "text")
+        .map((part) => part.text)
+        .join("\n")
+        .trim()
+      return text ? text : null
+    }
+  }
+
+  return null
+}
+
 /**
  * POST Handler für Chat-Requests mit Tool-Calling Support.
  */
@@ -265,8 +292,6 @@ export async function POST(req: Request) {
     const userOrErr = await requireAuth()
     if (userOrErr instanceof Response) return userOrErr
     const user = userOrErr
-
-    const supabase = createServiceClient()
 
     // 2. Prüfe Environment Variable
     if (!process.env.OPENROUTER_API_KEY) {
@@ -284,6 +309,7 @@ export async function POST(req: Request) {
     const body: ChatRequestBody = await req.json()
     const {
       messages,
+      sessionId,
       screenshot,
       htmlDump,
       route,
@@ -337,6 +363,27 @@ export async function POST(req: Request) {
     const finalMessages = shouldUseScreenshot
       ? convertMessages(messages, screenshot)
       : modelMessages
+    const effectiveSessionId =
+      typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : crypto.randomUUID()
+    const latestUserText = extractLatestUserText(finalMessages)
+    const connection = await getSpacetimeServerConnection()
+
+    await connection.reducers.createChatSession({
+      sessionKey: effectiveSessionId,
+      clerkUserId: user.clerkUserId,
+      tenantSlug: process.env.NEXT_PUBLIC_TENANT_SLUG ?? undefined,
+      title: latestUserText ? latestUserText.slice(0, 120) : undefined,
+    })
+
+    if (latestUserText) {
+      await connection.reducers.appendChatMessage({
+        sessionKey: effectiveSessionId,
+        authorType: "user",
+        content: latestUserText,
+        toolName: undefined,
+        toolState: undefined,
+      })
+    }
 
     // 8. Tools NUR laden wenn Router entscheidet dass sie gebraucht werden
     // Das spart DB-Calls bei einfachen Chat-Anfragen
@@ -346,7 +393,7 @@ export async function POST(req: Request) {
     if (routerDecision.needsTools) {
       const toolContext: ToolExecutionContext = {
         userId: user.profileId,
-        sessionId: crypto.randomUUID(),
+        sessionId: effectiveSessionId,
         dryRun: dryRun ?? false,
       }
       tools = await generateAllTools(toolContext)
@@ -422,12 +469,8 @@ export async function POST(req: Request) {
     const selectedModel = model ?? routerDecision.model
     const maxSteps = routerDecision.maxSteps
 
-    // 10. Chatbot-Einstellungen aus Profil laden
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("chatbot_tone, chatbot_detail_level, chatbot_emoji_usage")
-      .eq("clerk_user_id", user.clerkUserId)
-      .single()
+    // 10. Chatbot-Einstellungen aus dem Boilerplate-Core laden
+    const profile = await getCoreStore().getUserByClerkId(user.clerkUserId)
 
     // 11. Kontext und System-Prompt aufbauen
     const wikiContent = await loadWikiContent()
@@ -439,11 +482,9 @@ export async function POST(req: Request) {
       hasHtmlDump: !!htmlDump,
       availableTools: availableToolNames,
       modelName: selectedModel,
-      chatbotTone: (profile?.chatbot_tone as "formal" | "casual") || undefined,
-      chatbotDetailLevel:
-        (profile?.chatbot_detail_level as "brief" | "balanced" | "detailed") || undefined,
-      chatbotEmojiUsage:
-        (profile?.chatbot_emoji_usage as "none" | "moderate" | "many") || undefined,
+      chatbotTone: profile?.chatbotTone ?? undefined,
+      chatbotDetailLevel: profile?.chatbotDetailLevel ?? undefined,
+      chatbotEmojiUsage: profile?.chatbotEmojiUsage ?? undefined,
     })
 
     // 12. Stream-Text mit gewähltem Modell und Tools
@@ -453,6 +494,29 @@ export async function POST(req: Request) {
       messages: finalMessages,
       ...(tools && Object.keys(tools).length > 0 ? { tools, stopWhen: stepCountIs(maxSteps) } : {}),
       experimental_telemetry: { isEnabled: true },
+      onFinish: async ({ text, toolCalls, toolResults, finishReason }) => {
+        const normalizedText = text.trim()
+        const toolSummary =
+          toolCalls.length > 0 || toolResults.length > 0
+            ? JSON.stringify({
+                finishReason,
+                toolCalls: toolCalls.map((call) => call.toolName),
+                toolResults: toolResults.length,
+              })
+            : undefined
+
+        if (!normalizedText && !toolSummary) {
+          return
+        }
+
+        await connection.reducers.appendChatMessage({
+          sessionKey: effectiveSessionId,
+          authorType: "assistant",
+          content: normalizedText || "[Tool-Ausführung ohne Textantwort]",
+          toolName: toolCalls[0]?.toolName,
+          toolState: toolSummary,
+        })
+      },
     })
 
     // 13. Streaming-Response zurückgeben
@@ -465,6 +529,7 @@ export async function POST(req: Request) {
         "X-Model-Used": selectedModel,
         "X-Router-Reason": routerDecision.reason,
         "X-Tools-Enabled": String(routerDecision.needsTools),
+        "X-Chat-Session-Id": effectiveSessionId,
       },
       // Usage-Daten für Kostenanzeige mitsenden (kostenlos, da Teil des Streams)
       messageMetadata: ({ part }) => {

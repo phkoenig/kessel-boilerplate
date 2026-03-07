@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "BASE_supabase_KESSEL": {
+    "app_supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=ufqlocxqizmiaozkashi"
     },

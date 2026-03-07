@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/utils/supabase/server"
+import { getCoreStore } from "@/lib/core"
+import { ensureThemeRegistryBootstrapped } from "@/lib/themes/registry-bootstrap"
 
 /**
  * Theme-Metadaten Typ.
@@ -14,31 +15,18 @@ interface ThemeMeta {
 
 /**
  * API-Route zum Auflisten aller Themes.
- * Kombiniert lokale (builtin) Themes mit dynamischen Themes aus Supabase.
+ * Liefert Theme-Metadaten aus dem Boilerplate-Core.
  */
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    // Lade alle Themes aus der Datenbank
-    const { data: themes, error } = await supabase
-      .from("themes")
-      .select("id, name, description, dynamic_fonts, is_builtin")
-      .order("is_builtin", { ascending: false })
-      .order("name")
-
-    if (error) {
-      console.error("Fehler beim Laden der Themes:", error)
-      return NextResponse.json({ error: "Themes konnten nicht geladen werden" }, { status: 500 })
-    }
-
-    // Transformiere zu ThemeMeta-Format
-    const themeMetas: ThemeMeta[] = (themes ?? []).map((theme) => ({
-      id: theme.id,
+    await ensureThemeRegistryBootstrapped()
+    const themes = await getCoreStore().listThemeRegistry()
+    const themeMetas: ThemeMeta[] = themes.map((theme) => ({
+      id: theme.themeId,
       name: theme.name,
       description: theme.description || "",
-      dynamicFonts: theme.dynamic_fonts || [],
-      isBuiltin: theme.is_builtin,
+      dynamicFonts: theme.dynamicFonts,
+      isBuiltin: theme.isBuiltin,
     }))
 
     return NextResponse.json({

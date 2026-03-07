@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
-import { createClient } from "@/utils/supabase/client"
 import { allNavigationConfig } from "@/config/navigation"
 import { RoleManagement, type Role } from "./_components/RoleManagement"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
@@ -52,8 +51,6 @@ export default function RolesPage(): React.ReactElement {
   const [savingModuleId, setSavingModuleId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const scrollPosition = useRef(0)
-
-  const supabase = createClient()
 
   // Initialisiere Berechtigungen aus Navigation Config
   function initializePermissions(availableRoles: Role[]): Permission[] {
@@ -134,18 +131,34 @@ export default function RolesPage(): React.ReactElement {
   // Lade Rollen aus DB
   async function loadRoles() {
     try {
-      const { data, error: fetchError } = await supabase
-        .from("roles")
-        .select("*")
-        .order("is_system", { ascending: false })
-        .order("name")
+      const response = await fetch("/api/admin/roles", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
 
-      if (fetchError) {
-        console.error("Fehler beim Laden der Rollen:", fetchError)
+      if (!response.ok) {
         return []
       }
 
-      return (data || []) as Role[]
+      const payload = (await response.json()) as {
+        roles?: Array<{
+          id: string
+          name: string
+          displayName: string
+          description?: string | null
+          isSystem: boolean
+        }>
+      }
+
+      return (payload.roles ?? []).map(
+        (role): Role => ({
+          id: role.id,
+          name: role.name,
+          display_name: role.displayName,
+          description: role.description ?? undefined,
+          is_system: role.isSystem,
+        })
+      )
     } catch (err) {
       console.error("Fehler:", err)
       return []
@@ -177,14 +190,16 @@ export default function RolesPage(): React.ReactElement {
       // Setze Rollen für initializePermissions
       setRoles(loadedRoles)
 
-      // Lade Berechtigungen aus Junction-Tabelle
-      const { data: accessData } = await supabase.from("module_role_access").select(`
-          module_id,
-          has_access,
-          roles:role_id (
-            name
-          )
-        `)
+      const permissionsResponse = await fetch("/api/core/permissions", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+      const permissionsPayload = permissionsResponse.ok
+        ? ((await permissionsResponse.json()) as {
+            permissions?: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+          })
+        : { permissions: [] }
+      const accessData = permissionsPayload.permissions ?? []
 
       // Starte mit Fallback (alle Module aus Navigation)
       const fallbackPerms = initializePermissions(loadedRoles)
@@ -201,11 +216,9 @@ export default function RolesPage(): React.ReactElement {
       // Wenn DB Daten hat, überschreibe mit DB-Werten
       if (accessData && accessData.length > 0) {
         accessData.forEach((row) => {
-          const moduleId = row.module_id
-          // roles kann ein Array oder ein einzelnes Objekt sein (je nach JOIN)
-          const rolesData = Array.isArray(row.roles) ? row.roles[0] : row.roles
-          const roleName = (rolesData as { name: string })?.name
-          const hasAccess = row.has_access ?? true
+          const moduleId = row.moduleId
+          const roleName = row.roleName
+          const hasAccess = row.hasAccess ?? true
 
           if (!moduleId || !roleName) return
 
@@ -260,43 +273,28 @@ export default function RolesPage(): React.ReactElement {
   // Speichere Berechtigungen in DB (Junction-Tabelle)
   async function savePermissions(updatedPermissions: Permission[]) {
     try {
-      // Für jedes Modul und jede Rolle: Upsert in Junction-Tabelle
-      const upserts: Array<{ module_id: string; role_id: string; has_access: boolean }> = []
+      const upserts: Array<{ moduleId: string; roleName: string; hasAccess: boolean }> = []
 
       updatedPermissions.forEach((perm) => {
         perm.roleAccess.forEach((hasAccess, roleName) => {
-          const roleObj = roles.find((r) => r.name === roleName)
-          if (roleObj) {
-            upserts.push({
-              module_id: perm.moduleId,
-              role_id: roleObj.id,
-              has_access: hasAccess,
-            })
-          }
+          upserts.push({
+            moduleId: perm.moduleId,
+            roleName,
+            hasAccess,
+          })
         })
       })
 
-      // Batch-Upsert (ON CONFLICT UPDATE)
       if (upserts.length > 0) {
-        // Supabase unterstützt kein direktes UPSERT mit ON CONFLICT
-        // Wir müssen einzeln upserten oder eine Funktion verwenden
-        // Für jetzt: Delete + Insert (einfacher)
-        const { error: deleteError } = await supabase
-          .from("module_role_access")
-          .delete()
-          .in(
-            "module_id",
-            updatedPermissions.map((p) => p.moduleId)
-          )
+        const response = await fetch("/api/admin/roles/permissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ permissions: upserts }),
+        })
 
-        if (deleteError) {
-          throw deleteError
-        }
-
-        const { error: insertError } = await supabase.from("module_role_access").insert(upserts)
-
-        if (insertError) {
-          throw insertError
+        if (!response.ok) {
+          const payload = (await response.json()) as { error?: string }
+          throw new Error(payload.error || "Fehler beim Speichern der Berechtigungen")
         }
       }
 

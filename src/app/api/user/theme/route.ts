@@ -12,8 +12,9 @@
  * - color_scheme: Dark/Light Mode Präferenz (User-global über alle Apps)
  */
 
-import { createClient } from "@/utils/supabase/server"
+import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { getCoreStore } from "@/lib/core"
 
 /**
  * GET /api/user/theme
@@ -28,15 +29,8 @@ import { NextResponse } from "next/server"
  */
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    // Aktuellen User abrufen
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const { userId } = await auth()
+    if (!userId) {
       // Nicht eingeloggt - Default-Theme zurückgeben
       return NextResponse.json({
         theme: "default",
@@ -47,15 +41,8 @@ export async function GET() {
       })
     }
 
-    // User-Profil abrufen (inkl. color_scheme)
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("selected_theme, can_select_theme, color_scheme, role")
-      .eq("clerk_user_id", user.id)
-      .single()
-
-    if (profileError) {
-      console.error("[User Theme API] Profil-Fehler:", profileError)
+    const themeState = await getCoreStore().getUserThemeState(userId)
+    if (!themeState) {
       return NextResponse.json({
         theme: "default",
         colorScheme: "system",
@@ -66,36 +53,13 @@ export async function GET() {
       })
     }
 
-    const isAdmin = profile.role === "admin"
-    const canSelectTheme = profile.can_select_theme ?? true
-
-    // Wenn User keine Berechtigung hat, Admin-Theme laden
-    if (!canSelectTheme && !isAdmin) {
-      // Admin-Theme abrufen
-      const { data: adminProfile } = await supabase
-        .from("profiles")
-        .select("selected_theme")
-        .eq("role", "admin")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single()
-
-      return NextResponse.json({
-        theme: adminProfile?.selected_theme || "default",
-        colorScheme: profile.color_scheme || "system",
-        canSelectTheme: false,
-        isAdmin: false,
-        isAuthenticated: true,
-        usingAdminTheme: true,
-      })
-    }
-
     return NextResponse.json({
-      theme: profile.selected_theme || "default",
-      colorScheme: profile.color_scheme || "system",
-      canSelectTheme: canSelectTheme || isAdmin,
-      isAdmin,
+      theme: themeState.theme,
+      colorScheme: themeState.colorScheme,
+      canSelectTheme: themeState.canSelectTheme || themeState.isAdmin,
+      isAdmin: themeState.isAdmin,
       isAuthenticated: true,
+      usingAdminTheme: !themeState.canSelectTheme && !themeState.isAdmin,
     })
   } catch (error) {
     console.error("[User Theme API] Fehler:", error)
@@ -120,15 +84,8 @@ export async function GET() {
  */
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Aktuellen User abrufen
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
 
@@ -150,21 +107,14 @@ export async function PUT(request: Request) {
 
     // Wenn Theme gesetzt werden soll: Berechtigung prüfen
     if (theme !== undefined) {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("can_select_theme, role")
-        .eq("clerk_user_id", user.id)
-        .single()
-
-      if (profileError) {
-        console.error("[User Theme API] Profil-Fehler:", profileError)
+      const profile = await getCoreStore().getUserByClerkId(userId)
+      if (!profile) {
         return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 500 })
       }
 
       const isAdmin = profile.role === "admin"
-      const canSelectTheme = profile.can_select_theme ?? true
+      const canSelectTheme = profile.canSelectTheme ?? true
 
-      // Berechtigung prüfen (nur für Theme, nicht für Color Scheme)
       if (!canSelectTheme && !isAdmin) {
         return NextResponse.json({ error: "Keine Berechtigung zur Theme-Auswahl" }, { status: 403 })
       }
@@ -184,14 +134,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Keine Daten zum Aktualisieren" }, { status: 400 })
     }
 
-    // Speichern
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update(updateData)
-      .eq("clerk_user_id", user.id)
+    const success = await getCoreStore().updateUserThemeState(userId, {
+      theme: updateData.selected_theme,
+      colorScheme: updateData.color_scheme as "dark" | "light" | "system" | undefined,
+    })
 
-    if (updateError) {
-      console.error("[User Theme API] Update-Fehler:", updateError)
+    if (!success) {
       return NextResponse.json({ error: "Daten konnten nicht gespeichert werden" }, { status: 500 })
     }
 

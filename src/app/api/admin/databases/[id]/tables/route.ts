@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { discoverTables, syncDatasourcesForDatabase } from "@/lib/database/db-registry"
+import { requireAdmin } from "@/lib/auth/guards"
 
 /**
  * GET /api/admin/databases/[id]/tables
@@ -11,26 +12,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
 
-    // Authentifizierung prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
 
     // Lade bereits registrierte Tabellen aus ai_datasources
     const { data: existingTables, error: existingError } = await supabase
@@ -79,26 +66,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params
 
-    // Authentifizierung prüfen
+    const userOrError = await requireAdmin()
+    if (userOrError instanceof Response) {
+      return userOrError
+    }
+
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 })
-    }
-
-    // Admin-Rolle prüfen
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "superuser")) {
-      return NextResponse.json({ error: "Keine Admin-Berechtigung" }, { status: 403 })
-    }
 
     // Request Body lesen
     const body = await request.json()

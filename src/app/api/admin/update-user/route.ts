@@ -1,6 +1,22 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
+
+const splitDisplayName = (
+  value: string | null | undefined
+): { firstName?: string; lastName?: string } => {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return {}
+  }
+
+  const [firstName, ...rest] = normalized.split(/\s+/)
+  return {
+    firstName,
+    lastName: rest.length > 0 ? rest.join(" ") : undefined,
+  }
+}
 
 /**
  * POST /api/admin/update-user
@@ -12,60 +28,77 @@ export async function POST(request: Request) {
     const userOrErr = await requireAdmin()
     if (userOrErr instanceof Response) return userOrErr
 
-    // Request Body lesen
-    const { userId, email } = await request.json()
-
-    if (!userId || !email) {
-      return NextResponse.json({ error: "userId und email erforderlich" }, { status: 400 })
+    const { clerkUserId, email, displayName, role } = (await request.json()) as {
+      clerkUserId?: string
+      email?: string
+      displayName?: string | null
+      role?: string
     }
 
-    // E-Mail-Validierung
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "clerkUserId ist erforderlich" }, { status: 400 })
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (email !== undefined && !emailRegex.test(email)) {
       return NextResponse.json({ error: "Ungültige E-Mail-Adresse" }, { status: 400 })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
+    const coreStore = getCoreStore()
+    const existingProfile = await coreStore.getUserByClerkId(clerkUserId)
+    if (!existingProfile) {
+      return NextResponse.json({ error: "User nicht gefunden" }, { status: 404 })
+    }
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY fehlen" },
-        { status: 500 }
+    const nextEmail = email?.trim() || existingProfile.email
+    const nextDisplayName =
+      displayName !== undefined
+        ? displayName?.trim() || existingProfile.displayName || existingProfile.email
+        : (existingProfile.displayName ?? existingProfile.email)
+    const nextRole = role?.trim() || existingProfile.role
+
+    const clerk = await clerkClient()
+
+    if (email !== undefined && nextEmail !== existingProfile.email) {
+      const clerkUser = await clerk.users.getUser(clerkUserId)
+      const existingAddress = clerkUser.emailAddresses.find(
+        (entry) => entry.emailAddress.toLowerCase() === nextEmail.toLowerCase()
       )
+
+      if (existingAddress) {
+        await clerk.users.updateUser(clerkUserId, {
+          primaryEmailAddressID: existingAddress.id,
+          notifyPrimaryEmailAddressChanged: false,
+        })
+      } else {
+        await clerk.emailAddresses.createEmailAddress({
+          userId: clerkUserId,
+          emailAddress: nextEmail,
+          primary: true,
+          verified: true,
+        })
+      }
     }
 
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    if (displayName !== undefined) {
+      const nameParts = splitDisplayName(nextDisplayName)
+      await clerk.users.updateUser(clerkUserId, {
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName,
+      })
+    }
+
+    const updatedProfile = await coreStore.upsertUserFromClerk({
+      clerkUserId,
+      email: nextEmail,
+      displayName: nextDisplayName ?? existingProfile.displayName ?? existingProfile.email,
+      avatarUrl: existingProfile.avatarUrl,
+      role: nextRole,
+      tenantId: existingProfile.tenantId,
     })
 
-    // E-Mail aktualisieren
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
-      email,
-    })
-
-    if (updateError) {
-      console.error("Fehler beim Aktualisieren der E-Mail:", updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
-    }
-
-    // Aktualisiere auch die profiles Tabelle
-    const { error: profileError } = await adminClient
-      .from("profiles")
-      .update({ email })
-      .eq("id", userId)
-
-    if (profileError) {
-      console.error("Fehler beim Aktualisieren des Profils:", profileError)
-      // Nicht kritisch, da Auth bereits aktualisiert wurde
-    }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, user: updatedProfile })
   } catch (error) {
-    console.error("API Error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unbekannter Fehler" },
       { status: 500 }

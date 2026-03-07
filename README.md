@@ -1,7 +1,7 @@
 # Kessel Boilerplate
 
-> **Full-Stack B2B Boilerplate** mit Next.js 16, Supabase, ShadCN UI und Tailwind v4  
-> Professionelles Template für moderne B2B-Anwendungen mit integriertem Design System und AI-Assistenz.
+> **Boilerplate 3.0** fuer moderne Next.js-Apps mit klaren Systemgrenzen: Clerk fuer Identity, SpacetimeDB als Boilerplate-Core, Supabase fuer App-DB und Storage sowie 1Password fuer Secrets.  
+> Ziel ist eine robuste, agentenfreundliche Architektur fuer Ableitungen mit sauberem Multi-Tenant-Branding, Realtime-UI und AI-Assistenz.
 
 ---
 
@@ -12,10 +12,12 @@ Ein **produktionsreifes Next.js 16 Template** mit:
 - **B2B App Shell**: 4-Spalten-Layout (Navbar, Explorer, Main, Assist) mit `react-resizable-panels`
 - **ShadCN UI**: Vollständig integrierte Komponenten-Bibliothek
 - **Design System Governance**: Semantische Tokens mit ESLint-Enforcement
-- **Supabase-Theme-System**: Dynamische Themes aus Supabase Storage
+- **Clerk Identity**: Login, Sessions und Audience-Kontext über Clerk
+- **Boilerplate Core**: zentrale Core-Abstraktion für Rollen, Navigation, Wiki, Theme-State und Chat-nahe Realtime-Flows
+- **Supabase-Theme-System**: Dynamische Themes und Assets aus tenant-isoliertem Supabase Storage
 - **AI Chat Assist**: Multimodaler KI-Assistent mit Screenshot-Analyse
 - **RBAC-ready**: Role-Based Access Control mit `RoleGuard`
-- **Developer Experience**: Cursor Rules, Pre-Commit Hooks, TypeScript Strict
+- **Developer Experience**: Cursor Rules, 1Password-`pull-env`, TypeScript Strict
 
 ---
 
@@ -26,11 +28,14 @@ Ein **produktionsreifes Next.js 16 Template** mit:
 | **Framework**  | Next.js 16.0.7 (Turbopack, App Router)            |
 | **UI**         | React 19, ShadCN UI, Radix UI Primitives          |
 | **Styling**    | Tailwind CSS v4 (OKLCH-basiert), CSS-First Config |
-| **Backend**    | Supabase (Auth, Database, Storage, Vault)         |
+| **Identity**   | Clerk                                             |
+| **Core**       | SpacetimeDB Core ueber `src/lib/core`             |
+| **Backend**    | Supabase (App-DB, Storage)                        |
 | **AI**         | Vercel AI SDK, Gemini 2.5 Flash, assistant-ui     |
 | **State**      | React Context, LocalStorage Persistence           |
 | **Linting**    | ESLint 9 (Custom Rules), Prettier                 |
 | **Testing**    | Vitest, Playwright                                |
+| **Secrets**    | 1Password CLI (`op`) + `pnpm pull-env`            |
 | **Deployment** | Vercel-optimiert                                  |
 
 ---
@@ -41,20 +46,20 @@ Ein **produktionsreifes Next.js 16 Template** mit:
 
 - Node.js 18+ (empfohlen: 20+)
 - pnpm 8+
-- Supabase-Projekt (KESSEL - enthält App-Daten + Vault)
+- 1Password CLI (`op`) mit Zugriff auf die Runtime-Secrets
+- Supabase-Projekt für App-DB + Storage
 - API-Keys: Google Gemini, OpenAI (optional)
 
 ### 2. Installation mit kessel-cli (empfohlen)
 
 ```bash
 # Mit kessel-cli (automatisches Setup)
-kessel-cli mein-projekt
+kessel mein-projekt
 
 # Das Tool führt automatisch durch:
 # - GitHub Repository erstellen
-# - Schema im Shared Supabase-Projekt erstellen (Multi-Tenant)
-# - Datenbank-Migrationen im Schema ausführen
-# - Secrets aus Vault laden
+# - Clerk, Spacetime-Core und App-Supabase vorbereiten
+# - Secrets aus 1Password laden
 # - Dependencies installieren
 ```
 
@@ -69,56 +74,73 @@ cd kessel-boilerplate
 pnpm install
 
 # Environment-Variablen einrichten
-# 1. .env erstellen (KESSEL-Credentials)
-# 2. pnpm pull-env ausführen (lädt Secrets aus Supabase Vault → .env.local)
+# 1. Bootstrap-Werte setzen (.env oder Shell-Env)
+# 2. pnpm pull-env ausführen (lädt Secrets aus 1Password → .env.local)
 pnpm pull-env
 
 # Dev-Server starten
 pnpm dev
 ```
 
-**Wichtig - API Keys:**
+**Wichtig - Secrets:**
 
-> ⚠️ Nach `pnpm install` werden automatisch die Secrets aus dem Supabase Vault geladen.
+> ⚠️ Nach `pnpm install` werden automatisch die Secrets aus 1Password geladen.
 > Falls dies fehlschlägt, führe **manuell `pnpm pull-env`** aus!
 >
 > Ohne diesen Schritt fehlen API-Keys wie `OPENROUTER_API_KEY` und `FAL_KEY`.
+>
+> Auf **jedem neuen Rechner** muss der 1Password-CLI-Flow einmal sauber eingerichtet werden. Der stabile Weg ist der manuelle CLI-Login mit `op account add` und `op signin --raw`, nicht eine endlose Desktop-Popup-Schleife.
+
+Kurzform fuer neue Rechner:
+
+```bash
+export PATH="$PATH:/c/Users/<user>/AppData/Local/Microsoft/WinGet/Links"
+export OP_BIOMETRIC_UNLOCK_ENABLED=false
+op account add --address my.1password.eu --email <deine-mail> --shorthand kessel
+export OP_ACCOUNT=kessel
+export OP_SESSION_kessel="$(op signin --account kessel --raw)"
+op vault list
+pnpm pull-env
+```
 
 - **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo ein User-Selector statt der normalen Auth-Form angezeigt wird
 
 → [kessel-cli Installation & Workflow](docs/guides/cli-workflow.md)
 
-### 3. Supabase Setup (Multi-Tenant)
+### 3. Architektur-Setup
 
-**WICHTIG:** Die Kessel-Boilerplate verwendet eine **Multi-Tenant-Architektur**:
+Boilerplate 3.0 trennt die Verantwortlichkeiten bewusst:
 
-- Alle Projekte teilen sich **ein** Supabase-Projekt (Shared)
-- Jedes Projekt hat ein **eigenes Schema** für Daten-Isolation
-- Auth ist **shared** - Standard-User existieren für alle Projekte
+- `Clerk`: Identity und Sessions
+- `src/lib/core`: Boilerplate-Core-Vertrag fuer Rollen, Settings, Wiki, Theme-State und Realtime-nahe Pfade
+- `Supabase`: App-Daten und Storage
+- `1Password`: Secrets fuer `pnpm pull-env`
 
-Bei der Installation mit `kessel-cli` wird automatisch:
+Die verbindliche Architekturentscheidung steht in `docs/02_architecture/ADR-002-boilerplate-3-0-system-boundaries.md`.
 
-- Ein Tenant in `app.tenants` erstellt (RLS-basierte Isolation)
-- Standard-User dem Tenant zugeordnet (`app.user_tenants`)
-- Themes eingerichtet
+### 4. Supabase Setup (nur App-DB + Storage)
+
+Supabase ist in Boilerplate 3.0 **nicht** mehr der Ort fuer Boilerplate-Core-Daten. Supabase bleibt zustaendig fuer:
+
+- app-spezifische Fachdaten
+- Buckets und Assets
+- Uploads, Signed URLs, Previews und Thumbnails
 
 **Manuelles Setup** (falls CLI nicht verwendet):
 
 ```bash
-# 1. Tenant erstellen (RLS-basierte Multi-Tenant-Architektur)
-node scripts/apply-migrations-to-schema.mjs dein_projektname
-
-# 2. .env.local konfigurieren
-NEXT_PUBLIC_SUPABASE_URL=https://ufqlocxqizmiaozkashi.supabase.co
+# Bootstrap-Werte fuer die App-Supabase setzen
+NEXT_PUBLIC_SUPABASE_URL=https://<app-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_TENANT_SLUG=dein_projektname
+NEXT_PUBLIC_TENANT_SLUG=dein-projekt
+
+# Danach Secrets aus 1Password ziehen
+pnpm pull-env
 ```
 
-> **Hinweis:** Seit v1.1.0 verwendet Kessel RLS-basierte Multi-Tenancy, nicht mehr separate Schemas.
+Detaillierte Anleitung: [Secrets Management](docs/guides/secrets-management.md)
 
-Detaillierte Anleitung: [Multi-Tenant Architektur](docs/guides/multi-tenant-architektur.md) | [Supabase Themes Setup](docs/guides/supabase-themes-setup.md)
-
-### 4. Standard-User (automatisch erstellt)
+### 5. Standard-User (nur Entwicklung)
 
 Bei der Einrichtung mit `kessel-cli` werden automatisch zwei Standard-User angelegt:
 
@@ -133,14 +155,14 @@ Diese Credentials sind nur für die **Entwicklung** gedacht!
 
 Siehe auch: [App Wiki - Authentifizierung](src/content/wiki.md#kapitel-7-authentifizierung-und-test-user)
 
-### 5. Cursor MCP Setup
+### 6. Cursor MCP Setup
 
 Dieses Projekt nutzt **genau einen Supabase-MCP** in Cursor:
 
 ```json
 {
   "mcpServers": {
-    "supabase_KESSEL": {
+    "app_supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=ufqlocxqizmiaozkashi"
     }
@@ -150,9 +172,9 @@ Dieses Projekt nutzt **genau einen Supabase-MCP** in Cursor:
 
 **Wichtig:**
 
-- Der MCP verbindet sich automatisch mit der KESSEL-Datenbank
+- Der MCP zeigt immer auf die App-Supabase der aktuellen Ableitung
 - **Keine weiteren Supabase-MCPs hinzufügen** (Cursor-Bug bei Multi-MCP-Routing)
-- Andere Datenbanken werden über Backend-API oder SDK angesprochen
+- SpacetimeDB und andere Systeme werden nicht ueber zusaetzliche Supabase-MCPs angesprochen
 
 → [MCP Governance Rules](.cursor/rules/mcp-governance.mdc)
 

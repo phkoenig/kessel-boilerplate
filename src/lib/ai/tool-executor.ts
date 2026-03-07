@@ -7,8 +7,8 @@
  * - Dry-Run Support
  */
 
-import { createClient } from "@/utils/supabase/server"
 import { createDatabaseClient } from "@/lib/database/db-registry"
+import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 import { validateToolCall, type DataSource } from "./tool-registry"
 
 // Types
@@ -271,19 +271,27 @@ async function logToolCall(
   durationMs: number
 ): Promise<void> {
   try {
-    const supabase = await createClient()
-    await supabase.from("ai_tool_calls").insert({
-      user_id: ctx.userId,
-      session_id: ctx.sessionId,
-      tool_name: toolName,
-      tool_args: args,
-      success: result.success,
-      result: result.success
-        ? { data: result.data, rowCount: result.rowCount, dryRunQuery: result.dryRunQuery }
-        : null,
-      error_message: result.error,
-      is_dry_run: ctx.dryRun ?? false,
-      duration_ms: durationMs,
+    if (!ctx.sessionId) {
+      return
+    }
+
+    const connection = await getSpacetimeServerConnection()
+    await connection.reducers.appendChatMessage({
+      sessionKey: ctx.sessionId,
+      authorType: "tool",
+      content: result.success
+        ? `Tool ${toolName} erfolgreich ausgeführt`
+        : `Tool ${toolName} fehlgeschlagen: ${result.error ?? "Unbekannter Fehler"}`,
+      toolName,
+      toolState: JSON.stringify({
+        args,
+        success: result.success,
+        rowCount: result.rowCount ?? null,
+        dryRunQuery: result.dryRunQuery ?? null,
+        error: result.error ?? null,
+        durationMs,
+        isDryRun: ctx.dryRun ?? false,
+      }),
     })
   } catch (error) {
     console.error("[ToolExecutor] Failed to log tool call:", error)

@@ -1,12 +1,14 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { unstable_noStore as noStore } from "next/cache"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
 import { ClientProviders } from "@/components/providers/ClientProviders"
+import { getCoreStore } from "@/lib/core"
+import { getTenantStoragePath } from "@/lib/utils/tenant"
+import { createServiceClient } from "@/utils/supabase/service"
 
 /**
  * Font-Definitionen für das Default-Theme.
@@ -30,38 +32,12 @@ const inter = Inter({
  */
 const fontVariables = inter.variable
 
-interface AppMetadataRow {
-  app_name: string | null
-  app_description: string | null
-  icon_url: string | null
-}
-
 function getTenantSlug(): string {
   return process.env.NEXT_PUBLIC_TENANT_SLUG || "default"
 }
 
-async function loadAppMetadata(): Promise<AppMetadataRow | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
-  if (!supabaseUrl || !anonKey) return null
-
-  const supabase = createSupabaseClient(supabaseUrl, anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  })
-
-  const { data, error } = await supabase
-    .from("app_settings")
-    .select("app_name, app_description, icon_url")
-    .eq("tenant_slug", getTenantSlug())
-    .maybeSingle()
-
-  if (error) return null
-  return (data as AppMetadataRow | null) ?? null
+async function loadAppMetadata() {
+  return getCoreStore().getAppSettings(getTenantSlug())
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -69,10 +45,10 @@ export async function generateMetadata(): Promise<Metadata> {
   noStore()
 
   const data = await loadAppMetadata()
-  const appName = data?.app_name?.trim() || process.env.NEXT_PUBLIC_APP_NAME || "Kessel App"
+  const appName = data?.appName?.trim() || process.env.NEXT_PUBLIC_APP_NAME || "Kessel App"
   const appDescription =
-    data?.app_description?.trim() || "ShadCN UI mit TweakCN Theme-Switching und Tailwind CSS v4"
-  const iconUrl = data?.icon_url?.trim()
+    data?.appDescription?.trim() || "ShadCN UI mit TweakCN Theme-Switching und Tailwind CSS v4"
+  const iconUrl = data?.iconUrl?.trim()
 
   return {
     title: appName,
@@ -97,29 +73,19 @@ export async function generateMetadata(): Promise<Metadata> {
  * Falls die Datei nicht existiert, werden die Fallback-Werte aus globals.css verwendet.
  */
 async function getDefaultThemeCSS(): Promise<string> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
-  if (!supabaseUrl) {
-    return ""
-  }
 
   try {
-    const cssUrl = `${supabaseUrl}/storage/v1/object/public/themes/${defaultThemeId}.css`
-    const response = await fetch(cssUrl, {
-      next: { revalidate: 3600 }, // Cache für 1 Stunde
-    })
+    const supabase = createServiceClient()
+    const { data, error } = await supabase.storage
+      .from("themes")
+      .download(getTenantStoragePath(`${defaultThemeId}.css`))
 
-    if (!response.ok) {
-      // 404 ist erwartet beim ersten Setup - Fallback-Werte werden verwendet
-      if (response.status !== 404) {
-        console.warn(
-          `[Theme] Default-Theme CSS nicht geladen (${response.status}). Fallback-Werte werden verwendet.`
-        )
-      }
+    if (error || !data) {
       return ""
     }
 
-    return await response.text()
+    return await data.text()
   } catch (error) {
     // Netzwerk-Fehler sind nicht kritisch - Fallback-Werte werden verwendet
     if (process.env.NODE_ENV === "development") {
@@ -140,7 +106,7 @@ export default async function RootLayout({
   const defaultThemeCSS = await getDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
   const appMetadata = await loadAppMetadata()
-  const appIconUrl = appMetadata?.icon_url?.trim() || null
+  const appIconUrl = appMetadata?.iconUrl?.trim() || null
 
   return (
     <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>
@@ -186,12 +152,12 @@ export default async function RootLayout({
             signUpForceRedirectUrl="/"
             afterSignOutUrl="/login"
           >
-            <ThemeProvider defaultTheme="default">
+            <ThemeProvider defaultTheme={defaultThemeId}>
               <ClientProviders>{children}</ClientProviders>
             </ThemeProvider>
           </ClerkProvider>
         ) : (
-          <ThemeProvider defaultTheme="default">
+          <ThemeProvider defaultTheme={defaultThemeId}>
             <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
               <h1 className="text-2xl font-bold">Clerk nicht konfiguriert</h1>
               <p className="text-muted-foreground max-w-md">

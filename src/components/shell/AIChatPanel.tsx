@@ -61,6 +61,22 @@ interface AIChatPanelProps {
  * Wird für Auto-Reload nach Write-Operations verwendet
  */
 const WRITE_TOOL_PREFIXES = ["insert_", "update_", "delete_", "create_user", "delete_user"]
+const CHAT_SESSION_STORAGE_KEY = "ai-chat-session-id"
+
+const getChatSessionId = (): string => {
+  if (typeof window === "undefined") {
+    return crypto.randomUUID()
+  }
+
+  const existing = window.sessionStorage.getItem(CHAT_SESSION_STORAGE_KEY)
+  if (existing) {
+    return existing
+  }
+
+  const nextId = crypto.randomUUID()
+  window.sessionStorage.setItem(CHAT_SESSION_STORAGE_KEY, nextId)
+  return nextId
+}
 
 // Transport-Instanz außerhalb der Komponente erstellen
 // (wird nur einmal erstellt, keine Refs nötig)
@@ -145,6 +161,7 @@ const chatTransport = new AssistantChatTransport({
 
     const requestBody = {
       messages,
+      sessionId: getChatSessionId(),
       route,
       htmlDump,
       interactions,

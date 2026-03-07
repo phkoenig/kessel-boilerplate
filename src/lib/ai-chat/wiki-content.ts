@@ -1,22 +1,13 @@
 /**
  * Wiki Content Loader für AI Chat
  *
- * Lädt den Wiki-Content dynamisch aus der Markdown-Datei.
- * Single Source of Truth: src/content/wiki.md
+ * Laedt den Wiki-Content ueber die neue Boilerplate-Core-Abstraktion.
+ * Im Spacetime-Hybridmodus ist das bereits der zentrale Einstiegspunkt;
+ * solange noch Legacy-Datenquellen genutzt werden, delegiert der Store auf
+ * die bestehenden Markdown-Dateien.
  */
 
-import { readFile } from "fs/promises"
-import { join } from "path"
-
-async function loadMarkdownFile(relativePath: string): Promise<string> {
-  try {
-    const filePath = join(process.cwd(), relativePath)
-    return await readFile(filePath, "utf-8")
-  } catch (error) {
-    console.error(`Failed to load markdown file (${relativePath}):`, error)
-    return ""
-  }
-}
+import { getCoreStore } from "@/lib/core"
 
 /**
  * Lädt den Wiki-Content als String (Server-seitig)
@@ -27,7 +18,8 @@ async function loadMarkdownFile(relativePath: string): Promise<string> {
  * @returns Wiki-Content als Markdown-String
  */
 export async function loadWikiContent(): Promise<string> {
-  return loadMarkdownFile("src/content/wiki.md")
+  const document = await getCoreStore().getWikiDocument("wiki")
+  return document?.content ?? ""
 }
 
 /**
@@ -39,7 +31,8 @@ export async function loadWikiContent(): Promise<string> {
  * @returns Public-Wiki-Content als Markdown-String
  */
 export async function loadPublicWikiContent(): Promise<string> {
-  return loadMarkdownFile("src/content/public-wiki.md")
+  const document = await getCoreStore().getWikiDocument("public-wiki")
+  return document?.content ?? ""
 }
 
 /**

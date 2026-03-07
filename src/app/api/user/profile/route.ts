@@ -1,7 +1,7 @@
 /**
  * API Route: User Profile
  *
- * Laedt das User-Profil aus Supabase (Service Role).
+ * Laedt das User-Profil aus dem Boilerplate-Core.
  * Verwendet Clerk Auth - Profil wird per clerk_user_id geladen.
  *
  * GET: Gibt das Profil zurueck (401 wenn nicht eingeloggt)
@@ -9,57 +9,46 @@
 
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
-import { createServiceClient } from "@/utils/supabase/service"
 import type { User } from "@/components/auth/auth-context"
-import { randomUUID } from "crypto"
 import { getAllowedRoleForEmail, isAllowedEmail } from "@/lib/auth/allowed-users"
+import { getCoreStore } from "@/lib/core"
 
-const PROFILE_SELECT = `
-  id,
-  clerk_user_id,
-  email,
-  display_name,
-  avatar_url,
-  avatar_seed,
-  created_at,
-  role,
-  role_id,
-  selected_theme,
-  can_select_theme,
-  color_scheme,
-  chatbot_avatar_seed,
-  chatbot_tone,
-  chatbot_detail_level,
-  chatbot_emoji_usage,
-  roles:role_id (
-    name,
-    display_name
-  )
-`
-
-function profileRowToUser(row: Record<string, unknown>, clerkUserId: string): User {
-  const rolesData = Array.isArray(row.roles) ? row.roles[0] : row.roles
-  const roleName = (rolesData as { name?: string })?.name ?? (row.role as string) ?? "user"
-  const profileId = row.id as string | undefined
-
+function profileRowToUser(
+  row: {
+    id: string
+    email: string
+    displayName: string | null
+    avatarUrl: string | null
+    role: string
+    roleId: string | null
+    selectedTheme: string | null
+    canSelectTheme: boolean
+    colorScheme: "dark" | "light" | "system"
+    avatarSeed?: string | null
+    chatbotAvatarSeed?: string | null
+    chatbotTone?: "formal" | "casual" | null
+    chatbotDetailLevel?: "brief" | "balanced" | "detailed" | null
+    chatbotEmojiUsage?: "none" | "moderate" | "many" | null
+  },
+  clerkUserId: string
+): User {
   return {
-    id: profileId || clerkUserId,
+    id: row.id || clerkUserId,
     clerkUserId,
-    email: (row.email as string) || "",
-    name: (row.display_name as string) || String(row.email).split("@")[0] || "User",
-    avatar: row.avatar_url as string | undefined,
-    avatarSeed: row.avatar_seed as string | undefined,
-    role: roleName,
-    roleId: row.role_id as string | undefined,
-    createdAt: row.created_at as string | undefined,
-    themePreference: row.selected_theme as string | undefined,
-    selectedTheme: row.selected_theme as string | undefined,
-    canSelectTheme: (row.can_select_theme as boolean) ?? true,
-    colorScheme: (row.color_scheme as "dark" | "light" | "system") || "system",
-    chatbotAvatarSeed: row.chatbot_avatar_seed as string | undefined,
-    chatbotTone: row.chatbot_tone as "formal" | "casual" | undefined,
-    chatbotDetailLevel: row.chatbot_detail_level as "brief" | "balanced" | "detailed" | undefined,
-    chatbotEmojiUsage: row.chatbot_emoji_usage as "none" | "moderate" | "many" | undefined,
+    email: row.email || "",
+    name: row.displayName || row.email.split("@")[0] || "User",
+    avatar: row.avatarUrl ?? undefined,
+    role: row.role || "user",
+    roleId: row.roleId ?? undefined,
+    themePreference: row.selectedTheme ?? undefined,
+    selectedTheme: row.selectedTheme ?? undefined,
+    canSelectTheme: row.canSelectTheme ?? true,
+    colorScheme: row.colorScheme || "system",
+    avatarSeed: row.avatarSeed ?? undefined,
+    chatbotAvatarSeed: row.chatbotAvatarSeed ?? undefined,
+    chatbotTone: row.chatbotTone ?? undefined,
+    chatbotDetailLevel: row.chatbotDetailLevel ?? undefined,
+    chatbotEmojiUsage: row.chatbotEmojiUsage ?? undefined,
   }
 }
 
@@ -83,11 +72,7 @@ const PUT_BODY_KEYS = [
   "chatbot_emoji_usage",
 ] as const
 
-async function autoProvisionProfile(
-  clerkUserId: string,
-  claimsEmail: string | null,
-  supabase: ReturnType<typeof createServiceClient>
-) {
+async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | null) {
   let email = claimsEmail ?? ""
   let displayName = email.split("@")[0] || "User"
   let avatarUrl: string | null = null
@@ -112,33 +97,13 @@ async function autoProvisionProfile(
   const mappedRole = getAllowedRoleForEmail(email)
   if (!mappedRole) return null
 
-  const { data: roleRow } = await supabase
-    .from("roles")
-    .select("id")
-    .eq("name", mappedRole)
-    .single()
-
-  const { data: newProfile, error } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        id: randomUUID(),
-        clerk_user_id: clerkUserId,
-        email: email || "unknown@clerk.local",
-        display_name: displayName,
-        avatar_url: avatarUrl,
-        role: mappedRole,
-        role_id: roleRow?.id ?? null,
-        can_select_theme: true,
-        color_scheme: "system",
-      },
-      { onConflict: "clerk_user_id" }
-    )
-    .select(PROFILE_SELECT)
-    .single()
-
-  if (error) return null
-  return newProfile
+  return getCoreStore().upsertUserFromClerk({
+    clerkUserId,
+    email: email || "unknown@clerk.local",
+    displayName,
+    avatarUrl,
+    role: mappedRole,
+  })
 }
 
 export async function GET() {
@@ -148,39 +113,27 @@ export async function GET() {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
 
-    const supabase = createServiceClient()
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select(PROFILE_SELECT)
-      .eq("clerk_user_id", userId)
-      .single()
-
-    if (error && error.code !== "PGRST116") {
-      return NextResponse.json(
-        { error: "Profil konnte nicht geladen werden", details: error.message },
-        { status: 500 }
-      )
-    }
+    const coreStore = getCoreStore()
+    const profile = await coreStore.getUserByClerkId(userId)
 
     if (!profile) {
       const claimsEmail = getEmailFromSessionClaims(sessionClaims)
-      const provisioned = await autoProvisionProfile(userId, claimsEmail, supabase)
+      const provisioned = await autoProvisionProfile(userId, claimsEmail)
       if (provisioned) {
         return NextResponse.json({
-          user: profileRowToUser(provisioned as Record<string, unknown>, userId),
+          user: profileRowToUser(provisioned, userId),
           isNewUser: true,
         })
       }
       return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
     }
 
-    const profileObj = profile as Record<string, unknown>
-    if (!isAllowedEmail((profileObj.email as string) ?? null)) {
+    if (!isAllowedEmail(profile.email ?? null)) {
       return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
     }
 
     return NextResponse.json({
-      user: profileRowToUser(profileObj, userId),
+      user: profileRowToUser(profile, userId),
       isNewUser: false,
     })
   } catch (err) {
@@ -208,51 +161,100 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Keine Felder zum Aktualisieren" }, { status: 400 })
     }
 
-    const supabase = createServiceClient()
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id, email, role")
-      .eq("clerk_user_id", userId)
-      .single()
+    const coreStore = getCoreStore()
+    const existingProfile = await coreStore.getUserByClerkId(userId)
 
     const claimsEmail = getEmailFromSessionClaims(sessionClaims)
-    const effectiveEmail =
-      claimsEmail ?? (existingProfile?.email as string | null | undefined) ?? null
+    const effectiveEmail = claimsEmail ?? existingProfile?.email ?? null
 
     if (!isAllowedEmail(effectiveEmail)) {
       return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
     }
 
     if (!existingProfile) {
-      await autoProvisionProfile(userId, effectiveEmail, supabase)
+      await autoProvisionProfile(userId, effectiveEmail)
     }
 
     const mappedRole = getAllowedRoleForEmail(effectiveEmail)
-    if (mappedRole && existingProfile?.role !== mappedRole) {
-      const { data: mappedRoleRow } = await supabase
-        .from("roles")
-        .select("id")
-        .eq("name", mappedRole)
-        .single()
-      updateData.role = mappedRole
-      updateData.role_id = mappedRoleRow?.id ?? null
+    const shouldReprovisionRole = mappedRole && existingProfile?.role !== mappedRole
+    if (shouldReprovisionRole) {
+      await coreStore.upsertUserFromClerk({
+        clerkUserId: userId,
+        email: effectiveEmail ?? "unknown@clerk.local",
+        displayName: existingProfile?.displayName ?? effectiveEmail?.split("@")[0] ?? "User",
+        avatarUrl: existingProfile?.avatarUrl ?? null,
+        role: mappedRole,
+        tenantId: existingProfile?.tenantId ?? null,
+      })
     }
 
-    const { data: updatedRows, error } = await supabase
-      .from("profiles")
-      .update(updateData)
-      .eq("clerk_user_id", userId)
-      .select("id")
+    const themeChanged =
+      typeof updateData.selected_theme === "string" ||
+      updateData.color_scheme === "dark" ||
+      updateData.color_scheme === "light" ||
+      updateData.color_scheme === "system"
 
-    if (error) {
-      return NextResponse.json(
-        { error: "Profil konnte nicht aktualisiert werden", details: error.message },
-        { status: 500 }
-      )
+    if (themeChanged) {
+      const updateResult = await coreStore.updateUserThemeState(userId, {
+        theme:
+          typeof updateData.selected_theme === "string" ? updateData.selected_theme : undefined,
+        colorScheme:
+          updateData.color_scheme === "dark" ||
+          updateData.color_scheme === "light" ||
+          updateData.color_scheme === "system"
+            ? updateData.color_scheme
+            : undefined,
+      })
+
+      if (!updateResult) {
+        return NextResponse.json(
+          { error: "Profil konnte nicht aktualisiert werden" },
+          { status: 500 }
+        )
+      }
     }
 
-    if (!updatedRows || updatedRows.length === 0) {
-      return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 404 })
+    const profileSettingsChanged =
+      updateData.display_name !== undefined ||
+      updateData.avatar_seed !== undefined ||
+      updateData.chatbot_avatar_seed !== undefined ||
+      updateData.chatbot_tone !== undefined ||
+      updateData.chatbot_detail_level !== undefined ||
+      updateData.chatbot_emoji_usage !== undefined
+
+    if (profileSettingsChanged) {
+      const updateResult = await coreStore.updateUserProfileSettings(userId, {
+        displayName:
+          typeof updateData.display_name === "string" ? updateData.display_name : undefined,
+        avatarSeed: typeof updateData.avatar_seed === "string" ? updateData.avatar_seed : undefined,
+        chatbotAvatarSeed:
+          typeof updateData.chatbot_avatar_seed === "string"
+            ? updateData.chatbot_avatar_seed
+            : undefined,
+        chatbotTone:
+          updateData.chatbot_tone === "formal" || updateData.chatbot_tone === "casual"
+            ? updateData.chatbot_tone
+            : undefined,
+        chatbotDetailLevel:
+          updateData.chatbot_detail_level === "brief" ||
+          updateData.chatbot_detail_level === "balanced" ||
+          updateData.chatbot_detail_level === "detailed"
+            ? updateData.chatbot_detail_level
+            : undefined,
+        chatbotEmojiUsage:
+          updateData.chatbot_emoji_usage === "none" ||
+          updateData.chatbot_emoji_usage === "moderate" ||
+          updateData.chatbot_emoji_usage === "many"
+            ? updateData.chatbot_emoji_usage
+            : undefined,
+      })
+
+      if (!updateResult) {
+        return NextResponse.json(
+          { error: "Profil konnte nicht aktualisiert werden" },
+          { status: 500 }
+        )
+      }
     }
 
     return NextResponse.json({ success: true })

@@ -112,7 +112,13 @@ async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promis
 
   // Prüfe, ob das CSS bereits serverseitig geladen wurde (als <style> Tag)
   const existingStyle = document.getElementById("default-theme-css")
-  if (themeId === DEFAULT_THEME_ID && existingStyle && !forceReload) {
+  if (themeId === DEFAULT_THEME_ID) {
+    if (existingStyle && !forceReload) {
+      return true
+    }
+
+    // Das Default-Theme kann vollständig über die globalen Fallback-Tokens laufen.
+    // Eine fehlende externe CSS-Datei ist daher kein Fehlerzustand.
     return true
   }
 

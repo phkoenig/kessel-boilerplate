@@ -46,11 +46,11 @@ import { Loader2, Users, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import { AddButton } from "@/components/ui/add-button"
 import { ExpandableSearch } from "@/components/ui/expandable-search"
 import { Switch } from "@/components/ui/switch"
-import { createClient } from "@/utils/supabase/client"
 import { cn } from "@/lib/utils"
 
 interface UserProfile {
   id: string
+  clerkUserId: string
   email: string
   display_name: string | null
   role: string
@@ -62,11 +62,13 @@ interface Role {
   id: string
   name: string
   display_name: string
+  description?: string
   is_system: boolean
 }
 
 interface Tenant {
   id: string
+  clerkOrgId?: string
   slug: string
   name: string
 }
@@ -118,74 +120,73 @@ export default function UsersPage(): React.ReactElement {
   const [newUserRole, setNewUserRole] = useState("user")
   const [isCreating, setIsCreating] = useState(false)
 
-  const supabase = createClient()
-
-  // Lade Tenants aus DB via RPC
-  async function loadTenants() {
+  async function loadMembershipData(): Promise<{
+    tenants: Tenant[]
+    memberships: Record<string, UserTenant[]>
+  }> {
     try {
-      const { data, error: fetchError } = await supabase.rpc("get_all_tenants")
+      const response = await fetch("/api/admin/memberships", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
 
-      if (fetchError) {
-        console.warn("Fehler beim Laden der Tenants:", fetchError)
-        return []
+      if (!response.ok) {
+        return { tenants: [], memberships: {} }
       }
 
-      return (data || []) as Tenant[]
-    } catch (err) {
-      console.error("Fehler beim Laden der Tenants:", err)
-      return []
-    }
-  }
-
-  // Lade User-Tenant-Zuordnungen via RPC
-  async function loadUserTenants() {
-    try {
-      const { data, error: fetchError } = await supabase.rpc("get_user_tenants_with_details")
-
-      if (fetchError) {
-        console.warn("Fehler beim Laden der User-Tenants:", fetchError)
-        return {}
+      const payload = (await response.json()) as {
+        tenants?: Array<{ id: string; clerkOrgId: string; slug: string; name: string }>
+        memberships?: Array<{
+          userId: string
+          clerkUserId: string
+          tenantId: string
+          role: string
+          isActive: boolean
+        }>
       }
 
-      // Gruppiere nach user_id
+      const tenants = (payload.tenants ?? []).map(
+        (tenant): Tenant => ({
+          id: tenant.id,
+          clerkOrgId: tenant.clerkOrgId,
+          slug: tenant.slug,
+          name: tenant.name,
+        })
+      )
+
       const grouped: Record<string, UserTenant[]> = {}
-      if (data) {
-        for (const item of data) {
-          const userTenant: UserTenant = {
-            user_id: item.user_id,
-            tenant_id: item.tenant_id,
-            is_active: item.is_active,
-            tenant: {
-              id: item.tenant_id,
-              slug: item.tenant_slug,
-              name: item.tenant_name,
-            },
-          }
-          if (!grouped[item.user_id]) {
-            grouped[item.user_id] = []
-          }
-          grouped[item.user_id].push(userTenant)
+      for (const item of payload.memberships ?? []) {
+        const tenant = tenants.find((entry) => entry.id === item.tenantId)
+        const userTenant: UserTenant = {
+          user_id: item.userId,
+          tenant_id: item.tenantId,
+          is_active: item.isActive,
+          tenant,
         }
+
+        if (!grouped[item.userId]) {
+          grouped[item.userId] = []
+        }
+
+        grouped[item.userId].push(userTenant)
       }
 
-      return grouped
+      return { tenants, memberships: grouped }
     } catch (err) {
-      console.error("Fehler beim Laden der User-Tenants:", err)
-      return {}
+      console.error("Fehler beim Laden der Membership-Daten:", err)
+      return { tenants: [], memberships: {} }
     }
   }
 
   // Lade Rollen aus DB
   async function loadRoles() {
     try {
-      const { data, error: fetchError } = await supabase
-        .from("roles")
-        .select("*")
-        .order("is_system", { ascending: false })
-        .order("name")
+      const response = await fetch("/api/admin/roles", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
 
-      if (fetchError) {
-        console.warn("Fehler beim Laden der Rollen:", fetchError)
+      if (!response.ok) {
         // Fallback: Standard-Rollen
         return [
           { id: "admin", name: "admin", display_name: "Administrator", is_system: true },
@@ -193,7 +194,25 @@ export default function UsersPage(): React.ReactElement {
         ] as Role[]
       }
 
-      return (data || []) as Role[]
+      const payload = (await response.json()) as {
+        roles?: Array<{
+          id: string
+          name: string
+          displayName: string
+          description?: string | null
+          isSystem: boolean
+        }>
+      }
+
+      return (payload.roles ?? []).map(
+        (role): Role => ({
+          id: role.id,
+          name: role.name,
+          display_name: role.displayName,
+          description: role.description ?? undefined,
+          is_system: role.isSystem,
+        })
+      )
     } catch (err) {
       console.error("Fehler beim Laden der Rollen:", err)
       // Fallback: Standard-Rollen
@@ -232,15 +251,14 @@ export default function UsersPage(): React.ReactElement {
   useEffect(() => {
     if (role === "admin" || role === "super-user") {
       setIsLoading(true)
-      Promise.all([loadRoles(), loadUsers(), loadTenants(), loadUserTenants()]).then(
-        ([roles, , tenantsData, userTenantsData]) => {
+      Promise.all([loadRoles(), loadUsers(), loadMembershipData()]).then(
+        ([roles, , membershipData]) => {
           setAvailableRoles(roles)
-          setTenants(tenantsData)
-          setUserTenants(userTenantsData)
+          setTenants(membershipData.tenants)
+          setUserTenants(membershipData.memberships)
         }
       )
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadUsers/loadRoles sind stabil
   }, [role])
 
   // Starte Inline-Editing
@@ -293,41 +311,22 @@ export default function UsersPage(): React.ReactElement {
     setError(null)
 
     try {
-      if (editingField.field === "email") {
-        // E-Mail über Auth API ändern (benötigt Service Role)
-        const response = await fetch("/api/admin/update-user", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: editingField.userId,
-            email: editValue,
-          }),
-        })
+      const response = await fetch("/api/admin/update-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId: userToUpdate.clerkUserId,
+          ...(editingField.field === "email" ? { email: editValue.trim() } : {}),
+          ...(editingField.field === "display_name"
+            ? { displayName: editValue.trim() || null }
+            : {}),
+          ...(editingField.field === "role" ? { role: editValue } : {}),
+        }),
+      })
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || "Fehler beim Ändern der E-Mail")
-        }
-      } else {
-        // Name oder Rolle direkt in profiles ändern
-        const updateData: { display_name?: string | null; role?: string; role_id?: string } = {}
-        if (editingField.field === "display_name") {
-          updateData.display_name = editValue.trim() || null
-        } else if (editingField.field === "role") {
-          updateData.role = editValue
-          // WICHTIG: Auch role_id synchron aktualisieren
-          const selectedRole = availableRoles.find((r) => r.name === editValue)
-          if (selectedRole) {
-            updateData.role_id = selectedRole.id
-          }
-        }
-
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update(updateData)
-          .eq("id", editingField.userId)
-
-        if (updateError) throw updateError
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string }
+        throw new Error(data.error || "Fehler beim Speichern")
       }
 
       // Aktualisiere lokale Liste
@@ -362,7 +361,7 @@ export default function UsersPage(): React.ReactElement {
       const response = await fetch("/api/admin/delete-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: deleteDialog.id }),
+        body: JSON.stringify({ clerkUserId: deleteDialog.clerkUserId }),
       })
 
       const data = await response.json()
@@ -400,8 +399,8 @@ export default function UsersPage(): React.ReactElement {
       return
     }
 
-    if (!newUserPassword || newUserPassword.length < 6) {
-      setError("Passwort muss mindestens 6 Zeichen haben")
+    if (!newUserPassword || newUserPassword.length < 8) {
+      setError("Passwort muss mindestens 8 Zeichen haben")
       return
     }
 
@@ -499,32 +498,19 @@ export default function UsersPage(): React.ReactElement {
         throw new Error("Der Admin-User kann nicht deaktiviert werden")
       }
 
-      // Prüfe ob Zuordnung existiert
-      const existing = userTenants[userId]?.find((ut) => ut.tenant_id === tenantId)
+      const response = await fetch("/api/admin/memberships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId: userItem?.clerkUserId,
+          tenantId,
+          isActive,
+        }),
+      })
 
-      if (existing) {
-        // Update bestehende Zuordnung via RPC
-        const { error: updateError } = await supabase.rpc("update_user_tenant_active", {
-          p_user_id: userId,
-          p_tenant_id: tenantId,
-          p_is_active: isActive,
-        })
-
-        if (updateError) throw updateError
-      } else {
-        // Erstelle neue Zuordnung via RPC
-        const tenant = tenants.find((t) => t.id === tenantId)
-        if (!tenant) {
-          throw new Error("Tenant nicht gefunden")
-        }
-
-        const { error: insertError } = await supabase.rpc("create_user_tenant", {
-          p_user_id: userId,
-          p_tenant_id: tenantId,
-          p_is_active: isActive,
-        })
-
-        if (insertError) throw insertError
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || "Membership konnte nicht aktualisiert werden")
       }
 
       // Aktualisiere lokalen State
@@ -888,7 +874,7 @@ export default function UsersPage(): React.ReactElement {
               <Input
                 id="new-user-password"
                 type="password"
-                placeholder="Min. 6 Zeichen"
+                placeholder="Min. 8 Zeichen"
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
                 disabled={isCreating}

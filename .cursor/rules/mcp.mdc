@@ -9,7 +9,7 @@ Dieses Projekt nutzt **genau einen Supabase-MCP** pro Cursor-Workspace.
 
 ## Kernprinzip
 
-**Ein MCP pro Cursor-Workspace** - keine Multi-MCP-Konfiguration für Supabase.
+**Ein MCP pro Cursor-Workspace** fuer Supabase - und dieser zeigt immer auf die App-Supabase der aktuellen Ableitung.
 
 ---
 
@@ -18,7 +18,7 @@ Dieses Projekt nutzt **genau einen Supabase-MCP** pro Cursor-Workspace.
 ### 1. Ein Supabase-MCP pro Workspace
 
 - Jedes Cursor-Projekt hat **maximal einen** Supabase-MCP konfiguriert
-- Dieser zeigt immer auf die aktive Entwicklungs-Datenbank
+- Dieser zeigt immer auf die aktive App-Supabase
 - Keine parallelen Supabase-MCP-Instanzen
 
 ### 2. Andere DBs via API/SDK
@@ -97,4 +97,4 @@ Context7 ist für **externe Library-Dokumentation** (React, Supabase, Next.js, A
 - Impact-Analyse im eigenen Projekt
 
 ### Empfehlung
-Bei Fragen zu externen Libraries Context7 nutzen, um aktuelle Dokumentation zu erhalten - besonders bei Libraries die sich schnell ändern (React, Next.js, Supabase).
+Bei Fragen zu externen Libraries Context7 nutzen, um aktuelle Dokumentation zu erhalten - besonders bei Libraries die sich schnell ändern (React, Next.js, Supabase, Clerk, SpacetimeDB).

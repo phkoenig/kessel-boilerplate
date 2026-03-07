@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { createClient } from "@/utils/supabase/client"
 import { allNavigationConfig, type NavItem, type NavSection } from "@/config/navigation"
 import type { UserRole } from "./auth-context"
 import { useAuth } from "./auth-context"
@@ -87,35 +86,32 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
     generateFallbackPermissions
   )
   const [isLoaded, setIsLoaded] = useState(false)
-  const supabase = createClient()
 
-  // WICHTIG: Wir hören auf Auth-Änderungen um Permissions neu zu laden
   const { user, isAuthenticated } = useAuth()
 
   const loadPermissions = useCallback(async () => {
     try {
-      // Lade Berechtigungen aus Junction-Tabelle mit JOIN zu roles
-      const { data: accessData, error: accessError } = await supabase.from("module_role_access")
-        .select(`
-          module_id,
-          has_access,
-          roles:role_id (
-            name
-          )
-        `)
+      const response = await fetch("/api/core/permissions", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
-      if (accessError) {
-        // Bei Fehler: Fallback auf statische Config
-        console.warn("[PermissionsProvider] DB-Fehler, nutze Fallback:", accessError.message)
+      if (!response.ok) {
         setPermissions(generateFallbackPermissions())
         return
       }
 
-      // Starte mit Fallback (alle Module aus Navigation)
+      const payload = (await response.json()) as {
+        permissions?: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+      }
+      const accessData = payload.permissions ?? []
+
       const fallbackPerms = generateFallbackPermissions()
       const mergedPerms = new Map<string, ModulePermission>()
 
-      // Initialisiere alle Module aus Fallback
       fallbackPerms.forEach((perm, moduleId) => {
         mergedPerms.set(moduleId, {
           moduleId,
@@ -123,18 +119,14 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
         })
       })
 
-      // Wenn DB Daten hat, überschreibe mit DB-Werten
       if (accessData && accessData.length > 0) {
         accessData.forEach((row) => {
-          const moduleId = row.module_id
-          // roles kann ein Array oder ein einzelnes Objekt sein (je nach JOIN)
-          const rolesData = Array.isArray(row.roles) ? row.roles[0] : row.roles
-          const roleName = (rolesData as { name: string })?.name
-          const hasAccess = row.has_access ?? true
+          const moduleId = row.moduleId
+          const roleName = row.roleName
+          const hasAccess = row.hasAccess ?? true
 
           if (!moduleId || !roleName) return
 
-          // Hole oder erstelle Permission für dieses Modul
           let perm = mergedPerms.get(moduleId)
           if (!perm) {
             perm = {
@@ -144,23 +136,19 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
             mergedPerms.set(moduleId, perm)
           }
 
-          // Setze Berechtigung für diese Rolle
           perm.roleAccess.set(roleName, hasAccess)
         })
       }
 
       setPermissions(mergedPerms)
-    } catch (err) {
-      console.error("[PermissionsProvider] Fehler:", err)
+    } catch {
       setPermissions(generateFallbackPermissions())
     } finally {
       setIsLoaded(true)
     }
-  }, [supabase])
+  }, [])
 
-  // Laden bei Mount UND bei User-Wechsel (z.B. Logout → Login als anderer User)
   useEffect(() => {
-    // Reset isLoaded bei User-Wechsel für korrektes Loading-Feedback
     setIsLoaded(false)
     loadPermissions()
   }, [loadPermissions, user?.id, isAuthenticated])
@@ -199,49 +187,29 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
    */
   const canAccess = useCallback(
     (moduleId: string, userRole: UserRole): boolean => {
-      // WICHTIG: Admins haben IMMER Zugriff auf alles (Sicherheitsnetz)
-      // Verhindert, dass sich Admins selbst aussperren
       if (userRole === "admin") {
         return true
       }
 
-      // NoUser sehen keine Navigation (werden zu Login redirected)
       if (userRole === "NoUser") {
         return false
       }
 
-      // Spezialfall: alwaysVisible Items sind IMMER für eingeloggte User sichtbar
       if (isAlwaysVisible(moduleId)) {
         return true
       }
 
       const perm = permissions.get(moduleId)
 
-      // Modul sollte immer in permissions sein (durch Merge mit Fallback)
       if (!perm) {
-        // Sollte nicht passieren, aber Fallback für Sicherheit
-        console.warn(`[PermissionsProvider] Modul "${moduleId}" nicht gefunden, nutze Fallback`)
         const fallback = generateFallbackPermissions().get(moduleId)
         if (!fallback) {
-          // Komplett unbekanntes Modul: für alle erlaubt (permissiv)
           return true
         }
-        // Nutze Fallback
         return fallback.roleAccess.get(userRole) ?? false
       }
 
-      // Normale Prüfung: Hole Berechtigung für diese Rolle
-      const hasAccess = perm.roleAccess.get(userRole) ?? false
-
-      // Debug-Log für Entwicklung
-      if (process.env.NODE_ENV === "development" && !hasAccess) {
-        console.log(`[PermissionsProvider] Modul "${moduleId}" nicht sichtbar für ${userRole}:`, {
-          roleAccess: Object.fromEntries(perm.roleAccess),
-          userRole,
-        })
-      }
-
-      return hasAccess
+      return perm.roleAccess.get(userRole) ?? false
     },
     [permissions, isAlwaysVisible]
   )

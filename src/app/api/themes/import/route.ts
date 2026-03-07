@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getCoreStore } from "@/lib/core"
 import { createClient } from "@/utils/supabase/server"
 import { requireAdmin } from "@/lib/auth/guards"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
@@ -40,9 +41,7 @@ interface ThemeImportResponse {
 /**
  * API-Route zum Importieren eines Themes aus TweakCN CSS.
  *
- * Speichert Themes in Supabase:
- * - Metadaten in `themes` Tabelle
- * - CSS in `themes` Storage Bucket
+ * Speichert Theme-CSS im Storage und Theme-Metadaten im Boilerplate-Core.
  */
 export async function POST(request: NextRequest) {
   const userOrErr = await requireAdmin()
@@ -59,6 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "CSS-Code ist erforderlich" }, { status: 400 })
     }
 
+    const coreStore = getCoreStore()
     const supabase = await createClient()
 
     // Parse CSS und extrahiere Variablen, verwende den übergebenen Namen
@@ -68,13 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Theme konnte nicht verarbeitet werden" }, { status: 400 })
     }
 
-    // Prüfe, ob Theme bereits existiert (in Supabase)
-    const { data: existingTheme } = await supabase
-      .from("themes")
-      .select("id")
-      .eq("id", themeData.themeId)
-      .single()
-
+    const existingTheme = await coreStore.getThemeRegistryEntry(themeData.themeId)
     if (existingTheme) {
       return NextResponse.json(
         { error: `Theme mit ID "${themeData.themeId}" existiert bereits` },
@@ -138,23 +132,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Metadaten in Supabase Datenbank speichern
-    const { error: dbError } = await supabase.from("themes").insert({
-      id: themeData.themeId,
+    const saved = await coreStore.upsertThemeRegistryEntry({
+      themeId: themeData.themeId,
       name: themeData.name,
       description: themeData.description || "Importiertes Theme von TweakCN",
-      dynamic_fonts: validatedFonts,
-      is_builtin: false,
+      dynamicFonts: validatedFonts,
+      isBuiltin: false,
+      cssAssetPath: storagePath,
     })
 
-    if (dbError) {
-      console.error("Fehler beim Speichern der Theme-Metadaten:", dbError)
+    if (!saved) {
+      console.error("Fehler beim Speichern der Theme-Metadaten im Core")
       // Rollback: CSS löschen (gleicher tenant-spezifischer Pfad)
       await supabase.storage.from("themes").remove([storagePath])
-      return NextResponse.json(
-        { error: `Metadaten-Speicherung fehlgeschlagen: ${dbError.message}` },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: "Metadaten-Speicherung fehlgeschlagen" }, { status: 500 })
     }
 
     // Erstelle Import-Statistiken

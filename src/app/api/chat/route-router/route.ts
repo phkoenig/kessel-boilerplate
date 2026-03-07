@@ -8,7 +8,7 @@
  */
 
 import { detectToolNeedWithAI, type RouterDecision } from "@/lib/ai/model-router"
-import { createClient } from "@/utils/supabase/server"
+import { requireAuth } from "@/lib/auth/guards"
 import type { ModelMessage } from "ai"
 
 /**
@@ -26,14 +26,9 @@ interface RouterRequestBody {
  */
 export async function POST(req: Request) {
   try {
-    // 1. Auth prüfen
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const userOrError = await requireAuth()
+    if (userOrError instanceof Response) {
+      return userOrError
     }
 
     // 2. Request parsen

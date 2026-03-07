@@ -1,0 +1,111 @@
+{
+  "entries": [
+    {
+      "envName": "NEXT_PUBLIC_SUPABASE_URL",
+      "source": "bootstrap",
+      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_URL",
+      "required": true,
+      "description": "App-Supabase URL der aktuellen Ableitung"
+    },
+    {
+      "envName": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "source": "bootstrap",
+      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "required": true,
+      "description": "Publishable/Anon Key der App-Supabase"
+    },
+    {
+      "envName": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "source": "bootstrap",
+      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "required": false,
+      "description": "Optionale Standard-Supabase-Variable fuer Browser-Clients"
+    },
+    {
+      "envName": "NEXT_PUBLIC_TENANT_SLUG",
+      "source": "bootstrap",
+      "bootstrapEnvName": "NEXT_PUBLIC_TENANT_SLUG",
+      "required": false,
+      "description": "Tenant-Slug der Ableitung"
+    },
+    {
+      "envName": "NEXT_PUBLIC_APP_NAME",
+      "source": "bootstrap",
+      "bootstrapEnvName": "NEXT_PUBLIC_APP_NAME",
+      "required": false,
+      "description": "Anzeigename der Ableitung"
+    },
+    {
+      "envName": "SUPABASE_SERVICE_ROLE_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
+      "required": true,
+      "description": "Server-seitiger Service Role Key der App-Supabase"
+    },
+    {
+      "envName": "SERVICE_ROLE_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
+      "required": true,
+      "description": "Legacy-Alias fuer Server-Code"
+    },
+    {
+      "envName": "OPENROUTER_API_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/AI Runtime/OPENROUTER_API_KEY",
+      "opReferenceEnvName": "OP_REF_OPENROUTER_API_KEY",
+      "required": false,
+      "description": "LLM Runtime Key"
+    },
+    {
+      "envName": "FAL_API_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/AI Runtime/FAL_API_KEY",
+      "opReferenceEnvName": "OP_REF_FAL_API_KEY",
+      "required": false,
+      "description": "Bild-/Media-Runtime Key"
+    },
+    {
+      "envName": "CLERK_SECRET_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/Auth Runtime/CLERK_SECRET_KEY",
+      "opReferenceEnvName": "OP_REF_CLERK_SECRET_KEY",
+      "required": false,
+      "description": "Clerk Server Secret"
+    },
+    {
+      "envName": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/Auth Runtime/CLERK_WEBHOOK_SIGNING_SECRET",
+      "opReferenceEnvName": "OP_REF_CLERK_WEBHOOK_SIGNING_SECRET",
+      "required": false,
+      "description": "Webhook Secret fuer Clerk"
+    },
+    {
+      "envName": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/Auth Runtime/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "required": false,
+      "description": "Clerk Publishable Key fuer den Client"
+    },
+    {
+      "envName": "NEXT_PUBLIC_SPACETIMEDB_URI",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_URI",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_URI",
+      "required": false,
+      "description": "SpacetimeDB URI fuer den Boilerplate Core"
+    },
+    {
+      "envName": "NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+      "source": "1password",
+      "opReference": "op://Kessel Boilerplate/Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+      "required": false,
+      "description": "SpacetimeDB Datenbankname fuer den Boilerplate Core"
+    }
+  ]
+}

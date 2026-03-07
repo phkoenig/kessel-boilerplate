@@ -12,6 +12,7 @@ src/config/version.ts
 # Next.js
 .next/
 out/
+spacetime/core/spacetimedb/dist/
 
 # Dependencies
 node_modules/

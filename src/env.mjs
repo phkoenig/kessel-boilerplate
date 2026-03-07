@@ -16,12 +16,16 @@ export const serverSchema = z.object({
 export const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+  NEXT_PUBLIC_TENANT_SLUG: z.string().optional(),
+  NEXT_PUBLIC_APP_NAME: z.string().optional(),
   // Clerk Auth (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
-  // SpacetimeDB (optional - fuer UI-Realtime)
-  NEXT_PUBLIC_SPACETIMEDB_ENABLED: z.string().optional(),
-  NEXT_PUBLIC_SPACETIMEDB_URI: z.string().optional(),
-  NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().optional(),
+  // SpacetimeDB ist im finalen 3.0-Zustand Pflicht fuer den Boilerplate-Core.
+  NEXT_PUBLIC_SPACETIMEDB_ENABLED: z.enum(["true", "false"]).optional(),
+  NEXT_PUBLIC_SPACETIMEDB_URI: z.string().min(1),
+  NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().min(1),
+  NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: z.literal("spacetime"),
 })
 
 // 3. Das kombinierte Schema für die Validierung im Skript
@@ -36,10 +40,14 @@ export const env = createEnv({
   runtimeEnv: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_TENANT_SLUG: process.env.NEXT_PUBLIC_TENANT_SLUG,
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_SPACETIMEDB_ENABLED: process.env.NEXT_PUBLIC_SPACETIMEDB_ENABLED,
     NEXT_PUBLIC_SPACETIMEDB_URI: process.env.NEXT_PUBLIC_SPACETIMEDB_URI,
     NEXT_PUBLIC_SPACETIMEDB_DATABASE: process.env.NEXT_PUBLIC_SPACETIMEDB_DATABASE,
+    NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: process.env.NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER,
     SERVICE_ROLE_KEY: process.env.SERVICE_ROLE_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     FAL_API_KEY: process.env.FAL_API_KEY,

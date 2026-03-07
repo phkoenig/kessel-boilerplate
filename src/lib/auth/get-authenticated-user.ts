@@ -9,21 +9,9 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { clerkClient } from "@clerk/nextjs/server"
-import { randomUUID } from "crypto"
 import type { NextResponse } from "next/server"
-import { createServiceClient } from "@/utils/supabase/service"
 import { getAllowedRoleForEmail, isAllowedEmail } from "@/lib/auth/allowed-users"
-
-const PROFILE_SELECT = `
-  id,
-  clerk_user_id,
-  email,
-  display_name,
-  avatar_url,
-  role,
-  role_id,
-  tenant_id
-`
+import { getCoreStore } from "@/lib/core"
 
 export interface AuthenticatedUser {
   /** Clerk User ID (user_xxx) - fuer Anzeige/API-Responses */
@@ -61,64 +49,47 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   const { userId, sessionClaims, orgId } = await auth()
   if (!userId) return null
 
-  const supabase = createServiceClient()
+  const coreStore = getCoreStore()
 
-  // Tenant aus Clerk Org aufloesen (app.tenants.clerk_org_id)
-  // Fallback: profile.tenant_id wenn kein Org-Kontext
   let tenantId: string | null = null
   if (orgId) {
-    const { data: tenant } = await supabase
-      .schema("app")
-      .from("tenants")
-      .select("id")
-      .eq("clerk_org_id", orgId)
-      .single()
-    tenantId = tenant?.id ?? null
+    tenantId = await coreStore.getTenantIdByClerkOrgId(orgId)
   }
-  const { data: initialProfile, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_SELECT)
-    .eq("clerk_user_id", userId)
-    .single()
-  let profile: Record<string, unknown> | null = (initialProfile as Record<string, unknown>) ?? null
 
-  if (error && error.code !== "PGRST116") {
-    return null
-  }
+  let profile = await coreStore.getUserByClerkId(userId)
 
   if (!profile) {
-    const provisioned = await autoProvisionProfile(userId, sessionClaims, supabase)
+    const provisioned = await autoProvisionProfile(userId, sessionClaims, tenantId)
     if (!provisioned) return null
     profile = provisioned
   }
 
-  const email = (profile.email as string) ?? ""
+  const email = profile.email ?? ""
   if (!isAllowedEmail(email)) return null
 
-  const role = (profile.role as string) ?? "user"
+  const role = profile.role ?? "user"
   const isAdmin = role === "admin" || role === "superuser" || role === "super-user"
 
-  // Fallback: profile.tenant_id wenn kein Org-Kontext (z.B. Personal/legacy)
-  if (!tenantId && profile.tenant_id) {
-    tenantId = profile.tenant_id as string
+  if (!tenantId && profile.tenantId) {
+    tenantId = profile.tenantId
   }
 
   return {
     clerkUserId: userId,
-    profileId: profile.id as string,
+    profileId: profile.id,
     role,
     isAdmin,
     activeOrgId: orgId ?? null,
     tenantId,
     profile: {
-      id: profile.id as string,
-      clerk_user_id: profile.clerk_user_id as string | null,
-      email: (profile.email as string) ?? "",
-      display_name: profile.display_name as string | null,
-      avatar_url: profile.avatar_url as string | null,
+      id: profile.id,
+      clerk_user_id: profile.clerkUserId,
+      email: profile.email,
+      display_name: profile.displayName,
+      avatar_url: profile.avatarUrl,
       role,
-      role_id: profile.role_id as string | null,
-      tenant_id: profile.tenant_id as string | null,
+      role_id: profile.roleId,
+      tenant_id: profile.tenantId,
     },
   }
 }
@@ -134,8 +105,8 @@ function getEmailFromClaims(claims: unknown): string | null {
 async function autoProvisionProfile(
   clerkUserId: string,
   sessionClaims: unknown,
-  supabase: ReturnType<typeof createServiceClient>
-): Promise<Record<string, unknown> | null> {
+  tenantId: string | null
+) {
   let email = getEmailFromClaims(sessionClaims) ?? ""
   let displayName = email.split("@")[0] || "User"
   let avatarUrl: string | null = null
@@ -160,33 +131,14 @@ async function autoProvisionProfile(
   const mappedRole = getAllowedRoleForEmail(email)
   if (!mappedRole) return null
 
-  const { data: roleRow } = await supabase
-    .from("roles")
-    .select("id")
-    .eq("name", mappedRole)
-    .single()
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        id: randomUUID(),
-        clerk_user_id: clerkUserId,
-        email: email || "unknown@clerk.local",
-        display_name: displayName,
-        avatar_url: avatarUrl,
-        role: mappedRole,
-        role_id: roleRow?.id ?? null,
-        can_select_theme: true,
-        color_scheme: "system",
-      },
-      { onConflict: "clerk_user_id" }
-    )
-    .select(PROFILE_SELECT)
-    .single()
-
-  if (error) return null
-  return data as Record<string, unknown>
+  return getCoreStore().upsertUserFromClerk({
+    clerkUserId,
+    email: email || "unknown@clerk.local",
+    displayName,
+    avatarUrl,
+    role: mappedRole,
+    tenantId,
+  })
 }
 
 /**

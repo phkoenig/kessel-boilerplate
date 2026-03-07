@@ -11,8 +11,8 @@
 
 import { verifyWebhook } from "@clerk/nextjs/webhooks"
 import { type NextRequest, NextResponse } from "next/server"
-import { createServiceClient } from "@/utils/supabase/service"
 import { getAllowedRoleForEmail } from "@/lib/auth/allowed-users"
+import { getCoreStore } from "@/lib/core"
 
 interface ClerkUserData {
   id: string
@@ -57,92 +57,44 @@ function getDisplayName(data: ClerkUserData): string {
 export async function POST(request: NextRequest) {
   try {
     const evt = await verifyWebhook(request)
+    const coreStore = getCoreStore()
 
     if (evt.type === "user.created") {
       const data = evt.data as ClerkUserData
-      const supabase = createServiceClient()
       const email = getPrimaryEmail(data)
       const mappedRole = getAllowedRoleForEmail(email)
       if (!mappedRole) {
         return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })
       }
 
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_user_id", data.id)
-        .single()
-
-      if (existing) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            email: email || "unknown@clerk.local",
-            display_name: getDisplayName(data),
-            avatar_url: data.image_url ?? data.imageUrl ?? null,
-            role: mappedRole,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("clerk_user_id", data.id)
-        if (error) {
-          return NextResponse.json(
-            { error: "Profil-Update fehlgeschlagen", details: error.message },
-            { status: 500 }
-          )
-        }
-      } else {
-        const { data: role } = await supabase
-          .from("roles")
-          .select("id")
-          .eq("name", mappedRole)
-          .single()
-        const roleId = role?.id ?? null
-        const { error } = await supabase.from("profiles").insert({
-          id: crypto.randomUUID(),
-          clerk_user_id: data.id,
-          email: email || "unknown@clerk.local",
-          display_name: getDisplayName(data),
-          avatar_url: data.image_url ?? data.imageUrl ?? null,
-          role: mappedRole,
-          role_id: roleId,
-        })
-        if (error) {
-          return NextResponse.json(
-            { error: "Profil konnte nicht angelegt werden", details: error.message },
-            { status: 500 }
-          )
-        }
+      const profile = await coreStore.upsertUserFromClerk({
+        clerkUserId: data.id,
+        email: email || "unknown@clerk.local",
+        displayName: getDisplayName(data),
+        avatarUrl: data.image_url ?? data.imageUrl ?? null,
+        role: mappedRole,
+      })
+      if (!profile) {
+        return NextResponse.json({ error: "Profil konnte nicht angelegt werden" }, { status: 500 })
       }
     } else if (evt.type === "user.updated") {
       const data = evt.data as ClerkUserData
-      const supabase = createServiceClient()
       const email = getPrimaryEmail(data)
       const mappedRole = getAllowedRoleForEmail(email)
       if (!mappedRole) {
-        await supabase.from("profiles").delete().eq("clerk_user_id", data.id)
+        await coreStore.deleteUserByClerkId(data.id)
         return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })
       }
-      const { data: role } = await supabase
-        .from("roles")
-        .select("id")
-        .eq("name", mappedRole)
-        .single()
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          email,
-          display_name: getDisplayName(data),
-          avatar_url: data.image_url ?? data.imageUrl ?? null,
-          role: mappedRole,
-          role_id: role?.id ?? null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("clerk_user_id", data.id)
-
-      if (error) {
+      const profile = await coreStore.upsertUserFromClerk({
+        clerkUserId: data.id,
+        email: email || "unknown@clerk.local",
+        displayName: getDisplayName(data),
+        avatarUrl: data.image_url ?? data.imageUrl ?? null,
+        role: mappedRole,
+      })
+      if (!profile) {
         return NextResponse.json(
-          { error: "Profil konnte nicht aktualisiert werden", details: error.message },
+          { error: "Profil konnte nicht aktualisiert werden" },
           { status: 500 }
         )
       }
@@ -152,34 +104,23 @@ export async function POST(request: NextRequest) {
       if (!clerkId) {
         return NextResponse.json({ error: "Keine User-ID im Event" }, { status: 400 })
       }
-      const supabase = createServiceClient()
-      const { error } = await supabase.from("profiles").delete().eq("clerk_user_id", clerkId)
-      if (error) {
-        return NextResponse.json(
-          { error: "Profil konnte nicht geloescht werden", details: error.message },
-          { status: 500 }
-        )
+      const success = await coreStore.deleteUserByClerkId(clerkId)
+      if (!success) {
+        return NextResponse.json({ error: "Profil konnte nicht geloescht werden" }, { status: 500 })
       }
     } else if (evt.type === "organization.created") {
       const data = evt.data as { id?: string; name?: string; slug?: string }
       if (!data?.id) {
         return NextResponse.json({ error: "Keine Org-ID im Event" }, { status: 400 })
       }
-      const supabase = createServiceClient()
       const slug = (data.slug ?? data.name ?? data.id).toLowerCase().replace(/\s+/g, "_")
-      const { error } = await supabase
-        .schema("app")
-        .from("tenants")
-        .insert({
-          clerk_org_id: data.id,
-          slug,
-          name: data.name ?? data.id,
-        })
-      if (error) {
-        return NextResponse.json(
-          { error: "Tenant konnte nicht angelegt werden", details: error.message },
-          { status: 500 }
-        )
+      const tenantId = await coreStore.upsertTenant({
+        clerkOrgId: data.id,
+        slug,
+        name: data.name ?? data.id,
+      })
+      if (!tenantId) {
+        return NextResponse.json({ error: "Tenant konnte nicht angelegt werden" }, { status: 500 })
       }
     } else if (evt.type === "organizationMembership.created") {
       const data = evt.data as {
@@ -196,26 +137,15 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      const supabase = createServiceClient()
-      const { data: tenant } = await supabase
-        .schema("app")
-        .from("tenants")
-        .select("id")
-        .eq("clerk_org_id", orgId)
-        .single()
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_user_id", clerkUserId)
-        .single()
-      if (tenant && profile) {
-        await supabase.schema("app").from("user_tenants").upsert(
-          {
-            user_id: profile.id,
-            tenant_id: tenant.id,
-            role: "member",
-          },
-          { onConflict: "user_id,tenant_id" }
+      const success = await coreStore.upsertMembership({
+        clerkOrgId: orgId,
+        clerkUserId,
+        role: "member",
+      })
+      if (!success) {
+        return NextResponse.json(
+          { error: "Membership konnte nicht gespeichert werden" },
+          { status: 500 }
         )
       }
     } else if (evt.type === "organizationMembership.deleted") {
@@ -226,25 +156,15 @@ export async function POST(request: NextRequest) {
       const orgId = data.organization?.id
       const clerkUserId = data.public_user_data?.user_id
       if (!orgId || !clerkUserId) return NextResponse.json({ received: true })
-      const supabase = createServiceClient()
-      const { data: tenant } = await supabase
-        .schema("app")
-        .from("tenants")
-        .select("id")
-        .eq("clerk_org_id", orgId)
-        .single()
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_user_id", clerkUserId)
-        .single()
-      if (tenant && profile) {
-        await supabase
-          .schema("app")
-          .from("user_tenants")
-          .delete()
-          .eq("user_id", profile.id)
-          .eq("tenant_id", tenant.id)
+      const success = await coreStore.deleteMembership({
+        clerkOrgId: orgId,
+        clerkUserId,
+      })
+      if (!success) {
+        return NextResponse.json(
+          { error: "Membership konnte nicht entfernt werden" },
+          { status: 500 }
+        )
       }
     }
 

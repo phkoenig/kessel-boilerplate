@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuth as useClerkAuth } from "@clerk/nextjs"
 
 interface AppSettings {
   appName: string
@@ -31,6 +32,7 @@ const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
  * ```
  */
 export function useAppSettings(): AppSettings {
+  const { isLoaded, userId } = useClerkAuth()
   // ENV-Variable als Fallback
   const envAppName = process.env.NEXT_PUBLIC_APP_NAME || ""
 
@@ -40,9 +42,24 @@ export function useAppSettings(): AppSettings {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (!isLoaded) {
+      return
+    }
+
+    if (!userId) {
+      setIsLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+
     async function loadSettings() {
       try {
-        const response = await fetch("/api/app-settings")
+        const response = await fetch("/api/app-settings", { signal: controller.signal })
+        if (response.status === 401) {
+          return
+        }
+
         if (response.ok) {
           const data = await response.json()
 
@@ -72,14 +89,19 @@ export function useAppSettings(): AppSettings {
           setIconUrl(data.icon_url || null)
         }
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return
+        }
         console.error("Error loading app settings:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadSettings()
-  }, [envAppName])
+    void loadSettings()
+
+    return () => controller.abort()
+  }, [envAppName, isLoaded, userId])
 
   return { appName, appDescription, iconUrl, isLoading }
 }
