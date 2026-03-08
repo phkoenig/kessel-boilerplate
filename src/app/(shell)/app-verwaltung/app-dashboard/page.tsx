@@ -3,10 +3,15 @@
 import { PageContent, PageHeader } from "@/components/shell"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 import { SystemInfoCard } from "@/components/admin/system-info-card"
-import { TechStackTable } from "@/components/admin/tech-stack-table"
+import { MaintenanceStatusCard } from "@/components/admin/maintenance-status-card"
+import { InfrastructureOverviewCard } from "@/components/admin/infrastructure-overview-card"
 
 /**
- * App-Dashboard Seite
+ * Rendert das Admin-Dashboard als kompaktes Release- und Systempanel.
+ * Die Seite gibt Admins Orientierung zu Versionen, Kerninfrastruktur und
+ * Wartungshinweisen, ohne in paketgenaue Entwicklungsdetails abzugleiten.
+ *
+ * @returns Die Dashboard-Seite fuer die App-Verwaltung.
  */
 export default function DashboardPage(): React.ReactElement {
   const currentNavItem = useCurrentNavItem()
@@ -16,11 +21,12 @@ export default function DashboardPage(): React.ReactElement {
     <PageContent>
       <PageHeader
         title={pageTitle}
-        description="Übersicht über Benutzer, Rollen, GitHub Repo Info, Vercel autodeploy, App Version, Connected Db's AI Accessibility"
+        description="Release- und Systemuebersicht fuer Admins mit Versionsstand, Boilerplate-Basis und kompakten Wartungshinweisen."
       />
       <div className="space-y-6">
         <SystemInfoCard />
-        <TechStackTable />
+        <InfrastructureOverviewCard />
+        <MaintenanceStatusCard />
       </div>
     </PageContent>
   )

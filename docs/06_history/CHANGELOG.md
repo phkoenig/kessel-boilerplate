@@ -5,6 +5,9 @@ Alle bemerkenswerten Änderungen an diesem Projekt werden in dieser Datei dokume
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/),
 und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+Diese Datei ist die menschlich lesbare Release-Quelle, auf die das Admin-Dashboard
+fuer Release- und Versionskontext verweist.
+
 ## [Unreleased]
 
 ### Added
@@ -21,6 +24,10 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
   - Admin-User-Management über geschützte API konsolidiert
   - Vitest/jsdom-Resolver für Windows-Pfad-Mix stabilisiert
   - Lokalen E2E-Webserver-Flow für Playwright vereinheitlicht
+- **Admin-Dashboard als Release-Panel geschärft**
+  - Tech-Stack-Tabelle entfernt und durch kompakte Wartungshinweise ersetzt
+  - Release-, Build- und Boilerplate-Metadaten stärker sichtbar gemacht
+  - Dashboard verweist jetzt explizit auf Changelog und Versioning-Dokumentation
 
 ### Fixed
 

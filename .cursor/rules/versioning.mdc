@@ -12,8 +12,8 @@ Dieses Projekt verwendet ein duales Versioning-System: App-Version (SemVer) und 
 
 | Ebene | Quelle | Beispiel |
 |-------|--------|----------|
-| **App-Version** | Git-Tag / package.json | `0.3.0 (fa1eade4)` |
-| **Boilerplate-Version** | boilerplate.json | `kessel-boilerplate@1.1.0` |
+| **App-Version** | Git-Tag / package.json | `3.0.0 (fa1eade4)` |
+| **Boilerplate-Version** | boilerplate.json | `kessel-boilerplate@3.0.0` |
 
 ## App-Version
 
@@ -31,13 +31,14 @@ Dieses Projekt verwendet ein duales Versioning-System: App-Version (SemVer) und 
   - `APP_VERSION`: SemVer-String
   - `APP_BUILD_COMMIT`: Abgekürzte SHA (8 Zeichen)
   - `APP_ENV`: `development | preview | production`
+  - `APP_BUILD_GENERATED_AT`: ISO-Zeitstempel des letzten Build-Artefakts
 
 ### Verwendung im Code
 
 ```typescript
-import { APP_VERSION, APP_BUILD_COMMIT, APP_ENV } from "@/config/version"
+import { APP_VERSION, APP_BUILD_COMMIT, APP_ENV, APP_BUILD_GENERATED_AT } from "@/config/version"
 
-// Anzeige: "0.3.0 (fa1eade4)"
+// Anzeige: "3.0.0 (fa1eade4)"
 const versionDisplay = `${APP_VERSION} (${APP_BUILD_COMMIT})`
 ```
 
@@ -67,7 +68,7 @@ const versionDisplay = `${APP_VERSION} (${APP_BUILD_COMMIT})`
 ```typescript
 import { BOILERPLATE_NAME, BOILERPLATE_VERSION } from "@/config/boilerplate"
 
-// Anzeige: "kessel-boilerplate@1.1.0"
+// Anzeige: "kessel-boilerplate@3.0.0"
 const boilerplateDisplay = `${BOILERPLATE_NAME}@${BOILERPLATE_VERSION}`
 ```
 
@@ -76,16 +77,23 @@ const boilerplateDisplay = `${BOILERPLATE_NAME}@${BOILERPLATE_VERSION}`
 ```bash
 # 1. Neues Boilerplate-Release ziehen
 # 2. boilerplate.json manuell updaten (version)
-# 3. Commit: "chore: upgrade boilerplate to 1.2.0"
+# 3. Commit: "chore: upgrade boilerplate to 3.0.0"
 ```
 
 ## SystemInfoCard
 
 Die `SystemInfoCard` Komponente zeigt immer:
 
-- **App-Version** + Commit: `APP_VERSION (APP_BUILD_COMMIT)`
+- **App-Version**: `APP_VERSION`
+- **Commit**: `APP_BUILD_COMMIT`
 - **Environment**: `APP_ENV`
+- **Build-Metadaten**: `APP_BUILD_GENERATED_AT`
 - **Boilerplate**: `BOILERPLATE_NAME@BOILERPLATE_VERSION`
+- **Release-Doku**: `docs/06_history/CHANGELOG.md`
+- **Versioning-Guide**: `docs/guides/app-versioning.md`
+
+Die `MaintenanceStatusCard` darf nur kompakte Hinweise zu Updates und Security zeigen.
+Eine paketgenaue Tabelle ist nicht mehr Teil des Admin-Dashboards.
 
 ### Verboten
 
@@ -105,11 +113,11 @@ Die `SystemInfoCard` Komponente zeigt immer:
 ### App releasen
 
 ```bash
-# 1. Feature auf feature-branch entwickeln
-# 2. Merge nach main
+# 1. Feature entwickeln und release-reif machen
+# 2. CHANGELOG pflegen
 # 3. Tag setzen
-git tag -a v0.3.0 -m "Release 0.3.0: Feature X"
-git push origin v0.3.0
+git tag -a v3.0.0 -m "Release 3.0.0: Boilerplate 3.0"
+git push origin v3.0.0
 # 4. Vercel deployt Tag → Production
 ```
 
@@ -118,7 +126,7 @@ git push origin v0.3.0
 ```bash
 # 1. Neues Boilerplate-Release ziehen
 # 2. boilerplate.json manuell updaten (version)
-# 3. Commit: "chore: upgrade boilerplate to 1.2.0"
+# 3. Commit: "chore: upgrade boilerplate to 3.0.0"
 ```
 
 ## Dateien

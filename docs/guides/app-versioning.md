@@ -4,10 +4,13 @@
 
 Dieses Projekt verwendet ein **duales Versioning-System**:
 
-- **App-Version**: SemVer der konkreten App (z.B. `0.3.0`)
-- **Boilerplate-Version**: SemVer der zugrundeliegenden Boilerplate (z.B. `kessel-boilerplate@1.1.0`)
+- **App-Version**: SemVer der konkreten App bzw. des aktuellen Repositories (z.B. `3.0.0`)
+- **Boilerplate-Version**: SemVer der zugrundeliegenden Boilerplate-Basis (z.B. `kessel-boilerplate@3.0.0`)
 
 Beide Versionen werden im Admin-Dashboard angezeigt.
+
+Die menschlich lesbare Release-Historie fuer das Dashboard liegt in
+`docs/06_history/CHANGELOG.md`.
 
 ## Architektur
 
@@ -22,9 +25,10 @@ Die App-Version wird zur **Build-Zeit** generiert:
 Das Build-Script `scripts/write-version.ts` generiert automatisch `src/config/version.ts`:
 
 ```typescript
-export const APP_VERSION = "0.3.0" as const
+export const APP_VERSION = "3.0.0" as const
 export const APP_BUILD_COMMIT = "fa1eade4" as const
 export const APP_ENV: "development" | "preview" | "production" = "production"
+export const APP_BUILD_GENERATED_AT = "2026-03-05T12:34:56.000Z" as const
 ```
 
 ### Boilerplate-Version
@@ -34,7 +38,7 @@ Die Boilerplate-Version ist statisch in `boilerplate.json` gespeichert:
 ```json
 {
   "name": "kessel-boilerplate",
-  "version": "1.1.0"
+  "version": "3.0.0"
 }
 ```
 
@@ -49,20 +53,13 @@ import { BOILERPLATE_NAME, BOILERPLATE_VERSION } from "@/config/boilerplate"
 ### App-Version releasen
 
 ```bash
-# 1. Feature auf feature-branch entwickeln
-git checkout -b feature/neue-funktion
+# 1. CHANGELOG in docs/06_history/CHANGELOG.md aktualisieren
+# 2. package.json.version pflegen oder finalen Git-Tag vorbereiten
+# 3. Tag setzen
+git tag -a v3.0.0 -m "Release 3.0.0: Boilerplate 3.0"
+git push origin v3.0.0
 
-# 2. Änderungen committen
-git commit -m "feat: Neue Funktion"
-
-# 3. Merge nach main
-git checkout main
-git merge feature/neue-funktion
-
-# 4. Tag setzen
-git tag -a v0.3.0 -m "Release 0.3.0: Neue Funktion"
-git push origin v0.3.0
-
+# 4. version:write generiert die Build-Metadaten vor dem Build
 # 5. Vercel deployt automatisch (Tag auf main = Production)
 ```
 
@@ -75,20 +72,28 @@ git push origin v0.3.0
 # 2. boilerplate.json manuell updaten
 # {
 #   "name": "kessel-boilerplate",
-#   "version": "1.2.0"  ← Version aktualisieren
+#   "version": "3.0.0"  ← Version aktualisieren
 # }
 
 # 3. Committen
-git commit -m "chore: upgrade boilerplate to 1.2.0"
+git commit -m "chore: upgrade boilerplate to 3.0.0"
 ```
 
 ## Anzeige im Dashboard
 
 Die `SystemInfoCard` Komponente zeigt:
 
-- **App-Version** + Commit: `0.3.0 (fa1eade4)`
+- **App-Version**: `3.0.0`
+- **Commit**: `fa1eade4`
 - **Environment**: `production` | `preview` | `development`
-- **Boilerplate**: `kessel-boilerplate@1.1.0`
+- **Build-Metadaten**: ISO-Zeitstempel des letzten Build-Artefakts
+- **Boilerplate**: `kessel-boilerplate@3.0.0`
+- **Release-Doku**: `docs/06_history/CHANGELOG.md`
+- **Versioning-Guide**: `docs/guides/app-versioning.md`
+
+Ergaenzend zeigt das Dashboard nur noch eine kleine `MaintenanceStatusCard`
+mit verdichteten Hinweisen zu Updates und Security. Detaillierte Package-Listen
+gehoeren nicht mehr in die Admin-Oberflaeche.
 
 Zugriff: `/app-verwaltung/app-dashboard` (Admin-only)
 
@@ -142,9 +147,9 @@ Bei jedem Build (`pnpm build`) wird automatisch:
 ### App-Version anzeigen
 
 ```typescript
-import { APP_VERSION, APP_BUILD_COMMIT, APP_ENV } from "@/config/version"
+import { APP_VERSION, APP_BUILD_COMMIT, APP_ENV, APP_BUILD_GENERATED_AT } from "@/config/version"
 
-// Anzeige: "0.3.0 (fa1eade4)"
+// Anzeige: "3.0.0 (fa1eade4)"
 const versionDisplay = `${APP_VERSION} (${APP_BUILD_COMMIT})`
 ```
 
@@ -153,9 +158,22 @@ const versionDisplay = `${APP_VERSION} (${APP_BUILD_COMMIT})`
 ```typescript
 import { BOILERPLATE_NAME, BOILERPLATE_VERSION } from "@/config/boilerplate"
 
-// Anzeige: "kessel-boilerplate@1.1.0"
+// Anzeige: "kessel-boilerplate@3.0.0"
 const boilerplateDisplay = `${BOILERPLATE_NAME}@${BOILERPLATE_VERSION}`
 ```
+
+## Dashboard-Rolle
+
+Das Admin-Dashboard ist keine Paketverwaltung und kein Ersatz fuer CI.
+Es zeigt bewusst nur:
+
+- Release- und Versionsmetadaten
+- Boilerplate-Basisstand
+- verdichtete Wartungshinweise
+- Verweise auf Changelog und Versioning-Doku
+
+Updates, Security-Patches und Dependency-Pflege werden weiterhin im Code,
+in Pull Requests und in CI umgesetzt.
 
 ## Troubleshooting
 
@@ -177,5 +195,6 @@ const boilerplateDisplay = `${BOILERPLATE_NAME}@${BOILERPLATE_VERSION}`
 
 ## Siehe auch
 
-- [Cursor Rules: Versioning](.cursor/rules/versioning.mdc) - AI-Assistenten-Regeln
-- [SystemInfoCard](../src/components/admin/system-info-card.tsx) - UI-Komponente
+- [Cursor Rules: Versioning](../../.cursor/rules/versioning.mdc) - AI-Assistenten-Regeln
+- [SystemInfoCard](../../src/components/admin/system-info-card.tsx) - UI-Komponente
+- [Changelog](../06_history/CHANGELOG.md) - Release-Historie für Menschen

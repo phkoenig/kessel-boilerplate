@@ -1,20 +1,20 @@
 {
   "name": "kessel-boilerplate",
-  "version": "1.2.0",
-  "description": "B2B App Boilerplate mit Next.js 16, Supabase, ShadCN UI und Multi-Tenant Architektur",
+  "version": "3.0.0",
+  "description": "Boilerplate 3.0 mit Clerk, SpacetimeDB-Core, Supabase App DB plus Storage und 1Password fuer Secrets",
   "repository": "https://github.com/phkoenig/kessel-boilerplate",
   "author": "Philip König",
   "license": "MIT",
   "features": [
     "4-Spalten App Shell (Navbar, Explorer, Main, Assist)",
-    "Multi-Tenant Architektur mit Schema-Isolation",
-    "Theme-System mit Supabase Storage",
-    "RBAC mit Permissions-Context",
-    "AI-Chat Assist Panel",
-    "Local Dev Bypass für schnelles Testing"
+    "Clerk fuer Identity, Audience und User-Lifecycle",
+    "SpacetimeDB als Boilerplate-Core fuer Rollen, Navigation, Wiki und Chat",
+    "Supabase fuer App-Datenbank und Storage",
+    "1Password-basierter Secrets- und pull-env-Workflow",
+    "Realtime AI-Chat und tenant-spezifisches Branding"
   ],
   "requirements": {
-    "node": ">=20.0.0",
+    "node": ">=24.0.0",
     "pnpm": ">=9.0.0"
   },
   "supabase": {
