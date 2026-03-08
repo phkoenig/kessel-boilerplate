@@ -34,7 +34,7 @@ import { useAppSettings } from "@/hooks/use-app-settings"
  */
 export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): React.ReactElement {
   const { role } = useAuth()
-  const { canAccess } = usePermissions()
+  const { canAccess, isLoaded } = usePermissions()
   const pathname = usePathname()
   const router = useRouter()
   const { appName } = useAppSettings()
@@ -45,13 +45,42 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
   // Finde Admin-Section
   const adminSection = navigationConfig.find((section) => section.id === "admin")
 
-  // Prüfe ob User Admin ist und Admin-Section sichtbar ist
-  const isAdmin = adminSection ? canAccess(adminSection.id, userRole) : false
+  const isRoleAllowed = (requiredRoles?: string[]): boolean => {
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true
+    }
 
-  // Filtere sichtbare Admin-Menüpunkte basierend auf Berechtigungen
-  const visibleAdminItems = adminSection
+    if (userRole === "admin") {
+      return true
+    }
+
+    if (userRole === "superuser") {
+      return requiredRoles.includes("superuser") || requiredRoles.includes("admin")
+    }
+
+    return requiredRoles.includes(userRole)
+  }
+
+  const staticAdminItems = adminSection
+    ? adminSection.items.filter((item) => isRoleAllowed(item.requiredRoles))
+    : []
+
+  // Bevor die Permissions geladen sind oder wenn die Matrix unerwartet leer ist,
+  // faellt das App-Menue auf die statische Admin-Navigation zurueck.
+  const permissionFilteredAdminItems = adminSection
     ? adminSection.items.filter((item) => canAccess(item.id, userRole))
     : []
+
+  const visibleAdminItems =
+    !isLoaded || permissionFilteredAdminItems.length === 0
+      ? staticAdminItems
+      : permissionFilteredAdminItems
+
+  // Prüfe ob User Admin ist und Admin-Section sichtbar ist
+  const isAdmin =
+    Boolean(adminSection) &&
+    visibleAdminItems.length > 0 &&
+    isRoleAllowed(adminSection.requiredRoles)
 
   // Collapsed Mode: Nur Icon mit Tooltip
   if (collapsed) {

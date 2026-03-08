@@ -10,7 +10,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import type { User } from "@/components/auth/auth-context"
-import { getAllowedRoleForEmail, isAllowedEmail } from "@/lib/auth/allowed-users"
+import { isAllowedEmail, resolveProvisioningRole } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
 
 function profileRowToUser(
@@ -94,7 +94,7 @@ async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | n
     // Clerk-Server nicht verfuegbar
   }
 
-  const mappedRole = getAllowedRoleForEmail(email)
+  const mappedRole = resolveProvisioningRole(email, null, [])
   if (!mappedRole) return null
 
   return getCoreStore().upsertUserFromClerk({
@@ -114,7 +114,7 @@ export async function GET() {
     }
 
     const coreStore = getCoreStore()
-    const profile = await coreStore.getUserByClerkId(userId)
+    let profile = await coreStore.getUserByClerkId(userId)
 
     if (!profile) {
       const claimsEmail = getEmailFromSessionClaims(sessionClaims)
@@ -126,6 +126,22 @@ export async function GET() {
         })
       }
       return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
+    }
+
+    const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+    const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
+    if (resolvedRole && resolvedRole !== profile.role) {
+      const reprovisioned = await coreStore.upsertUserFromClerk({
+        clerkUserId: userId,
+        email: profile.email,
+        displayName: profile.displayName ?? profile.email.split("@")[0] ?? "User",
+        avatarUrl: profile.avatarUrl ?? null,
+        role: resolvedRole,
+        tenantId: profile.tenantId ?? null,
+      })
+      if (reprovisioned) {
+        profile = reprovisioned
+      }
     }
 
     if (!isAllowedEmail(profile.email ?? null)) {
@@ -175,7 +191,12 @@ export async function PUT(request: Request) {
       await autoProvisionProfile(userId, effectiveEmail)
     }
 
-    const mappedRole = getAllowedRoleForEmail(effectiveEmail)
+    const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+    const mappedRole = resolveProvisioningRole(
+      effectiveEmail,
+      existingProfile?.role ?? null,
+      knownRoles
+    )
     const shouldReprovisionRole = mappedRole && existingProfile?.role !== mappedRole
     if (shouldReprovisionRole) {
       await coreStore.upsertUserFromClerk({

@@ -11,7 +11,7 @@
 
 import { verifyWebhook } from "@clerk/nextjs/webhooks"
 import { type NextRequest, NextResponse } from "next/server"
-import { getAllowedRoleForEmail } from "@/lib/auth/allowed-users"
+import { resolveProvisioningRole } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
 
 interface ClerkUserData {
@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
     if (evt.type === "user.created") {
       const data = evt.data as ClerkUserData
       const email = getPrimaryEmail(data)
-      const mappedRole = getAllowedRoleForEmail(email)
+      const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+      const mappedRole = resolveProvisioningRole(email, null, knownRoles)
       if (!mappedRole) {
         return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })
       }
@@ -80,7 +81,9 @@ export async function POST(request: NextRequest) {
     } else if (evt.type === "user.updated") {
       const data = evt.data as ClerkUserData
       const email = getPrimaryEmail(data)
-      const mappedRole = getAllowedRoleForEmail(email)
+      const existingProfile = await coreStore.getUserByClerkId(data.id)
+      const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+      const mappedRole = resolveProvisioningRole(email, existingProfile?.role ?? null, knownRoles)
       if (!mappedRole) {
         await coreStore.deleteUserByClerkId(data.id)
         return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })

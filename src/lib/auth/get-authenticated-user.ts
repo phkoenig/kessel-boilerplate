@@ -10,7 +10,12 @@
 import { auth } from "@clerk/nextjs/server"
 import { clerkClient } from "@clerk/nextjs/server"
 import type { NextResponse } from "next/server"
-import { getAllowedRoleForEmail, isAllowedEmail } from "@/lib/auth/allowed-users"
+import {
+  getAllowedRoleForEmail,
+  isAdminRole,
+  isAllowedEmail,
+  resolveProvisioningRole,
+} from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
 
 export interface AuthenticatedUser {
@@ -64,11 +69,27 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     profile = provisioned
   }
 
+  const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+  const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
+  if (resolvedRole && resolvedRole !== profile.role) {
+    const reprovisioned = await coreStore.upsertUserFromClerk({
+      clerkUserId: userId,
+      email: profile.email,
+      displayName: profile.displayName ?? profile.email.split("@")[0] ?? "User",
+      avatarUrl: profile.avatarUrl ?? null,
+      role: resolvedRole,
+      tenantId: tenantId ?? profile.tenantId ?? null,
+    })
+    if (reprovisioned) {
+      profile = reprovisioned
+    }
+  }
+
   const email = profile.email ?? ""
   if (!isAllowedEmail(email)) return null
 
   const role = profile.role ?? "user"
-  const isAdmin = role === "admin" || role === "superuser" || role === "super-user"
+  const isAdmin = isAdminRole(role)
 
   if (!tenantId && profile.tenantId) {
     tenantId = profile.tenantId
