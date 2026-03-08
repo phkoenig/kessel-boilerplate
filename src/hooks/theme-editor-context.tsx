@@ -16,6 +16,13 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "") // Entferne führende/trailing Bindestriche
 }
 
+export const THEME_EDITOR_PREVIEW_EVENT = "theme-editor-preview-updated"
+
+function notifyThemeEditorPreviewChange(): void {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent(THEME_EDITOR_PREVIEW_EVENT))
+}
+
 /**
  * Invertiert die Lightness eines OKLCH-Wertes für Dark Mode
  */
@@ -107,6 +114,8 @@ export function ThemeEditorProvider({ children }: { children: ReactNode }): Reac
       next.set(name, { light: lightValue, dark: darkValue })
       return next
     })
+
+    notifyThemeEditorPreviewChange()
   }, [])
 
   const resetPreview = useCallback(() => {
@@ -119,6 +128,7 @@ export function ThemeEditorProvider({ children }: { children: ReactNode }): Reac
     })
 
     setPendingChanges(new Map())
+    notifyThemeEditorPreviewChange()
   }, [pendingChanges])
 
   useEffect(() => {

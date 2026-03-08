@@ -92,6 +92,10 @@ export function useThemeSyncWithUser(): void {
       return
     }
 
+    if (user.selectedTheme === theme) {
+      return
+    }
+
     // Speichere in DB (selected_theme statt theme_preference)
     const saveToDb = async () => {
       try {

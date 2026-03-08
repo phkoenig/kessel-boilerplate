@@ -13,7 +13,7 @@ import { ColorPicker } from "@/components/ui/color-picker"
 import { Palette, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/lib/themes"
-import { useThemeEditor } from "@/hooks/use-theme-editor"
+import { THEME_EDITOR_PREVIEW_EVENT, useThemeEditor } from "@/hooks/use-theme-editor"
 import { ColorPairSwatch } from "@/components/theme/ColorPairSwatch"
 import { CornerStyleSwitch } from "@/components/theme/CornerStyleSwitch"
 import { FontSelect } from "@/components/theme/FontSelect"
@@ -82,27 +82,6 @@ function anyColorToOklch(cssColor: string): { l: number; c: number; h: number } 
   } catch {
     return null
   }
-}
-
-/**
- * Konvertiert OKLCH zu Hex
- */
-function oklchToHex(oklch: string): string {
-  if (!oklch) return "#808080"
-  if (oklch.startsWith("#")) return oklch
-  if (typeof document !== "undefined") {
-    const canvas = document.createElement("canvas")
-    canvas.width = 1
-    canvas.height = 1
-    const ctx = canvas.getContext("2d")
-    if (ctx) {
-      ctx.fillStyle = oklch
-      ctx.fillRect(0, 0, 1, 1)
-      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-      return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
-    }
-  }
-  return "#808080"
 }
 
 /**
@@ -208,13 +187,20 @@ function SingleColorSwatch({
     return () => clearTimeout(timeout)
   }, [tokenName, getCurrentTokens, updateDisplayValues])
 
-  // Real-Time Updates: Polling alle 100ms
   useEffect(() => {
     if (typeof window === "undefined") return
-
-    const interval = setInterval(updateDisplayValues, 100)
-    return () => clearInterval(interval)
+    const handlePreviewUpdate = () => updateDisplayValues()
+    window.addEventListener(THEME_EDITOR_PREVIEW_EVENT, handlePreviewUpdate)
+    return () => window.removeEventListener(THEME_EDITOR_PREVIEW_EVENT, handlePreviewUpdate)
   }, [updateDisplayValues])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      updateDisplayValues()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [isDarkMode, updateDisplayValues])
 
   const handleClick = useCallback(() => {
     const tokens = getCurrentTokens()
@@ -1109,8 +1095,6 @@ export default function DesignSystemPage(): React.ReactElement {
         title={pageTitle}
         description="Passe Design-Tokens live an und speichere sie als neues Theme"
       />
-
-      {}
       <div className="min-h-full space-y-12 pb-24" onClick={handleBackgroundClick}>
         {/* Core Theme Colors */}
         <section>

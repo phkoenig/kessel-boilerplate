@@ -23,8 +23,10 @@ const DatasourceFilterContext = createContext<DatasourceFilterContextValue | nul
  */
 export function DatasourceFilterProvider({
   children,
+  enabled = true,
 }: {
   children: ReactNode
+  enabled?: boolean
 }): React.ReactElement {
   const [databases, setDatabases] = useState<DatabaseNode[]>([])
   const [filter, setFilter] = useState<DatasourceFilter>({
@@ -35,6 +37,10 @@ export function DatasourceFilterProvider({
 
   // Lade Datenbanken aus db_registry
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
     async function loadDatabases() {
       try {
         const supabase = createClient()
@@ -86,7 +92,7 @@ export function DatasourceFilterProvider({
     }
 
     loadDatabases()
-  }, [])
+  }, [enabled])
 
   const isTableVisible = (dbId: string, tableName: string): boolean => {
     // Wenn keine Filter aktiv sind, zeige alles

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,10 @@ export function SaveThemeDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isDefaultTheme = baseThemeId === "default"
+
+  const refreshThemeIndex = useCallback(() => {
+    void refreshThemes()
+  }, [refreshThemes])
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -92,22 +96,15 @@ export function SaveThemeDialog({
         // aktive Theme widerspiegeln (inkl. Basis-Theme + CSS-Overrides).
         // pendingChanges enthält die Änderungen dieser Session, die wir darauf anwenden.
 
-        // DEBUG: Log pending changes
-        console.log("[SaveThemeDialog] baseThemeId:", baseThemeId)
-        console.log("[SaveThemeDialog] pendingChanges size:", pendingChanges.size)
-        console.log("[SaveThemeDialog] pendingChanges:", Object.fromEntries(pendingChanges))
-
         // Hole ALLE aktuellen Token-Werte aus dem DOM
         // getCurrentTokens() liest die berechneten CSS-Werte aus dem Browser
         const currentTokens = getCurrentTokens()
-        console.log("[SaveThemeDialog] currentTokens keys:", Object.keys(currentTokens).length)
 
         // Konvertiere zu Map und merge mit pendingChanges
         const allTokens: Map<string, { light: string; dark: string }> = new Map()
 
         // Bestimme ob wir im Dark Mode sind
         const isDarkMode = document.documentElement.classList.contains("dark")
-        console.log("[SaveThemeDialog] isDarkMode:", isDarkMode)
 
         // getCurrentTokens gibt nur den aktuellen Mode zurück (light ODER dark)
         // Wir müssen beide Modi speichern - verwende pendingChanges für die korrekten Werte
@@ -126,8 +123,6 @@ export function SaveThemeDialog({
           }
         })
 
-        console.log("[SaveThemeDialog] allTokens size after merge:", allTokens.size)
-
         // Generiere CSS
         const lightTokens: string[] = []
         const darkTokens: string[] = []
@@ -144,49 +139,27 @@ export function SaveThemeDialog({
         const lightCSS = `[data-theme="${baseThemeId}"] {\n${lightTokens.join("\n")}\n}`
         const darkCSS = `.dark[data-theme="${baseThemeId}"] {\n${darkTokens.join("\n")}\n}`
 
-        console.log("[SaveThemeDialog] lightCSS:", lightCSS)
-        console.log("[SaveThemeDialog] darkCSS:", darkCSS)
-
         const result = await updateTheme(baseThemeId!, {
           lightCSS,
           darkCSS,
           description: description.trim() || undefined,
         })
-        console.log("[SaveThemeDialog] updateTheme result:", result)
 
         if (!result.success) {
           throw new Error(result.error)
         }
 
-        // Reset Preview BEVOR refreshThemes (kann Fehler werfen)
         resetPreview()
-
-        try {
-          await refreshThemes()
-          // CSS neu laden mit Cache-Buster um Browser-Cache zu umgehen
-          await refreshThemeCSS()
-        } catch (refreshError) {
-          // refreshThemes Fehler ignorieren - Theme wurde bereits gespeichert
-          console.warn("Fehler beim Aktualisieren der Theme-Liste:", refreshError)
-        }
+        onOpenChange(false)
+        await refreshThemeCSS()
+        refreshThemeIndex()
       } else {
         const themeId = await saveAsNewTheme(name.trim(), description.trim() || undefined)
-        // resetPreview wird bereits in saveAsNewTheme aufgerufen
-
-        try {
-          await refreshThemes()
-          setTheme(themeId)
-          // CSS des neuen Themes laden
-          await refreshThemeCSS()
-          onSaved?.(themeId)
-        } catch (refreshError) {
-          // refreshThemes Fehler ignorieren - Theme wurde bereits gespeichert
-          console.warn("Fehler beim Aktualisieren der Theme-Liste:", refreshError)
-        }
+        setTheme(themeId, { skipValidation: true })
+        onSaved?.(themeId)
+        onOpenChange(false)
+        refreshThemeIndex()
       }
-
-      // Dialog immer schließen wenn Speichern erfolgreich war
-      onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Speichern des Themes")
       // Dialog bleibt offen bei Fehler, damit Benutzer die Fehlermeldung sieht

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { RotateCcw, Save, Pipette } from "lucide-react"
 import { useTheme as useColorMode } from "next-themes"
 import { parse, formatHex, converter } from "culori"
@@ -13,6 +14,18 @@ import { SaveThemeDialog } from "@/components/theme/SaveThemeDialog"
 
 // Culori Converter für OKLCH
 const toOklch = converter("oklch")
+
+interface EyeDropperResult {
+  sRGBHex: string
+}
+
+interface EyeDropperApi {
+  open: () => Promise<EyeDropperResult>
+}
+
+interface EyeDropperWindow extends Window {
+  EyeDropper?: new () => EyeDropperApi
+}
 
 /**
  * Konvertiert OKLCH zu Hex (mit culori)
@@ -59,7 +72,6 @@ export function ThemeDetailPanel(): React.ReactElement {
   const { selectedElement, previewToken, getCurrentTokens } = useThemeEditor()
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   // Für Color-Editor: Aktuelle Hex-Werte
   const [currentHex, setCurrentHex] = useState("#808080")
@@ -143,25 +155,27 @@ export function ThemeDetailPanel(): React.ReactElement {
   }, [selectedElement, previewToken, isDarkMode])
 
   const handlePickColor = useCallback(async () => {
-    if (typeof window === "undefined" || !("EyeDropper" in window)) return
+    const eyeDropperWindow = window as EyeDropperWindow
+    if (typeof window === "undefined" || !eyeDropperWindow.EyeDropper) return
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const eyeDropper = new (window as any).EyeDropper()
+      const eyeDropper = new eyeDropperWindow.EyeDropper()
 
       const result = await eyeDropper.open()
 
       if (result.sRGBHex) {
         handleColorChange(result.sRGBHex)
       }
-    } catch (e) {
-      console.error("EyeDropper failed", e)
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return
+      }
+      console.error("EyeDropper failed", error)
     }
   }, [handleColorChange])
 
   return (
     <div className="flex h-full flex-col">
-      {/* Content: Kontextabhängig */}
       <ScrollArea className="flex-1">
         <div className="p-6">
           {!selectedElement ? (
@@ -257,9 +271,6 @@ export function ThemeDetailPanel(): React.ReactElement {
           )}
         </div>
       </ScrollArea>
-
-      {/* Save Dialog */}
-      <SaveThemeDialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen} />
     </div>
   )
 }
@@ -267,8 +278,26 @@ export function ThemeDetailPanel(): React.ReactElement {
 /**
  * ThemeDetailPanel Save Button - Wird von DetailDrawer gerendert
  */
-export function ThemeDetailPanelSaveButton(): React.ReactElement {
+export function ThemeDetailPanelSaveButton({
+  forceVisible = false,
+}: {
+  forceVisible?: boolean
+}): React.ReactElement {
+  const pathname = usePathname()
+  const { isDirty } = useThemeEditor()
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSaveDialogOpen(false)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [pathname])
+
+  if (!forceVisible && !isDirty) {
+    return <></>
+  }
 
   return (
     <>
@@ -276,7 +305,8 @@ export function ThemeDetailPanelSaveButton(): React.ReactElement {
         variant="default"
         size="sm"
         onClick={() => setSaveDialogOpen(true)}
-        className="mx-4 mb-6 w-[calc(100%-2rem)] whitespace-nowrap"
+        className="w-full whitespace-nowrap"
+        disabled={!isDirty}
       >
         <Save className="mr-2 size-4 shrink-0" />
         Theme speichern

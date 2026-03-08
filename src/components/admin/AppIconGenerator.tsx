@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Image, RefreshCw, Check, Loader2 } from "lucide-react"
+import { Image as ImageIcon, RefreshCw, Check, Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,7 @@ import { AppIcon } from "@/components/ui/app-icon"
 import { MonochromeIcon } from "@/components/ui/monochrome-icon"
 import { InlineEditInput } from "@/components/ui/inline-edit-input"
 import { useAuth } from "@/components/auth"
+import { useBranding } from "@/lib/branding"
 import { cn } from "@/lib/utils"
 import { emitRealtimeEvent } from "@/lib/realtime"
 
@@ -22,8 +23,11 @@ import { emitRealtimeEvent } from "@/lib/realtime"
  * - Links: Icon-Vorschau mit Varianten
  * - Rechts: Formularfelder + Generator-Controls
  */
+const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
+
 export function AppIconGenerator(): React.ReactElement {
   const { user, isLoading: isAuthLoading } = useAuth()
+  const { reload: reloadBranding } = useBranding()
 
   // Form States
   const [appName, setAppName] = useState("")
@@ -36,7 +40,7 @@ export function AppIconGenerator(): React.ReactElement {
 
   // Icon States
   const [currentIconUrl, setCurrentIconUrl] = useState<string | null>(null)
-  const [_iconVariants, setIconVariants] = useState<Array<{ url: string }>>([])
+  const [, setIconVariants] = useState<Array<{ url: string }>>([])
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
 
   // Generation States
@@ -60,9 +64,6 @@ export function AppIconGenerator(): React.ReactElement {
   const [availableProviders, setAvailableProviders] = useState<
     Array<{ id: string; name: string; models: string[]; defaultModel: string }>
   >([])
-
-  // Default-Werte aus Kessel Boilerplate, die auf ENV-Variable fallen sollen
-  const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
 
   // Lade app_settings beim Mount (via API für tenant_slug-Filterung)
   useEffect(() => {
@@ -225,6 +226,8 @@ export function AppIconGenerator(): React.ReactElement {
       } else {
         setDescription(value)
       }
+
+      await reloadBranding()
 
       console.log(`[AppIconGenerator] Saved ${field}:`, value)
     } catch (err) {
@@ -421,6 +424,7 @@ export function AppIconGenerator(): React.ReactElement {
       setCurrentIconUrl(selectedVariant.url)
       setIconVariants(generatedVariants.map((img) => ({ url: img.url })))
       setSaved(true)
+      await reloadBranding()
 
       // Realtime-Invalidierung für Icon-Update
       setTimeout(() => {
@@ -450,7 +454,7 @@ export function AppIconGenerator(): React.ReactElement {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Image className="size-5" />
+          <ImageIcon className="size-5" />
           App-Icon Generator
         </CardTitle>
       </CardHeader>

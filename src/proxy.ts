@@ -50,6 +50,10 @@ export function getProxyAction(
  */
 export default clerkMiddleware(async (auth, request: NextRequest) => {
   const { pathname } = request.nextUrl
+  if (isClerkInternalRoute(request) || isApiRoute(request) || isPublicRoute(request)) {
+    return NextResponse.next()
+  }
+
   const isAuthenticated = await auth().then((r) => !!r.userId)
   const action = getProxyAction(pathname, isAuthenticated, request)
 

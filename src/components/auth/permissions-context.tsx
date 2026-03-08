@@ -1,6 +1,14 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react"
 import type { UserRole } from "./auth-context"
 import { useAuth } from "./auth-context"
 import { useNavigation } from "@/lib/navigation"
@@ -24,6 +32,11 @@ interface PermissionsContextValue {
 }
 
 const PermissionsContext = createContext<PermissionsContextValue | null>(null)
+let permissionsCache: Array<{ moduleId: string; roleName: string; hasAccess: boolean }> | null =
+  null
+let permissionsRequest: Promise<
+  Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+> | null = null
 
 /** Hook zum Zugriff auf Permissions */
 export function usePermissions(): PermissionsContextValue {
@@ -80,76 +93,129 @@ function generateFallbackPermissions(
  */
 export function PermissionsProvider({ children }: { children: ReactNode }): React.ReactElement {
   const { records } = useNavigation()
-  const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(() =>
-    generateFallbackPermissions(records)
-  )
-  const [isLoaded, setIsLoaded] = useState(false)
+  const fallbackPermissions = useMemo(() => generateFallbackPermissions(records), [records])
+  const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(fallbackPermissions)
+  const [isLoaded, setIsLoaded] = useState(true)
 
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
 
-  const loadPermissions = useCallback(async () => {
-    try {
-      const response = await fetch("/api/core/permissions", {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        setPermissions(generateFallbackPermissions(records))
-        return
-      }
-
-      const payload = (await response.json()) as {
-        permissions?: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
-      }
-      const accessData = payload.permissions ?? []
-
-      const fallbackPerms = generateFallbackPermissions(records)
+  const mergePermissions = useCallback(
+    (
+      accessData: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+    ): Map<string, ModulePermission> => {
       const mergedPerms = new Map<string, ModulePermission>()
 
-      fallbackPerms.forEach((perm, moduleId) => {
+      fallbackPermissions.forEach((perm, moduleId) => {
         mergedPerms.set(moduleId, {
           moduleId,
           roleAccess: new Map(perm.roleAccess),
         })
       })
 
-      if (accessData && accessData.length > 0) {
-        accessData.forEach((row) => {
-          const moduleId = row.moduleId
-          const roleName = row.roleName
-          const hasAccess = row.hasAccess ?? true
+      accessData.forEach((row) => {
+        const moduleId = row.moduleId
+        const roleName = row.roleName
+        const hasAccess = row.hasAccess ?? true
 
-          if (!moduleId || !roleName) return
+        if (!moduleId || !roleName) return
 
-          let perm = mergedPerms.get(moduleId)
-          if (!perm) {
-            perm = {
-              moduleId,
-              roleAccess: new Map(),
-            }
-            mergedPerms.set(moduleId, perm)
+        let perm = mergedPerms.get(moduleId)
+        if (!perm) {
+          perm = {
+            moduleId,
+            roleAccess: new Map(),
           }
+          mergedPerms.set(moduleId, perm)
+        }
 
-          perm.roleAccess.set(roleName, hasAccess)
-        })
+        perm.roleAccess.set(roleName, hasAccess)
+      })
+
+      return mergedPerms
+    },
+    [fallbackPermissions]
+  )
+
+  const loadPermissions = useCallback(
+    async (force = false) => {
+      if (authLoading) {
+        return
       }
 
-      setPermissions(mergedPerms)
-    } catch {
-      setPermissions(generateFallbackPermissions(records))
-    } finally {
-      setIsLoaded(true)
-    }
-  }, [records])
+      if (!isAuthenticated) {
+        setPermissions(fallbackPermissions)
+        setIsLoaded(true)
+        return
+      }
+
+      if (!force && permissionsCache) {
+        setPermissions(mergePermissions(permissionsCache))
+        setIsLoaded(true)
+        return
+      }
+
+      if (!force && permissionsRequest) {
+        const cachedResult = await permissionsRequest
+        setPermissions(mergePermissions(cachedResult))
+        setIsLoaded(true)
+        return
+      }
+
+      const request = (async (): Promise<
+        Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+      > => {
+        try {
+          const response = await fetch("/api/core/permissions", {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+
+          if (!response.ok) {
+            permissionsCache = []
+            return []
+          }
+
+          const payload = (await response.json()) as {
+            permissions?: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+          }
+          const accessData = payload.permissions ?? []
+          permissionsCache = accessData
+          return accessData
+        } finally {
+          permissionsRequest = null
+        }
+      })()
+
+      permissionsRequest = request
+
+      try {
+        setPermissions(mergePermissions(await request))
+      } catch {
+        setPermissions(fallbackPermissions)
+      } finally {
+        setIsLoaded(true)
+      }
+    },
+    [authLoading, fallbackPermissions, isAuthenticated, mergePermissions]
+  )
 
   useEffect(() => {
-    setIsLoaded(false)
-    loadPermissions()
-  }, [loadPermissions, records, user?.id, isAuthenticated])
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        void loadPermissions()
+      })
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadPermissions()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [loadPermissions])
 
   /**
    * Prüft ob ein Modul 'alwaysVisible' ist (kann nicht über Rollen deaktiviert werden)
@@ -187,7 +253,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
       const perm = permissions.get(moduleId)
 
       if (!perm) {
-        const fallback = generateFallbackPermissions(records).get(moduleId)
+        const fallback = fallbackPermissions.get(moduleId)
         if (!fallback) {
           return true
         }
@@ -196,11 +262,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
       return perm.roleAccess.get(userRole) ?? false
     },
-    [permissions, isAlwaysVisible, records]
+    [fallbackPermissions, isAlwaysVisible, permissions]
   )
 
   return (
-    <PermissionsContext.Provider value={{ canAccess, isLoaded, reload: loadPermissions }}>
+    <PermissionsContext.Provider
+      value={{ canAccess, isLoaded, reload: () => loadPermissions(true) }}
+    >
       {children}
     </PermissionsContext.Provider>
   )

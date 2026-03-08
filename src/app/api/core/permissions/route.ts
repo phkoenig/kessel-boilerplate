@@ -2,6 +2,14 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 
+const PERMISSIONS_CACHE_TTL_MS = 60_000
+type ModulePermissions = Awaited<
+  ReturnType<ReturnType<typeof getCoreStore>["listModulePermissions"]>
+>
+
+let permissionsCache: { mode: string; permissions: ModulePermissions; expiresAt: number } | null =
+  null
+
 /**
  * Liefert die zentrale Permissions-Matrix aus dem Boilerplate-Core.
  * Der Client greift damit nicht mehr direkt auf Legacy-Tabellen zu und
@@ -17,9 +25,23 @@ export async function GET(): Promise<NextResponse> {
   }
 
   try {
-    const permissions = await getCoreStore().listModulePermissions()
+    if (permissionsCache && permissionsCache.expiresAt > Date.now()) {
+      return NextResponse.json({
+        mode: permissionsCache.mode,
+        permissions: permissionsCache.permissions,
+      })
+    }
+
+    const coreStore = getCoreStore()
+    const permissions = await coreStore.listModulePermissions()
+    permissionsCache = {
+      mode: coreStore.getMode(),
+      permissions,
+      expiresAt: Date.now() + PERMISSIONS_CACHE_TTL_MS,
+    }
+
     return NextResponse.json({
-      mode: getCoreStore().getMode(),
+      mode: permissionsCache.mode,
       permissions,
     })
   } catch (error) {

@@ -30,6 +30,8 @@ interface NavigationContextValue {
 }
 
 const NavigationContext = createContext<NavigationContextValue | null>(null)
+let navigationCache: CoreNavigationRecord[] | null = null
+let navigationRequest: Promise<CoreNavigationRecord[]> | null = null
 
 const buildFallbackSections = (): {
   records: CoreNavigationRecord[]
@@ -44,34 +46,70 @@ const buildFallbackSections = (): {
 }
 
 export function NavigationProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [records, setRecords] = useState<CoreNavigationRecord[]>(NAVIGATION_SEED)
-  const [isLoaded, setIsLoaded] = useState<boolean>(false)
+  const [records, setRecords] = useState<CoreNavigationRecord[]>(navigationCache ?? NAVIGATION_SEED)
+  const [isLoaded, setIsLoaded] = useState<boolean>(true)
 
-  const loadNavigation = useCallback(async (): Promise<void> => {
-    try {
-      const response = await fetch("/api/core/navigation", {
-        method: "GET",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      })
+  const loadNavigation = useCallback(async (force = false): Promise<void> => {
+    if (!force && navigationCache) {
+      setRecords(navigationCache)
+      setIsLoaded(true)
+      return
+    }
 
-      if (!response.ok) {
-        setRecords(NAVIGATION_SEED)
-        return
+    if (!force && navigationRequest) {
+      const cachedResult = await navigationRequest
+      setRecords(cachedResult)
+      setIsLoaded(true)
+      return
+    }
+
+    const request = (async (): Promise<CoreNavigationRecord[]> => {
+      try {
+        const response = await fetch("/api/core/navigation", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        })
+
+        if (!response.ok) {
+          navigationCache = NAVIGATION_SEED
+          return NAVIGATION_SEED
+        }
+
+        const payload = (await response.json()) as { items?: CoreNavigationRecord[] }
+        const resolved = payload.items && payload.items.length > 0 ? payload.items : NAVIGATION_SEED
+        navigationCache = resolved
+        return resolved
+      } catch {
+        navigationCache = NAVIGATION_SEED
+        return NAVIGATION_SEED
+      } finally {
+        navigationRequest = null
       }
+    })()
 
-      const payload = (await response.json()) as { items?: CoreNavigationRecord[] }
-      setRecords(payload.items && payload.items.length > 0 ? payload.items : NAVIGATION_SEED)
-    } catch {
-      setRecords(NAVIGATION_SEED)
+    navigationRequest = request
+
+    try {
+      setRecords(await request)
     } finally {
       setIsLoaded(true)
     }
   }, [])
 
   useEffect(() => {
-    setIsLoaded(false)
-    void loadNavigation()
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        void loadNavigation()
+      })
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadNavigation()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadNavigation])
 
   const sections = useMemo(() => {
@@ -92,7 +130,7 @@ export function NavigationProvider({ children }: { children: ReactNode }): React
       sidebarSections,
       userMenuSection,
       isLoaded,
-      reload: loadNavigation,
+      reload: () => loadNavigation(true),
       findCurrentItem: (href) => findNavigationItemByHref(activeRecords, href),
       getBreadcrumbs: (href) => buildBreadcrumbEntries(activeRecords, href),
     }

@@ -5,10 +5,11 @@ import { useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useAppInvalidation } from "@/hooks/use-app-invalidation"
 import {
-  AppShell,
+  AppShellWithoutProvider,
   ExplorerPanel,
   ExplorerFileTree,
   KeyboardShortcuts,
+  ShellProvider,
   useExplorer,
 } from "@/components/shell"
 import { ThemeEditorProvider } from "@/hooks/use-theme-editor"
@@ -110,63 +111,31 @@ export default function ShellLayout({
   const isDesignSystemPage = pathname === "/app-verwaltung/design-system"
   const isDatasourcesPage = pathname === "/app-verwaltung/datenquellen"
   const isComponentsPage = pathname === "/app-verwaltung/ui-komponenten"
-  // const isUsersPage = pathname === "/app-verwaltung/benutzer" // Reserved for future use
+  const shouldExplorerBeOpen = isDatasourcesPage || isComponentsPage
 
-  // Gemeinsamer Shell-Inhalt mit einheitlicher ExplorerAutoOpen-Instanz
+  const explorerContent = isDatasourcesPage ? (
+    <RouteExplorer pathname={pathname} />
+  ) : isComponentsPage ? (
+    <ComponentExplorer />
+  ) : null
+
   const shellContent = (
-    <>
-      <ExplorerAutoOpen shouldBeOpen={isDatasourcesPage || isComponentsPage} />
+    <AppShellWithoutProvider navbar={<Navbar />} explorer={explorerContent}>
+      <ExplorerAutoOpen shouldBeOpen={shouldExplorerBeOpen} />
       <KeyboardShortcuts />
       {children}
-    </>
+    </AppShellWithoutProvider>
   )
 
-  // Datenquellen-Seite: Provider muss VOR dem Explorer-Element sein
-  if (isDatasourcesPage) {
-    return (
-      <DatasourceFilterProvider>
-        <AppShell
-          navbar={<Navbar />}
-          explorer={<RouteExplorer pathname={pathname} />}
-          initialState={{ explorerOpen: true }}
-        >
-          {shellContent}
-        </AppShell>
-      </DatasourceFilterProvider>
-    )
-  }
-
-  // UI-Komponenten Seite: Spezieller Explorer
-  if (isComponentsPage) {
-    return (
-      <AppShell
-        navbar={<Navbar />}
-        explorer={<ComponentExplorer />}
-        initialState={{ explorerOpen: true }}
-      >
-        {shellContent}
-      </AppShell>
-    )
-  }
-
-  // Design System Seite mit ThemeEditorProvider (kein Explorer)
-  if (isDesignSystemPage) {
-    return (
-      <ThemeEditorProvider>
-        <AppShell navbar={<Navbar />} explorer={null}>
-          {shellContent}
-        </AppShell>
-      </ThemeEditorProvider>
-    )
-  }
-
-  // Standard-Layout für alle anderen Seiten (kein Explorer)
-  // Explorer wird nur auf spezifischen Seiten angezeigt:
-  // - /app-verwaltung/datenquellen → DatasourceExplorer
-  // - /app-verwaltung/ui-komponenten → ComponentExplorer
   return (
-    <AppShell navbar={<Navbar />} explorer={null}>
-      {shellContent}
-    </AppShell>
+    <ShellProvider initialState={{ explorerOpen: shouldExplorerBeOpen }}>
+      <DatasourceFilterProvider enabled={isDatasourcesPage}>
+        {isDesignSystemPage ? (
+          <ThemeEditorProvider>{shellContent}</ThemeEditorProvider>
+        ) : (
+          shellContent
+        )}
+      </DatasourceFilterProvider>
+    </ShellProvider>
   )
 }

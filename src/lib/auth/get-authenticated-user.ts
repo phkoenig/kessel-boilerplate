@@ -18,6 +18,22 @@ import {
 } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
 
+const KNOWN_ROLES_CACHE_TTL_MS = 60_000
+let knownRolesCache: { roles: string[]; expiresAt: number } | null = null
+
+async function getKnownRoles(coreStore: ReturnType<typeof getCoreStore>): Promise<string[]> {
+  if (knownRolesCache && knownRolesCache.expiresAt > Date.now()) {
+    return knownRolesCache.roles
+  }
+
+  const roles = (await coreStore.listUsers()).map((entry) => entry.role)
+  knownRolesCache = {
+    roles,
+    expiresAt: Date.now() + KNOWN_ROLES_CACHE_TTL_MS,
+  }
+  return roles
+}
+
 export interface AuthenticatedUser {
   /** Clerk User ID (user_xxx) - fuer Anzeige/API-Responses */
   clerkUserId: string
@@ -69,7 +85,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     profile = provisioned
   }
 
-  const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+  const knownRoles = await getKnownRoles(coreStore)
   const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
   if (resolvedRole && resolvedRole !== profile.role) {
     const reprovisioned = await coreStore.upsertUserFromClerk({

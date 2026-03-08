@@ -45,7 +45,6 @@ export function useColorSchemeSync(): void {
       // Validiere Wert (nur dark, light, system erlaubt)
       if (["dark", "light", "system"].includes(dbColorScheme)) {
         if (dbColorScheme !== currentColorScheme) {
-          console.log("[ColorSchemeSync] Applying color scheme from DB:", dbColorScheme)
           setColorScheme(dbColorScheme)
           // localStorage wird von next-themes automatisch aktualisiert
         }
@@ -73,12 +72,16 @@ export function useColorSchemeSync(): void {
       ? (currentColorScheme as "dark" | "light" | "system")
       : "system"
 
+    if (user.colorScheme === colorSchemeToSave) {
+      return
+    }
+
     const saveToDb = async () => {
       try {
-        const res = await fetch("/api/user/profile", {
+        const res = await fetch("/api/user/theme", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ color_scheme: colorSchemeToSave }),
+          body: JSON.stringify({ colorScheme: colorSchemeToSave }),
         })
 
         if (!res.ok) {

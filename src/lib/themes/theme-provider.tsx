@@ -20,6 +20,9 @@ const CORNER_STYLE_STORAGE_KEY = "corner-style"
  * Kann über NEXT_PUBLIC_DEFAULT_THEME Environment-Variable überschrieben werden.
  */
 const DEFAULT_THEME_ID = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
+let cachedThemes: ThemeMeta[] | null = null
+let themesRequest: Promise<ThemeMeta[]> | null = null
+const THEMES_CACHE_KEY = "theme-list-cache-v1"
 
 /**
  * Corner-Style Typ.
@@ -197,50 +200,87 @@ const CustomThemeProvider = ({
    * Lädt Themes aus der Supabase API.
    * Gibt die aktualisierte Theme-Liste zurück (für await-basierte Nutzung).
    */
-  const refreshThemes = useCallback(async (): Promise<ThemeMeta[]> => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/themes/list")
+  const refreshThemes = useCallback(async (force = false): Promise<ThemeMeta[]> => {
+    if (!force && cachedThemes) {
+      setThemes(cachedThemes)
+      setIsLoading(false)
+      return cachedThemes
+    }
 
-      // Prüfe Content-Type bevor JSON geparst wird
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("API-Route /api/themes/list liefert kein JSON:", contentType)
-        // Fallback: Leeres Array setzen
-        setThemes([])
-        return []
+    if (!force && typeof window !== "undefined") {
+      const cachedValue = window.sessionStorage.getItem(THEMES_CACHE_KEY)
+      if (cachedValue) {
+        try {
+          const parsed = JSON.parse(cachedValue) as ThemeMeta[]
+          cachedThemes = parsed
+          setThemes(parsed)
+          setIsLoading(false)
+          return parsed
+        } catch {
+          window.sessionStorage.removeItem(THEMES_CACHE_KEY)
+        }
       }
+    }
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.themes && Array.isArray(data.themes)) {
-          // Transformiere API-Response zu ThemeMeta-Format
-          const apiThemes: ThemeMeta[] = data.themes.map(
-            (t: { id: string; name: string; description: string; dynamicFonts?: string[] }) => ({
-              id: t.id,
-              name: t.name,
-              description: t.description,
-              dynamicFonts: t.dynamicFonts,
-            })
-          )
-          setThemes(apiThemes)
-          return apiThemes
-        } else {
-          // Fallback: Leeres Array wenn keine Themes vorhanden
-          setThemes([])
+    if (!force && themesRequest) {
+      const cachedResult = await themesRequest
+      setThemes(cachedResult)
+      setIsLoading(false)
+      return cachedResult
+    }
+
+    setIsLoading(true)
+    const request = (async (): Promise<ThemeMeta[]> => {
+      try {
+        const response = await fetch("/api/themes/list")
+
+        const contentType = response.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          console.warn("API-Route /api/themes/list liefert kein JSON:", contentType)
+          cachedThemes = []
           return []
         }
-      } else {
-        console.warn(`API-Route /api/themes/list fehlgeschlagen: ${response.status}`)
-        // Fallback: Leeres Array setzen
-        setThemes([])
+
+        if (!response.ok) {
+          console.warn(`API-Route /api/themes/list fehlgeschlagen: ${response.status}`)
+          cachedThemes = []
+          return []
+        }
+
+        const data = await response.json()
+        if (!data.themes || !Array.isArray(data.themes)) {
+          cachedThemes = []
+          return []
+        }
+
+        const apiThemes: ThemeMeta[] = data.themes.map(
+          (t: { id: string; name: string; description: string; dynamicFonts?: string[] }) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            dynamicFonts: t.dynamicFonts,
+          })
+        )
+        cachedThemes = apiThemes
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(THEMES_CACHE_KEY, JSON.stringify(apiThemes))
+        }
+        return apiThemes
+      } catch (error) {
+        console.error("Fehler beim Laden der Themes:", error)
+        cachedThemes = []
         return []
+      } finally {
+        themesRequest = null
       }
-    } catch (error) {
-      console.error("Fehler beim Laden der Themes:", error)
-      // Fallback: Leeres Array setzen statt zu crashen
-      setThemes([])
-      return []
+    })()
+
+    themesRequest = request
+
+    try {
+      const nextThemes = await request
+      setThemes(nextThemes)
+      return nextThemes
     } finally {
       setIsLoading(false)
     }
@@ -267,7 +307,7 @@ const CustomThemeProvider = ({
 
     // Themes aus API laden
     refreshThemes()
-  }, [refreshThemes])
+  }, [defaultTheme, refreshThemes])
 
   // KERNLOGIK: Theme-Attribut setzen + Fonts/CSS laden
   useEffect(() => {

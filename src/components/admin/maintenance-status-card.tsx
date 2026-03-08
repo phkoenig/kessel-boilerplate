@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import type { AuditResponse, UpdatesResponse } from "@/lib/tech-stack"
 
 type MaintenanceTone = "healthy" | "warning" | "critical" | "neutral"
+const MAINTENANCE_CACHE_KEY = "maintenance-status-cache-v1"
+const MAINTENANCE_CACHE_TTL_MS = 5 * 60 * 1000
 
 /**
  * Beschreibt den verdichteten Wartungsstatus fuer das Admin-Dashboard.
@@ -41,6 +43,12 @@ interface MaintenanceSnapshot {
   tone: MaintenanceTone
 }
 
+interface MaintenanceCacheValue {
+  audit: AuditResponse | null
+  updates: UpdatesResponse | null
+  timestamp: number
+}
+
 /**
  * Liefert einen kleinen Admin-Status fuer Update- und Security-Hinweise.
  * Das Panel ersetzt bewusst die fruehere Paket-Tabelle und erinnert nur noch
@@ -60,22 +68,41 @@ export function MaintenanceStatusCard(): React.ReactElement {
    *
    * @returns Ein Promise, das nach Abschluss aller Requests aufgeloest wird.
    */
-  const loadSnapshot = useCallback(async (): Promise<void> => {
-    setLoading(true)
+  const loadSnapshot = useCallback(async (includeAudit = true, silent = false): Promise<void> => {
+    if (!silent) {
+      setLoading(true)
+    }
     setError(null)
 
     try {
-      const [updatesResponse, auditResponse] = await Promise.all([
-        fetch("/api/system/tech-stack/updates", { cache: "no-store" }),
-        fetch("/api/system/tech-stack/audit", { cache: "no-store" }),
-      ])
-
-      if (!updatesResponse.ok || !auditResponse.ok) {
+      const updatesResponse = await fetch("/api/system/tech-stack/updates", { cache: "no-store" })
+      if (!updatesResponse.ok) {
         throw new Error("Wartungsstatus konnte nicht geladen werden.")
       }
 
-      setUpdates((await updatesResponse.json()) as UpdatesResponse)
-      setAudit((await auditResponse.json()) as AuditResponse)
+      const updatesData = (await updatesResponse.json()) as UpdatesResponse
+      setUpdates(updatesData)
+
+      let auditData: AuditResponse | null = null
+      if (includeAudit) {
+        const auditResponse = await fetch("/api/system/tech-stack/audit", { cache: "no-store" })
+        if (!auditResponse.ok) {
+          throw new Error("Wartungsstatus konnte nicht geladen werden.")
+        }
+        auditData = (await auditResponse.json()) as AuditResponse
+        setAudit(auditData)
+      }
+
+      if (typeof window !== "undefined" && auditData) {
+        window.sessionStorage.setItem(
+          MAINTENANCE_CACHE_KEY,
+          JSON.stringify({
+            audit: auditData,
+            updates: updatesData,
+            timestamp: Date.now(),
+          } satisfies MaintenanceCacheValue)
+        )
+      }
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unbekannter Fehler")
     } finally {
@@ -84,7 +111,55 @@ export function MaintenanceStatusCard(): React.ReactElement {
   }, [])
 
   useEffect(() => {
-    void loadSnapshot()
+    let cancelled = false
+    let timeoutId: number | undefined
+    let hasFreshCache = false
+
+    if (typeof window !== "undefined") {
+      const cachedValue = window.sessionStorage.getItem(MAINTENANCE_CACHE_KEY)
+      if (cachedValue) {
+        try {
+          const parsed = JSON.parse(cachedValue) as MaintenanceCacheValue
+          if (Date.now() - parsed.timestamp < MAINTENANCE_CACHE_TTL_MS) {
+            hasFreshCache = true
+            setUpdates(parsed.updates)
+            setAudit(parsed.audit)
+            setLoading(false)
+          }
+        } catch {
+          window.sessionStorage.removeItem(MAINTENANCE_CACHE_KEY)
+        }
+      }
+    }
+
+    const scheduleDeferredAudit = () => {
+      timeoutId = window.setTimeout(() => {
+        if (!cancelled) {
+          void loadSnapshot(true, true)
+        }
+      }, 2500)
+    }
+
+    if (!hasFreshCache) {
+      void loadSnapshot(false, false)
+    }
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        if (!cancelled) {
+          scheduleDeferredAudit()
+        }
+      })
+    } else if (typeof window !== "undefined") {
+      scheduleDeferredAudit()
+    }
+
+    return () => {
+      cancelled = true
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId)
+      }
+    }
   }, [loadSnapshot])
 
   /**
@@ -193,7 +268,7 @@ export function MaintenanceStatusCard(): React.ReactElement {
           variant="ghost"
           size="icon"
           className="size-8"
-          onClick={() => void loadSnapshot()}
+          onClick={() => void loadSnapshot(true, false)}
           aria-label="Wartungshinweise neu laden"
         >
           <RefreshCw className="size-4" />

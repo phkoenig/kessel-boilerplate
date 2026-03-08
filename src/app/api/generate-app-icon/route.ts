@@ -5,11 +5,12 @@
  * und speichert sie in Supabase Storage
  */
 
-import { createMediaService } from "@/lib/media"
-import { createClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+import { createMediaService } from "@/lib/media"
+import { getTenantStoragePath } from "@/lib/utils/tenant"
+import { requireAdmin } from "@/lib/auth/guards"
+import { createServiceClient } from "@/utils/supabase/service"
 
 // Timeout erhöhen für Image-Generierung (kann länger dauern)
 export const maxDuration = 60
@@ -67,7 +68,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       return userOrError as NextResponse
     }
 
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
     // 3. Request Body parsen
     const body: GenerateIconRequest = await req.json()
@@ -96,6 +97,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     // 6. Bilder in Supabase Storage hochladen
     const uploadedImages: Array<{ url: string; base64?: string }> = []
+    const uploadFailures: string[] = []
     const timestamp = Date.now()
 
     for (let i = 0; i < generatedImages.length; i++) {
@@ -105,7 +107,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       const isSvg = image.mimeType === "image/svg+xml"
       const fileExtension = isSvg ? "svg" : "png"
       const filename = `icon-${timestamp}-${i + 1}.${fileExtension}`
-      const filePath = `${tenantSlug}/${filename}`
+      const filePath = getTenantStoragePath(filename)
 
       // Base64 zu Buffer konvertieren
       const buffer = base64ToBuffer(image.base64)
@@ -120,6 +122,9 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       if (uploadError) {
         console.error(`Error uploading icon variant ${i + 1}:`, uploadError)
+        uploadFailures.push(
+          uploadError.message || `Upload von Variante ${i + 1} nach ${filePath} fehlgeschlagen`
+        )
         continue
       }
 
@@ -136,7 +141,10 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (uploadedImages.length === 0) {
       return NextResponse.json(
-        { error: "Failed to upload generated images to storage" },
+        {
+          error: "Failed to upload generated images to storage",
+          details: uploadFailures,
+        },
         { status: 500 }
       )
     }

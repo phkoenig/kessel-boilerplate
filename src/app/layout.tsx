@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
-import { unstable_noStore as noStore } from "next/cache"
+import { cache } from "react"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
@@ -37,11 +37,10 @@ async function loadAppMetadata() {
   return getCoreStore().getAppSettings(getTenantSlug())
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  // Metadaten sollen Name/Beschreibung-Updates sofort reflektieren.
-  noStore()
+const loadCachedAppMetadata = cache(loadAppMetadata)
 
-  const data = await loadAppMetadata()
+export async function generateMetadata(): Promise<Metadata> {
+  const data = await loadCachedAppMetadata()
   const branding = resolveAppBranding(
     data
       ? {
@@ -100,17 +99,17 @@ async function getDefaultThemeCSS(): Promise<string> {
   }
 }
 
+const getCachedDefaultThemeCSS = cache(getDefaultThemeCSS)
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>): Promise<React.ReactElement> {
-  noStore()
-
   // Lade Default-Theme CSS serverseitig
-  const defaultThemeCSS = await getDefaultThemeCSS()
+  const defaultThemeCSS = await getCachedDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
-  const appMetadata = await loadAppMetadata()
+  const appMetadata = await loadCachedAppMetadata()
   const appBranding = resolveAppBranding(
     appMetadata
       ? {

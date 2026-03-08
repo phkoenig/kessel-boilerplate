@@ -48,6 +48,12 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+const AUTH_PROFILE_CACHE_KEY = "auth-profile-cache-v1"
+
+interface CachedProfileValue {
+  clerkUserId: string
+  user: User
+}
 
 /** Hook zum Zugriff auf Auth-State */
 export function useAuth(): AuthContextValue {
@@ -83,6 +89,22 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       setProfileLoading(false)
       return
     }
+
+    if (typeof window !== "undefined") {
+      const cachedValue = window.sessionStorage.getItem(AUTH_PROFILE_CACHE_KEY)
+      if (cachedValue) {
+        try {
+          const parsed = JSON.parse(cachedValue) as CachedProfileValue
+          if (parsed.clerkUserId === clerkUser.id) {
+            setProfile(parsed.user)
+            setProfileLoading(false)
+          }
+        } catch {
+          window.sessionStorage.removeItem(AUTH_PROFILE_CACHE_KEY)
+        }
+      }
+    }
+
     setProfileLoading(true)
     try {
       const data = await fetchProfile()
@@ -102,9 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           avatar: data.user.avatar || clerkUser.imageUrl,
         }
         setProfile(merged)
+        if (typeof window !== "undefined") {
+          const cacheValue: CachedProfileValue = {
+            clerkUserId: clerkUser.id,
+            user: merged,
+          }
+          window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
+        }
       } else {
         const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
-        setProfile({
+        const fallbackProfile: User = {
           id: clerkUser.id,
           clerkUserId: clerkUser.id,
           email: fallbackEmail,
@@ -116,11 +145,19 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           role: getFallbackRole(fallbackEmail),
           canSelectTheme: false,
           colorScheme: "system",
-        })
+        }
+        setProfile(fallbackProfile)
+        if (typeof window !== "undefined") {
+          const cacheValue: CachedProfileValue = {
+            clerkUserId: clerkUser.id,
+            user: fallbackProfile,
+          }
+          window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
+        }
       }
     } catch {
       const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
-      setProfile({
+      const fallbackProfile: User = {
         id: clerkUser.id,
         clerkUserId: clerkUser.id,
         email: fallbackEmail,
@@ -129,7 +166,15 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         role: getFallbackRole(fallbackEmail),
         canSelectTheme: false,
         colorScheme: "system",
-      })
+      }
+      setProfile(fallbackProfile)
+      if (typeof window !== "undefined") {
+        const cacheValue: CachedProfileValue = {
+          clerkUserId: clerkUser.id,
+          user: fallbackProfile,
+        }
+        window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
+      }
     } finally {
       setProfileLoading(false)
     }
@@ -148,6 +193,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const logout = useCallback(async () => {
     await signOut()
     setProfile(null)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(AUTH_PROFILE_CACHE_KEY)
+    }
   }, [signOut])
 
   const hasRole = useCallback(

@@ -13,12 +13,8 @@ interface DetailDrawerProps {
   className?: string
 }
 
-/**
- * Prüft ob der Content ein ThemeDetailPanel ist
- */
 function isThemeDetailPanel(content: React.ReactNode): boolean {
   if (!isValidElement(content)) return false
-  // Prüfe ob es ein ThemeDetailPanel ist (über direkten Vergleich mit der Komponente)
   return content.type === ThemeDetailPanel
 }
 
@@ -28,8 +24,6 @@ function isThemeDetailPanel(content: React.ReactNode): boolean {
  * Spalte 4 des 4-Spalten-Layouts.
  * Zeigt optionalen Detail-Content, der von Seiten gesetzt wird.
  * Wenn kein Content vorhanden ist, wird das Panel automatisch versteckt.
- *
- * Für ThemeDetailPanel: Rendert zusätzlich den Save-Button am Bottom.
  *
  * @example
  * ```tsx
@@ -51,15 +45,14 @@ export function DetailDrawer({ className }: DetailDrawerProps): React.ReactEleme
 
   const showSaveButton = isThemeDetailPanel(content)
 
-  // Content in flex-Container rendern - Button am Bottom wenn ThemeDetailPanel
   return (
-    <div className={cn("flex h-full w-full flex-col", className)}>
-      {/* Content nimmt verfügbaren Platz ein */}
-      <div className="min-h-0 flex-1 pt-2">{content}</div>
-      {/* Save Button am Bottom - nur für ThemeDetailPanel */}
+    <div className={cn("relative flex h-full w-full flex-col", className)}>
+      <div className={cn("min-h-0 flex-1 pt-2", showSaveButton && "pb-24")}>{content}</div>
       {showSaveButton && (
-        <div className="pb-2">
-          <ThemeDetailPanelSaveButton />
+        <div className="pointer-events-none absolute right-0 bottom-0 left-0 p-4">
+          <div className="bg-background/95 border-border pointer-events-auto rounded-lg border p-2 shadow-lg backdrop-blur-sm">
+            <ThemeDetailPanelSaveButton forceVisible />
+          </div>
         </div>
       )}
     </div>

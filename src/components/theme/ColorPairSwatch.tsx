@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useRef, useState } from "react"
 import { useTheme as useColorMode } from "next-themes"
 import { cn } from "@/lib/utils"
-import { useThemeEditor } from "@/hooks/use-theme-editor"
+import { THEME_EDITOR_PREVIEW_EVENT, useThemeEditor } from "@/hooks/use-theme-editor"
 
 interface ColorPairSwatchProps {
   /** Token-Name für Background (z.B. "--primary") */
@@ -171,15 +171,20 @@ export function ColorPairSwatch({
     return () => clearTimeout(timeout)
   }, [tokenName, foregroundTokenName, getCurrentTokens, updateDisplayValues])
 
-  // Real-Time Updates: Überwache CSS-Änderungen
   useEffect(() => {
     if (typeof window === "undefined") return
-
-    // Polling für Real-Time Updates (alle 100ms)
-    const interval = setInterval(updateDisplayValues, 100)
-
-    return () => clearInterval(interval)
+    const handlePreviewUpdate = () => updateDisplayValues()
+    window.addEventListener(THEME_EDITOR_PREVIEW_EVENT, handlePreviewUpdate)
+    return () => window.removeEventListener(THEME_EDITOR_PREVIEW_EVENT, handlePreviewUpdate)
   }, [updateDisplayValues])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      updateDisplayValues()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [isDarkMode, updateDisplayValues])
 
   const handleBgClick = useCallback(() => {
     const tokens = getCurrentTokens()
