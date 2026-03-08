@@ -6,117 +6,15 @@ import { usePathname } from "next/navigation"
 import { ChevronRight, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { navigationConfig, findNavItemByHref } from "@/config/navigation"
-
-/**
- * Fallback Label Mappings für Segmente ohne Navigation-Eintrag
- */
-const fallbackMappings: Record<string, string> = {
-  about: "About the App",
-  account: "Account",
-  content: "Content",
-}
-
-/**
- * Extrahiert den Parent-Pfad aus einem Child-Pfad.
- * z.B. "/content/3/1" -> "/content/3"
- */
-function getParentPath(childHref: string): string {
-  const segments = childHref.split("/").filter(Boolean)
-  segments.pop() // Entferne letztes Segment
-  return "/" + segments.join("/")
-}
-
-/**
- * Findet das Label für einen Pfad aus der Navigation-Konfiguration.
- * Sucht sowohl direkte Matches als auch Parent-Elemente (Accordions).
- */
-function findLabelFromNavigation(href: string): string | undefined {
-  // Direkter Match für Items mit href
-  const navItem = findNavItemByHref(navigationConfig, href)
-  if (navItem?.label) return navItem.label
-
-  // Suche Parent-Element (Accordion), dessen Children diesen Pfad als DIREKTEN Parent haben
-  // z.B. href="/content/3" sollte "Menüpunkt 3" finden, wenn Children "/content/3/1" haben
-  for (const section of navigationConfig) {
-    for (const item of section.items) {
-      if (item.children) {
-        // Prüfe ob eines der Children diesen Pfad als direkten Parent hat
-        const matchingChild = item.children.find((child) => {
-          if (!child.href) return false
-          // Der Parent-Pfad des Children muss exakt dem href entsprechen
-          return getParentPath(child.href) === href
-        })
-        if (matchingChild) {
-          return item.label
-        }
-      }
-    }
-  }
-
-  return undefined
-}
-
-/**
- * Formatiert ein Route-Segment zu einem lesbaren Label.
- * Priorität:
- * 1. Navigation-Konfiguration (exakter Pfad-Match)
- * 2. Fallback-Mapping (für Parent-Segmente wie "about", "account")
- * 3. Automatische Formatierung (Capitalize, Bindestriche zu Leerzeichen)
- */
-function formatSegment(segment: string, fullHref: string): string {
-  // 1. Versuche Navigation-Konfiguration
-  const navLabel = findLabelFromNavigation(fullHref)
-  if (navLabel) return navLabel
-
-  // 2. Versuche Fallback-Mapping
-  const fallback = fallbackMappings[segment.toLowerCase()]
-  if (fallback) return fallback
-
-  // 3. Automatische Formatierung
-  return segment
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
+import { useNavigation } from "@/lib/navigation"
 
 /**
  * Breadcrumb Item Interface
  */
 interface BreadcrumbItem {
   label: string
-  href: string
+  href: string | null
   isLast: boolean
-}
-
-/**
- * Generiert Breadcrumb-Items aus dem aktuellen Pfad.
- * Verwendet die Navigation-Konfiguration für korrekte Labels.
- */
-function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
-  if (pathname === "/") {
-    return [{ label: "Home", href: "/", isLast: true }]
-  }
-
-  const segments = pathname.split("/").filter(Boolean)
-  const items: BreadcrumbItem[] = [{ label: "Home", href: "/", isLast: false }]
-
-  segments.forEach((segment, index) => {
-    const href = "/" + segments.slice(0, index + 1).join("/")
-    const isLast = index === segments.length - 1
-
-    items.push({
-      label: formatSegment(segment, href),
-      href,
-      isLast,
-    })
-  })
-
-  if (items.length > 0) {
-    items[items.length - 1].isLast = true
-  }
-
-  return items
 }
 
 /**
@@ -153,7 +51,18 @@ export function FloatingBreadcrumbs({
   maxItems = 5,
 }: FloatingBreadcrumbsProps): React.ReactElement {
   const pathname = usePathname()
-  const items = generateBreadcrumbs(pathname)
+  const { getBreadcrumbs } = useNavigation()
+  const items: BreadcrumbItem[] =
+    pathname === "/"
+      ? [{ label: "Home", href: "/", isLast: true }]
+      : [
+          { label: "Home", href: "/", isLast: false },
+          ...getBreadcrumbs(pathname).map((item, index, all) => ({
+            label: item.label,
+            href: item.href,
+            isLast: index === all.length - 1,
+          })),
+        ]
 
   // Kürzen wenn zu viele Items
   let displayItems = items
@@ -193,6 +102,8 @@ export function FloatingBreadcrumbs({
                   </span>
                 ) : item.label === "..." ? (
                   <span className="opacity-60">...</span>
+                ) : !item.href ? (
+                  <span className="opacity-70">{item.label}</span>
                 ) : (
                   <Link
                     href={item.href}

@@ -24,12 +24,12 @@ import {
 
 import { useShell } from "./shell-context"
 import { useAuth, usePermissions } from "@/components/auth"
-import { navigationConfig, type NavItem, type NavSection } from "@/config/navigation"
 import { AIInteractable } from "@/components/ai/AIInteractable"
 import { AppNameMenu } from "./AppNameMenu"
+import { useNavigation, type NavigationItem, type NavigationSection } from "@/lib/navigation"
 
 /** Typ für die isVisible Funktion */
-type IsVisibleFn = (item: NavItem | NavSection) => boolean
+type IsVisibleFn = (item: NavigationItem | NavigationSection) => boolean
 
 /**
  * Navbar Komponente
@@ -45,6 +45,7 @@ export function Navbar(): React.ReactElement {
   const { navbarCollapsed } = useShell()
   const { logout, user } = useAuth()
   const { canAccess } = usePermissions()
+  const { sidebarSections } = useNavigation()
   const pathname = usePathname()
 
   // User-Rolle für Sichtbarkeitsprüfung
@@ -77,7 +78,7 @@ export function Navbar(): React.ReactElement {
         {/* App-Content Navigation (scrollbar) - nimmt verfügbaren Platz ein */}
         <ScrollArea className="min-h-0 flex-1">
           <nav className={cn("flex flex-col gap-1", navbarCollapsed ? "items-center px-1" : "p-1")}>
-            {navigationConfig
+            {sidebarSections
               .filter((section) => section.id === "app-content")
               .map((section) => {
                 if (!isVisible(section)) return null
@@ -98,7 +99,7 @@ export function Navbar(): React.ReactElement {
 
         {/* About Section (fixiert unten) - immer sichtbar */}
         <div className="border-sidebar-border shrink-0 border-t px-1 pt-2">
-          {navigationConfig
+          {sidebarSections
             .filter((section) => section.id === "about")
             .map((section) => {
               if (!isVisible(section)) return null
@@ -135,7 +136,7 @@ function NavSectionComponent({
   onLogout,
   user,
 }: {
-  section: NavSection
+  section: NavigationSection
   collapsed: boolean
   pathname: string
   isVisible: IsVisibleFn
@@ -190,7 +191,7 @@ function NavItemComponent({
   onLogout,
   user,
 }: {
-  item: NavItem
+  item: NavigationItem
   collapsed: boolean
   pathname: string
   level: number
@@ -204,11 +205,7 @@ function NavItemComponent({
   const isActive = item.href === pathname
   const isChildActive = visibleChildren?.some((child) => child.href === pathname) ?? false
 
-  // Standardmäßig expanded (aufgeklappt), außer für Account-Section Items "Design System" und "Layout Templates"
-  // Diese sollen standardmäßig eingeklappt sein, es sei denn, ein Child ist aktiv
-  const shouldDefaultCollapse =
-    item.id === "account-design-system" || item.id === "account-layout-templates"
-  const defaultOpen = !shouldDefaultCollapse
+  const defaultOpen = true
 
   // Track ob der Benutzer das Accordion manuell geöffnet hat (nicht durch aktives Child)
   const wasManuallyOpenedRef = useRef(false)
@@ -326,7 +323,7 @@ function NavItemComponent({
                 size="icon"
                 className="text-sidebar-foreground hover:text-primary/70 size-10"
                 onClick={() => {
-                  if (item.id === "account-logout") onLogout()
+                  if (item.id === "user-logout") onLogout()
                 }}
               >
                 <Icon className="size-5 transition-transform duration-200" />
@@ -403,9 +400,9 @@ function NavItemComponent({
 
   // Leaf Item (kein Accordion)
   if (item.href) {
-    // Für "User Details" (account-profile): Zeige den Namen des angemeldeten Users
+    // Für Profil-Links den Namen des angemeldeten Users anzeigen
     const displayLabel =
-      item.id === "account-profile" && user
+      item.id === "user-profile" && user
         ? user.name || user.email?.split("@")[0] || "User"
         : item.label
 
@@ -452,7 +449,7 @@ function NavItemComponent({
   // Action Item (z.B. Logout)
   if (item.isAction) {
     const handleAction = () => {
-      if (item.id === "account-logout") {
+      if (item.id === "user-logout") {
         onLogout()
       }
       // Andere Actions können hier bei Bedarf implementiert werden
@@ -511,7 +508,7 @@ function CollapsedDropdownItem({
   isVisible,
   onLogout,
 }: {
-  item: NavItem
+  item: NavigationItem
   pathname: string
   isVisible: IsVisibleFn
   onLogout: () => Promise<void>
@@ -591,7 +588,7 @@ function CollapsedDropdownItem({
         >
           <div
             onClick={() => {
-              if (item.id === "account-logout") onLogout()
+              if (item.id === "user-logout") onLogout()
             }}
             className="flex items-center gap-2"
           >

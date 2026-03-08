@@ -7,6 +7,7 @@ export type {
   CoreChatMessageRecord,
   CoreMembershipRecord,
   CoreModulePermission,
+  CoreNavigationRecord,
   CoreRoleDefinition,
   CoreRuntimeMode,
   CoreStore,

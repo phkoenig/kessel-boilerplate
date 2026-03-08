@@ -82,6 +82,23 @@ export const ChatSessionAlias = __t.object("ChatSessionAlias", {
 })
 export type ChatSessionAlias = __Infer<typeof ChatSessionAlias>
 
+export const CoreNavigation = __t.object("CoreNavigation", {
+  id: __t.u64(),
+  navId: __t.string(),
+  parentNavId: __t.option(__t.string()),
+  scope: __t.string(),
+  nodeType: __t.string(),
+  label: __t.string(),
+  sectionTitle: __t.option(__t.string()),
+  slugSegment: __t.option(__t.string()),
+  href: __t.option(__t.string()),
+  iconName: __t.option(__t.string()),
+  requiredRolesJson: __t.option(__t.string()),
+  orderIndex: __t.u32(),
+  alwaysVisible: __t.bool(),
+})
+export type CoreNavigation = __Infer<typeof CoreNavigation>
+
 export const CoreRole = __t.object("CoreRole", {
   id: __t.u64(),
   name: __t.string(),
@@ -181,6 +198,22 @@ export const ModulePermissionValue = __t.object("ModulePermissionValue", {
   hasAccess: __t.bool(),
 })
 export type ModulePermissionValue = __Infer<typeof ModulePermissionValue>
+
+export const NavigationItemValue = __t.object("NavigationItemValue", {
+  id: __t.string(),
+  parentId: __t.option(__t.string()),
+  scope: __t.string(),
+  nodeType: __t.string(),
+  label: __t.string(),
+  sectionTitle: __t.option(__t.string()),
+  slugSegment: __t.option(__t.string()),
+  href: __t.option(__t.string()),
+  iconName: __t.option(__t.string()),
+  requiredRolesJson: __t.option(__t.string()),
+  orderIndex: __t.u32(),
+  alwaysVisible: __t.bool(),
+})
+export type NavigationItemValue = __Infer<typeof NavigationItemValue>
 
 export const RoleDefinitionValue = __t.object("RoleDefinitionValue", {
   id: __t.string(),

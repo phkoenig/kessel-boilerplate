@@ -2,20 +2,20 @@
 
 import { usePathname } from "next/navigation"
 import { useMemo } from "react"
-import { navigationConfig } from "@/config/navigation"
-import { findNavItemByPath } from "./utils"
-import type { NavItem } from "@/config/navigation"
+import type { CoreNavigationRecord } from "@/lib/core"
+import { useNavigation } from "./provider"
 
 /**
  * Hook, der den aktuellen Navigation-Item basierend auf der Route findet
  *
- * @returns NavItem | null - Der aktuelle Navigation-Item oder null wenn nicht gefunden
+ * @returns Der aktuelle Navigationseintrag oder null wenn nicht gefunden
  */
-export function useCurrentNavItem(): NavItem | null {
+export function useCurrentNavItem(): CoreNavigationRecord | null {
   const pathname = usePathname()
+  const { findCurrentItem } = useNavigation()
 
   return useMemo(() => {
     if (!pathname) return null
-    return findNavItemByPath(pathname, navigationConfig)
-  }, [pathname])
+    return findCurrentItem(pathname)
+  }, [findCurrentItem, pathname])
 }

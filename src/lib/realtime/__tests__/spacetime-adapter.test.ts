@@ -6,7 +6,7 @@ describe("spacetimeAdapter", () => {
     spacetimeAdapter.disconnect()
   })
 
-  it("stellt lokale Subscriptions fuer den Hybridmodus bereit", async () => {
+  it("stellt lokale Subscriptions fuer den finalen Spacetime-Pfad bereit", async () => {
     const received: Array<{ count: number }> = []
 
     await spacetimeAdapter.connect()

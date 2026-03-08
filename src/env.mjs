@@ -22,7 +22,6 @@ export const clientSchema = z.object({
   // Clerk Auth (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
   // SpacetimeDB ist im finalen 3.0-Zustand Pflicht fuer den Boilerplate-Core.
-  NEXT_PUBLIC_SPACETIMEDB_ENABLED: z.enum(["true", "false"]).optional(),
   NEXT_PUBLIC_SPACETIMEDB_URI: z.string().min(1),
   NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().min(1),
   NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: z.literal("spacetime"),
@@ -44,7 +43,6 @@ export const env = createEnv({
     NEXT_PUBLIC_TENANT_SLUG: process.env.NEXT_PUBLIC_TENANT_SLUG,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_SPACETIMEDB_ENABLED: process.env.NEXT_PUBLIC_SPACETIMEDB_ENABLED,
     NEXT_PUBLIC_SPACETIMEDB_URI: process.env.NEXT_PUBLIC_SPACETIMEDB_URI,
     NEXT_PUBLIC_SPACETIMEDB_DATABASE: process.env.NEXT_PUBLIC_SPACETIMEDB_DATABASE,
     NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: process.env.NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER,

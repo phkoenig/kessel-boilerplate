@@ -20,9 +20,6 @@ export function useThemeSyncWithUser(): void {
   const { user, isAuthenticated } = useAuth()
   const { theme, setTheme, themes, isLoading: themesLoading } = useTheme()
 
-  // App-Default-Theme aus Environment-Variable
-  const appDefaultTheme = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
-
   // Track ob wir bereits das initiale Sync gemacht haben
   const initialSyncDone = useRef(false)
   // Track den letzten User, um Änderungen zu erkennen
@@ -63,10 +60,6 @@ export function useThemeSyncWithUser(): void {
 
       if (themeExists) {
         themeToApply = userTheme
-        console.log("[ThemeSync] Applying user theme override:", userTheme)
-      } else {
-        console.warn("[ThemeSync] User theme does not exist, keeping current theme")
-        // NICHT auf Default zurückfallen - behalte das aktuelle Theme
       }
     }
     // Wenn User kein selectedTheme hat, NICHT auf Default zurückfallen.
@@ -78,7 +71,7 @@ export function useThemeSyncWithUser(): void {
     }
 
     initialSyncDone.current = true
-  }, [user, isAuthenticated, themes, themesLoading, theme, setTheme, appDefaultTheme])
+  }, [user, isAuthenticated, themes, themesLoading, theme, setTheme])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC VON CLIENT → DB (bei Theme-Wechsel)
@@ -96,17 +89,16 @@ export function useThemeSyncWithUser(): void {
     // Nur speichern wenn User Theme-Override erlaubt ist
     // Wenn nicht erlaubt, wird nur localStorage aktualisiert (für Session)
     if (!user.canSelectTheme) {
-      console.log("[ThemeSync] User cannot select theme, skipping DB save")
       return
     }
 
     // Speichere in DB (selected_theme statt theme_preference)
     const saveToDb = async () => {
       try {
-        const res = await fetch("/api/user/profile", {
+        const res = await fetch("/api/user/theme", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selected_theme: theme }),
+          body: JSON.stringify({ theme }),
         })
 
         if (!res.ok) {

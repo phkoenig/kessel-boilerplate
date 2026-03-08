@@ -15,7 +15,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "sessionId ist erforderlich" }, { status: 400 })
     }
 
-    const messages = await getCoreStore().listChatMessages(sessionId)
+    const coreStore = getCoreStore()
+    const ownerClerkUserId = await coreStore.getChatSessionOwner(sessionId)
+    if (ownerClerkUserId && ownerClerkUserId !== userOrError.clerkUserId) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung fuer diese Chat-Session" },
+        { status: 403 }
+      )
+    }
+
+    const messages = await coreStore.listChatMessages(sessionId)
     return NextResponse.json({ success: true, messages })
   } catch (error) {
     return NextResponse.json(

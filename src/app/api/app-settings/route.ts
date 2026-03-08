@@ -1,16 +1,18 @@
 /**
  * API Route: App Settings
  *
- * GET: Gibt App-Settings für den aktuellen Tenant zurück
+ * GET: Gibt Branding-/App-Settings für den aktuellen Tenant zurück
  * PATCH: Aktualisiert App-Settings (upsert - erstellt falls nicht vorhanden)
  *
  * Identifikation erfolgt über NEXT_PUBLIC_TENANT_SLUG
- * Schutz: requireAuth (Admin-Bereich)
+ * GET ist bewusst öffentlich lesbar, damit Branding und Metadaten ohne
+ * zusätzliche Auth-Umwege konsistent aufgelöst werden können.
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+import { resolveAppBranding } from "@/lib/branding"
 
 /**
  * Tenant-Slug aus Environment - identifiziert die App eindeutig
@@ -24,29 +26,31 @@ function getTenantSlug(): string {
  * Filtert nach tenant_slug der aktuellen App
  */
 export async function GET(): Promise<NextResponse> {
-  const userOrErr = await requireAuth()
-  if (userOrErr instanceof Response) return userOrErr
-
   try {
     const tenantSlug = getTenantSlug()
     const data = await getCoreStore().getAppSettings(tenantSlug)
-
-    if (!data) {
-      return NextResponse.json({
-        tenant_slug: tenantSlug,
-        app_name: null,
-        app_description: null,
-        icon_url: null,
-      })
-    }
+    const resolved = resolveAppBranding(
+      data
+        ? {
+            tenant_slug: data.tenantSlug,
+            app_name: data.appName,
+            app_description: data.appDescription,
+            icon_url: data.iconUrl,
+            icon_variants: data.iconVariants ?? [],
+            icon_provider: data.iconProvider ?? null,
+          }
+        : {
+            tenant_slug: tenantSlug,
+          }
+    )
 
     return NextResponse.json({
-      tenant_slug: data.tenantSlug,
-      app_name: data.appName,
-      app_description: data.appDescription,
-      icon_url: data.iconUrl,
-      icon_variants: data.iconVariants ?? [],
-      icon_provider: data.iconProvider ?? null,
+      tenant_slug: resolved.tenantSlug,
+      app_name: resolved.appName,
+      app_description: resolved.appDescription,
+      icon_url: resolved.iconUrl,
+      icon_variants: resolved.iconVariants,
+      icon_provider: resolved.iconProvider,
       core_runtime_mode: getCoreStore().getMode(),
     })
   } catch (error) {

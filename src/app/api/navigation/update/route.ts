@@ -1,8 +1,9 @@
 /**
  * Navigation Update API Route
  *
- * POST-Endpoint der Navigation-Einträge hinzufügt und Seiten erstellt.
- * WICHTIG: Diese Route funktioniert nur im Entwicklungsmodus!
+ * Dev-Endpoint, der neue Navigationseintraege im Core anlegt und optional
+ * eine Seiten-Datei scaffoldet. Der produktive Live-Pfad der Navigation
+ * liest ausschliesslich aus SpacetimeDB und nicht mehr aus navigation.ts.
  *
  * @module api/navigation/update
  */
@@ -13,13 +14,13 @@ import path from "path"
 import { z } from "zod"
 
 import { requireAdmin } from "@/lib/auth/guards"
+import { getCoreStore } from "@/lib/core"
 import type { NavigationSuggestion } from "@/lib/ai/types/tool-metadata"
 import {
   generateNavigationCode,
-  insertNavItem,
-  addIconImport,
   validateNavigationSuggestion,
 } from "@/lib/navigation/code-generator"
+import { ensureNavigationBootstrapped } from "@/lib/navigation/bootstrap"
 
 /**
  * Request-Schema für Navigation-Updates
@@ -39,7 +40,7 @@ interface SuccessResponse {
   success: true
   message: string
   createdFiles: string[]
-  modifiedFiles: string[]
+  modifiedCoreRecords: string[]
   generatedHref: string
 }
 
@@ -67,7 +68,8 @@ function getWorkspaceRoot(): string {
 /**
  * POST /api/navigation/update
  *
- * Fügt einen neuen Navigation-Eintrag hinzu und erstellt die zugehörige Seite.
+ * Fügt einen neuen Core-Navigationseintrag hinzu und erstellt optional
+ * die zugehörige Seite als Dev-Scaffold.
  */
 export async function POST(
   request: NextRequest
@@ -118,29 +120,12 @@ export async function POST(
 
     // 3. Code generieren
     const generated = generateNavigationCode(suggestion)
+    await ensureNavigationBootstrapped()
+    const coreStore = getCoreStore()
+    const navigationItems = await coreStore.listNavigationItems()
 
-    // 4. Workspace-Pfade berechnen
-    const workspaceRoot = getWorkspaceRoot()
-    const navigationFilePath = path.join(workspaceRoot, "src/config/navigation.ts")
-    const pageFilePath = path.join(workspaceRoot, generated.pagePath)
-
-    // 5. Prüfen ob navigation.ts existiert
-    let navigationContent: string
-    try {
-      navigationContent = await fs.readFile(navigationFilePath, "utf-8")
-    } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "navigation.ts nicht gefunden",
-          details: [`Erwartet unter: ${navigationFilePath}`],
-        },
-        { status: 404 }
-      )
-    }
-
-    // 6. Prüfen ob das NavItem bereits existiert
-    if (navigationContent.includes(`id: "${suggestion.suggestedId}"`)) {
+    const existingItem = navigationItems.find((item) => item.id === suggestion.suggestedId)
+    if (existingItem) {
       return NextResponse.json(
         {
           success: false,
@@ -151,7 +136,27 @@ export async function POST(
       )
     }
 
-    // 7. Prüfen ob die Seite bereits existiert
+    const parentItem = navigationItems.find((item) => item.href === suggestion.parentPath)
+    if (!parentItem) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Parent-Pfad wurde im Core nicht gefunden",
+          details: [`Parent-Pfad: ${suggestion.parentPath}`],
+        },
+        { status: 400 }
+      )
+    }
+
+    const siblingOrder = navigationItems
+      .filter((item) => item.parentId === parentItem.id)
+      .reduce((maxValue, item) => Math.max(maxValue, item.orderIndex), -1)
+
+    // 4. Workspace-Pfade berechnen
+    const workspaceRoot = getWorkspaceRoot()
+    const pageFilePath = path.join(workspaceRoot, generated.pagePath)
+
+    // 5. Prüfen ob die Seite bereits existiert
     try {
       await fs.access(pageFilePath)
       return NextResponse.json(
@@ -166,50 +171,39 @@ export async function POST(
       // Datei existiert nicht - das ist gut!
     }
 
-    // 8. NavItem in navigation.ts einfügen
-    let updatedNavigationContent = insertNavItem(navigationContent, suggestion)
-
-    if (!updatedNavigationContent) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Konnte Insert-Position nicht finden",
-          details: [
-            `Parent-Pfad: ${suggestion.parentPath}`,
-            "Prüfe ob der Parent-Pfad existiert und ein children-Array hat",
-          ],
-        },
-        { status: 400 }
-      )
-    }
-
-    // 9. Icon-Import hinzufügen wenn nötig
-    if (suggestion.icon) {
-      updatedNavigationContent = addIconImport(updatedNavigationContent, suggestion.icon)
-    }
-
-    // 10. Verzeichnis für die neue Seite erstellen
+    // 6. Verzeichnis für die neue Seite erstellen
     const pageDir = path.dirname(pageFilePath)
     await fs.mkdir(pageDir, { recursive: true })
 
-    // 11. Dateien schreiben
+    // 7. Dateien/Core schreiben
     const createdFiles: string[] = []
-    const modifiedFiles: string[] = []
+    const modifiedCoreRecords: string[] = []
 
-    // navigation.ts aktualisieren
-    await fs.writeFile(navigationFilePath, updatedNavigationContent, "utf-8")
-    modifiedFiles.push("src/config/navigation.ts")
-
-    // page.tsx erstellen
     await fs.writeFile(pageFilePath, generated.pageCode, "utf-8")
     createdFiles.push(generated.pagePath)
 
-    // 12. Erfolg zurückgeben
+    await coreStore.upsertNavigationItem({
+      id: suggestion.suggestedId,
+      parentId: parentItem.id,
+      scope: parentItem.scope,
+      nodeType: "page",
+      label: suggestion.suggestedLabel,
+      sectionTitle: null,
+      slugSegment: generated.generatedHref.split("/").filter(Boolean).pop() ?? null,
+      href: generated.generatedHref,
+      iconName: suggestion.icon ?? "FileText",
+      requiredRoles: parentItem.requiredRoles,
+      orderIndex: siblingOrder + 1,
+      alwaysVisible: false,
+    })
+    modifiedCoreRecords.push(suggestion.suggestedId)
+
+    // 8. Erfolg zurückgeben
     return NextResponse.json({
       success: true,
-      message: `Navigation-Eintrag "${suggestion.suggestedLabel}" wurde erstellt`,
+      message: `Navigation-Eintrag "${suggestion.suggestedLabel}" wurde im Core erstellt`,
       createdFiles,
-      modifiedFiles,
+      modifiedCoreRecords,
       generatedHref: generated.generatedHref,
     })
   } catch (error) {
@@ -241,7 +235,7 @@ export async function GET(): Promise<NextResponse> {
 
   return NextResponse.json({
     name: "Navigation Update API",
-    description: "Fügt Navigation-Einträge hinzu und erstellt Seiten",
+    description: "Fügt Core-Navigationseinträge hinzu und erstellt Seiten-Scaffolds",
     endpoint: "/api/navigation/update",
     method: "POST",
     schema: {

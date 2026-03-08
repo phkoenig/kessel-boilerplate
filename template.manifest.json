@@ -15,7 +15,7 @@
     "NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER",
     "NEXT_PUBLIC_TENANT_SLUG"
   ],
-  "optionalEnv": ["CLERK_WEBHOOK_SIGNING_SECRET", "NEXT_PUBLIC_SPACETIMEDB_ENABLED"],
+  "optionalEnv": ["CLERK_WEBHOOK_SIGNING_SECRET"],
   "postSetupHooks": ["pnpm pull-env", "pnpm install"],
   "architecture": {
     "identity": "clerk",

@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth, usePermissions } from "@/components/auth"
-import { userMenuConfig } from "@/config/navigation"
+import { useNavigation } from "@/lib/navigation"
 
 /**
  * UserAvatar Komponente
@@ -31,6 +31,7 @@ import { userMenuConfig } from "@/config/navigation"
 export function UserAvatar(): React.ReactElement {
   const { user, logout, role } = useAuth()
   const { canAccess } = usePermissions()
+  const { userMenuSection } = useNavigation()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -77,7 +78,7 @@ export function UserAvatar(): React.ReactElement {
   }
 
   // Filtere sichtbare Menüpunkte basierend auf Berechtigungen
-  const visibleItems = userMenuConfig.items.filter((item) => canAccess(item.id, userRole))
+  const visibleItems = (userMenuSection?.items ?? []).filter((item) => canAccess(item.id, userRole))
 
   // Separiere normale Items und Logout
   const normalItems = visibleItems.filter((item) => item.id !== "user-logout")

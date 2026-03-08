@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { useUser, useAuth as useClerkAuth } from "@clerk/nextjs"
+import { getAllowedRoleForEmail } from "@/lib/auth/allowed-users"
 
 /** User-Rollen */
 export type UserRole = "admin" | "user" | "superuser" | "NoUser" | string
@@ -65,6 +66,10 @@ async function fetchProfile(): Promise<
   return { ...data, blocked: false }
 }
 
+function getFallbackRole(email: string): UserRole {
+  return getAllowedRoleForEmail(email) ?? "user"
+}
+
 /** Auth Provider - Clerk-basiert, Profil aus Supabase via API */
 export function AuthProvider({ children }: { children: ReactNode }): React.ReactElement {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
@@ -98,28 +103,30 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         }
         setProfile(merged)
       } else {
+        const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
         setProfile({
           id: clerkUser.id,
           clerkUserId: clerkUser.id,
-          email: clerkUser.primaryEmailAddress?.emailAddress || "",
+          email: fallbackEmail,
           name:
             clerkUser.fullName ||
             clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
             "User",
           avatar: clerkUser.imageUrl,
-          role: "user",
+          role: getFallbackRole(fallbackEmail),
           canSelectTheme: false,
           colorScheme: "system",
         })
       }
     } catch {
+      const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
       setProfile({
         id: clerkUser.id,
         clerkUserId: clerkUser.id,
-        email: clerkUser.primaryEmailAddress?.emailAddress || "",
+        email: fallbackEmail,
         name: clerkUser.fullName || "User",
         avatar: clerkUser.imageUrl,
-        role: "user",
+        role: getFallbackRole(fallbackEmail),
         canSelectTheme: false,
         colorScheme: "system",
       })

@@ -7,7 +7,7 @@ import { FolderTree, Calendar, ListOrdered, BookOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { navigationConfig, findNavItemByHref } from "@/config/navigation"
+import { useNavigation } from "@/lib/navigation"
 
 /**
  * Explorer Varianten
@@ -69,11 +69,12 @@ export function ExplorerPanel({
   footer,
 }: ExplorerPanelProps): React.ReactElement {
   const pathname = usePathname()
+  const { findCurrentItem } = useNavigation()
   const config = variantConfig[variant]
   const Icon = config.icon
 
   // Automatischer Titel aus aktivem Menüpunkt, mit Fallback auf manuellen Titel oder Varianten-Label
-  const activeNavItem = findNavItemByHref(navigationConfig, pathname)
+  const activeNavItem = findCurrentItem(pathname)
   const displayTitle = title ?? activeNavItem?.label ?? config.label
 
   return (

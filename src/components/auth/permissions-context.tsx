@@ -1,9 +1,11 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { allNavigationConfig, type NavItem, type NavSection } from "@/config/navigation"
 import type { UserRole } from "./auth-context"
 import { useAuth } from "./auth-context"
+import { useNavigation } from "@/lib/navigation"
+import type { CoreNavigationRecord } from "@/lib/core"
+import { isAdminRole } from "@/lib/auth/allowed-users"
 
 /** Permission für ein Modul - jetzt mit dynamischen Rollen */
 interface ModulePermission {
@@ -33,44 +35,39 @@ export function usePermissions(): PermissionsContextValue {
 }
 
 /**
- * Generiert Fallback-Permissions aus der statischen Navigation Config.
+ * Generiert Fallback-Permissions aus der produktiven Core-Navigation.
  * Nutzt Standard-Rollen: admin, user, superuser
  */
-function generateFallbackPermissions(): Map<string, ModulePermission> {
+function generateFallbackPermissions(
+  navigationItems: CoreNavigationRecord[]
+): Map<string, ModulePermission> {
   const perms = new Map<string, ModulePermission>()
 
-  const processItem = (item: NavItem | NavSection) => {
-    // "account-login" überspringen, da es nicht in der Permissions-Matrix verwaltet wird
-    if (item.id === "account-login") return
+  navigationItems.forEach((item) => {
+    if (item.id === "user-login") {
+      return
+    }
 
     const roles = item.requiredRoles || []
     const roleAccess = new Map<string, boolean>()
 
-    // Standard-Rollen setzen
     roleAccess.set("admin", roles.length === 0 || roles.includes("admin"))
     roleAccess.set("user", roles.length === 0 || roles.includes("user"))
     roleAccess.set(
       "superuser",
       roles.length === 0 || roles.includes("superuser") || roles.includes("admin")
-    ) // Superuser bekommt Admin-Rechte als Fallback
+    )
+    roleAccess.set(
+      "super-user",
+      roles.length === 0 || roles.includes("superuser") || roles.includes("admin")
+    )
 
     perms.set(item.id, {
       moduleId: item.id,
       roleAccess,
     })
+  })
 
-    // Children verarbeiten (nur bei NavItem)
-    if ("children" in item && item.children) {
-      item.children.forEach(processItem)
-    }
-
-    // Items verarbeiten (nur bei NavSection)
-    if ("items" in item && item.items) {
-      item.items.forEach(processItem)
-    }
-  }
-
-  allNavigationConfig.forEach(processItem)
   return perms
 }
 
@@ -82,8 +79,9 @@ function generateFallbackPermissions(): Map<string, ModulePermission> {
  * - Stellt canAccess() Funktion bereit
  */
 export function PermissionsProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(
-    generateFallbackPermissions
+  const { records } = useNavigation()
+  const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(() =>
+    generateFallbackPermissions(records)
   )
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -100,7 +98,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
       })
 
       if (!response.ok) {
-        setPermissions(generateFallbackPermissions())
+        setPermissions(generateFallbackPermissions(records))
         return
       }
 
@@ -109,7 +107,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
       }
       const accessData = payload.permissions ?? []
 
-      const fallbackPerms = generateFallbackPermissions()
+      const fallbackPerms = generateFallbackPermissions(records)
       const mergedPerms = new Map<string, ModulePermission>()
 
       fallbackPerms.forEach((perm, moduleId) => {
@@ -142,39 +140,26 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
       setPermissions(mergedPerms)
     } catch {
-      setPermissions(generateFallbackPermissions())
+      setPermissions(generateFallbackPermissions(records))
     } finally {
       setIsLoaded(true)
     }
-  }, [])
+  }, [records])
 
   useEffect(() => {
     setIsLoaded(false)
     loadPermissions()
-  }, [loadPermissions, user?.id, isAuthenticated])
+  }, [loadPermissions, records, user?.id, isAuthenticated])
 
   /**
    * Prüft ob ein Modul 'alwaysVisible' ist (kann nicht über Rollen deaktiviert werden)
    */
-  const isAlwaysVisible = useCallback((moduleId: string): boolean => {
-    // Durchsuche alle Sections und Items nach dem Modul
-    for (const section of allNavigationConfig) {
-      for (const item of section.items) {
-        if (item.id === moduleId && item.alwaysVisible) {
-          return true
-        }
-        // Prüfe auch Children
-        if (item.children) {
-          for (const child of item.children) {
-            if (child.id === moduleId && child.alwaysVisible) {
-              return true
-            }
-          }
-        }
-      }
-    }
-    return false
-  }, [])
+  const isAlwaysVisible = useCallback(
+    (moduleId: string): boolean => {
+      return records.some((item) => item.id === moduleId && item.alwaysVisible)
+    },
+    [records]
+  )
 
   /**
    * Prüft ob ein Modul für eine Rolle sichtbar ist.
@@ -187,7 +172,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
    */
   const canAccess = useCallback(
     (moduleId: string, userRole: UserRole): boolean => {
-      if (userRole === "admin") {
+      if (isAdminRole(userRole)) {
         return true
       }
 
@@ -202,7 +187,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
       const perm = permissions.get(moduleId)
 
       if (!perm) {
-        const fallback = generateFallbackPermissions().get(moduleId)
+        const fallback = generateFallbackPermissions(records).get(moduleId)
         if (!fallback) {
           return true
         }
@@ -211,7 +196,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
       return perm.roleAccess.get(userRole) ?? false
     },
-    [permissions, isAlwaysVisible]
+    [permissions, isAlwaysVisible, records]
   )
 
   return (

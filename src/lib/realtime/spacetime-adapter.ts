@@ -172,7 +172,7 @@ export const emitSpacetimeEvent = <T>(topic: string, type: string, payload: T): 
 }
 
 /**
- * Liefert den Hybrid-Adapter fuer den 3.0-Realtime-Pfad.
+ * Liefert den finalen Spacetime-Adapter fuer den 3.0-Realtime-Pfad.
  */
 export const spacetimeAdapter: RealtimeAdapter = {
   async connect() {

@@ -5,6 +5,7 @@ import { unstable_noStore as noStore } from "next/cache"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
+import { getTenantSlug, resolveAppBranding } from "@/lib/branding"
 import { ClientProviders } from "@/components/providers/ClientProviders"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
@@ -32,10 +33,6 @@ const inter = Inter({
  */
 const fontVariables = inter.variable
 
-function getTenantSlug(): string {
-  return process.env.NEXT_PUBLIC_TENANT_SLUG || "default"
-}
-
 async function loadAppMetadata() {
   return getCoreStore().getAppSettings(getTenantSlug())
 }
@@ -45,20 +42,28 @@ export async function generateMetadata(): Promise<Metadata> {
   noStore()
 
   const data = await loadAppMetadata()
-  const appName = data?.appName?.trim() || process.env.NEXT_PUBLIC_APP_NAME || "Kessel App"
-  const appDescription =
-    data?.appDescription?.trim() || "ShadCN UI mit TweakCN Theme-Switching und Tailwind CSS v4"
-  const iconUrl = data?.iconUrl?.trim()
+  const branding = resolveAppBranding(
+    data
+      ? {
+          tenant_slug: data.tenantSlug,
+          app_name: data.appName,
+          app_description: data.appDescription,
+          icon_url: data.iconUrl,
+          icon_variants: data.iconVariants ?? [],
+          icon_provider: data.iconProvider ?? null,
+        }
+      : null
+  )
 
   return {
-    title: appName,
-    description: appDescription,
-    ...(iconUrl
+    title: branding.appName,
+    description: branding.appDescription,
+    ...(branding.iconUrl
       ? {
           icons: {
-            icon: [{ url: iconUrl }],
-            shortcut: [{ url: iconUrl }],
-            apple: [{ url: iconUrl }],
+            icon: [{ url: branding.iconUrl }],
+            shortcut: [{ url: branding.iconUrl }],
+            apple: [{ url: branding.iconUrl }],
           },
         }
       : {}),
@@ -106,7 +111,19 @@ export default async function RootLayout({
   const defaultThemeCSS = await getDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
   const appMetadata = await loadAppMetadata()
-  const appIconUrl = appMetadata?.iconUrl?.trim() || null
+  const appBranding = resolveAppBranding(
+    appMetadata
+      ? {
+          tenant_slug: appMetadata.tenantSlug,
+          app_name: appMetadata.appName,
+          app_description: appMetadata.appDescription,
+          icon_url: appMetadata.iconUrl,
+          icon_variants: appMetadata.iconVariants ?? [],
+          icon_provider: appMetadata.iconProvider ?? null,
+        }
+      : null
+  )
+  const appIconUrl = appBranding.iconUrl
 
   return (
     <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>

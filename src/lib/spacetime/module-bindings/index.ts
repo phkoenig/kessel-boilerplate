@@ -47,6 +47,7 @@ import UpdateUserThemeStateReducer from "./update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "./upsert_app_settings_reducer"
 import UpsertMembershipReducer from "./upsert_membership_reducer"
 import UpsertModulePermissionReducer from "./upsert_module_permission_reducer"
+import UpsertNavigationItemReducer from "./upsert_navigation_item_reducer"
 import UpsertRoleReducer from "./upsert_role_reducer"
 import UpsertTenantReducer from "./upsert_tenant_reducer"
 import UpsertThemeRegistryReducer from "./upsert_theme_registry_reducer"
@@ -56,6 +57,7 @@ import UpsertWikiDocumentReducer from "./upsert_wiki_document_reducer"
 // Import all procedure arg schemas
 import * as GetAdminThemeProcedure from "./get_admin_theme_procedure"
 import * as GetAppSettingsProcedure from "./get_app_settings_procedure"
+import * as GetChatSessionOwnerProcedure from "./get_chat_session_owner_procedure"
 import * as GetTenantIdByClerkOrgIdProcedure from "./get_tenant_id_by_clerk_org_id_procedure"
 import * as GetThemeRegistryEntryProcedure from "./get_theme_registry_entry_procedure"
 import * as GetUserByClerkIdProcedure from "./get_user_by_clerk_id_procedure"
@@ -64,6 +66,7 @@ import * as GetWikiDocumentProcedure from "./get_wiki_document_procedure"
 import * as ListChatMessagesProcedure from "./list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "./list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "./list_module_permissions_procedure"
+import * as ListNavigationItemsProcedure from "./list_navigation_items_procedure"
 import * as ListRolesProcedure from "./list_roles_procedure"
 import * as ListTenantsProcedure from "./list_tenants_procedure"
 import * as ListThemeRegistryProcedure from "./list_theme_registry_procedure"
@@ -104,6 +107,7 @@ const reducersSchema = __reducers(
   __reducerSchema("upsert_app_settings", UpsertAppSettingsReducer),
   __reducerSchema("upsert_membership", UpsertMembershipReducer),
   __reducerSchema("upsert_module_permission", UpsertModulePermissionReducer),
+  __reducerSchema("upsert_navigation_item", UpsertNavigationItemReducer),
   __reducerSchema("upsert_role", UpsertRoleReducer),
   __reducerSchema("upsert_tenant", UpsertTenantReducer),
   __reducerSchema("upsert_theme_registry", UpsertThemeRegistryReducer),
@@ -122,6 +126,11 @@ const proceduresSchema = __procedures(
     "get_app_settings",
     GetAppSettingsProcedure.params,
     GetAppSettingsProcedure.returnType
+  ),
+  __procedureSchema(
+    "get_chat_session_owner",
+    GetChatSessionOwnerProcedure.params,
+    GetChatSessionOwnerProcedure.returnType
   ),
   __procedureSchema(
     "get_tenant_id_by_clerk_org_id",
@@ -162,6 +171,11 @@ const proceduresSchema = __procedures(
     "list_module_permissions",
     ListModulePermissionsProcedure.params,
     ListModulePermissionsProcedure.returnType
+  ),
+  __procedureSchema(
+    "list_navigation_items",
+    ListNavigationItemsProcedure.params,
+    ListNavigationItemsProcedure.returnType
   ),
   __procedureSchema("list_roles", ListRolesProcedure.params, ListRolesProcedure.returnType),
   __procedureSchema("list_tenants", ListTenantsProcedure.params, ListTenantsProcedure.returnType),

@@ -14,12 +14,13 @@
 
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useEffect, useCallback, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AssistantRuntimeProvider } from "@assistant-ui/react"
+import type { UIMessage } from "@ai-sdk/react"
 import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk"
 import { cn } from "@/lib/utils"
-import { emitMockEvent } from "@/lib/realtime"
+import { emitRealtimeEvent } from "@/lib/realtime"
 import { Thread } from "@/components/thread"
 import { useScreenshotCache } from "@/hooks/use-screenshot-cache"
 import {
@@ -57,6 +58,48 @@ interface AIChatPanelProps {
 }
 
 /**
+ * Persistierte Chat-Nachricht aus der History-API.
+ * Dieses Modell entspricht dem serverseitigen Spacetime-Read und wird vor
+ * dem Start des assistant-ui Runtimes in UI-Nachrichten umgewandelt.
+ */
+interface PersistedChatHistoryMessage {
+  /**
+   * Persistente Nachrichten-ID aus dem Boilerplate-Core.
+   */
+  id: string
+  /**
+   * Rollenart der gespeicherten Nachricht.
+   */
+  authorType: "user" | "assistant" | "tool"
+  /**
+   * Sichtbarer Nachrichteninhalt.
+   */
+  content: string
+  /**
+   * Optionaler Tool-Name für Tool-Logeinträge.
+   */
+  toolName: string | null
+}
+
+/**
+ * API-Antwort der Chat-History-Route.
+ */
+interface ChatHistoryResponse {
+  /**
+   * Kennzeichnet einen erfolgreichen History-Read.
+   */
+  success: boolean
+  /**
+   * Chronologisch sortierte Nachrichten der Session.
+   */
+  messages?: PersistedChatHistoryMessage[]
+  /**
+   * Optionaler Fehlertext.
+   */
+  error?: string
+}
+
+/**
  * Write-Tool Prefixes die DB-Änderungen auslösen
  * Wird für Auto-Reload nach Write-Operations verwendet
  */
@@ -78,103 +121,205 @@ const getChatSessionId = (): string => {
   return nextId
 }
 
-// Transport-Instanz außerhalb der Komponente erstellen
-// (wird nur einmal erstellt, keine Refs nötig)
-const chatTransport = new AssistantChatTransport({
-  api: "/api/chat",
-  credentials: "include",
-  prepareSendMessagesRequest: async ({ messages }) => {
-    console.warn("[AIChatPanel] ===== SEND REQUEST =====")
-    console.warn("[AIChatPanel] Messages count:", messages.length)
+/**
+ * Wandelt persistierte Spacetime-Nachrichten in `UIMessage`-Objekte fuer
+ * assistant-ui um. Tool-Logs werden als Assistant-Hinweise dargestellt, da
+ * der Chat-Thread im Frontend nur User-/Assistant-Nachrichten rendert.
+ *
+ * @param messages - Persistierte Nachrichten der aktuellen Session.
+ * @returns Initiale UI-Nachrichten fuer den Chat-Runtime.
+ */
+const mapHistoryToInitialMessages = (messages: PersistedChatHistoryMessage[]): UIMessage[] => {
+  return messages.map((message) => {
+    const role = message.authorType === "user" ? "user" : "assistant"
+    const text =
+      message.authorType === "tool"
+        ? `[Tool${message.toolName ? `: ${message.toolName}` : ""}] ${message.content}`
+        : message.content
 
-    // Log ALLE Messages mit Content - mit null-safety
-    messages.forEach((m, i) => {
-      console.warn(`[AIChatPanel] Message ${i}: role=${m.role}`)
-      console.warn(`[AIChatPanel] Message ${i} raw:`, JSON.stringify(m).substring(0, 500))
-    })
+    return {
+      id: message.id,
+      role,
+      parts: [{ type: "text", text, state: "done" }],
+    }
+  })
+}
 
-    // Context sammeln
-    const route = getCurrentRoute()
-    const htmlDump = captureHtmlDump()
-    // Interactions können wir nicht direkt vom Hook holen,
-    // da wir außerhalb der Komponente sind
-    const interactions: unknown[] = []
+/**
+ * Erstellt einen Chat-Transport, der den Session-Key fuer alle Requests
+ * konsistent mitsendet. Dadurch bleibt die Frontend-Session an dieselbe
+ * Spacetime-Chat-Session gebunden.
+ *
+ * @param sessionId - Persistenter Session-Key des aktuellen Browser-Tabs.
+ * @returns Ein konfigurierte Transportinstanz fuer assistant-ui.
+ */
+const createChatTransport = (sessionId: string): AssistantChatTransport =>
+  new AssistantChatTransport({
+    api: "/api/chat",
+    credentials: "include",
+    prepareSendMessagesRequest: async ({ messages }) => {
+      console.warn("[AIChatPanel] ===== SEND REQUEST =====")
+      console.warn("[AIChatPanel] Messages count:", messages.length)
 
-    // STUFE 1: Router-Endpoint aufrufen um zu entscheiden ob Screenshot benötigt wird
-    // Mit Timeout, damit der Chat nicht hängen bleibt
-    let needsScreenshot = false
-    try {
-      console.warn("[AIChatPanel] Checking if screenshot is needed...")
-      const routerPromise = fetch("/api/chat/route-router", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: messages.map((m) => {
-            const content =
-              "content" in m && typeof m.content === "string" ? m.content : JSON.stringify(m)
-            return {
-              role: m.role,
-              content,
-            }
-          }),
-        }),
+      // Log ALLE Messages mit Content - mit null-safety
+      messages.forEach((m, i) => {
+        console.warn(`[AIChatPanel] Message ${i}: role=${m.role}`)
+        console.warn(`[AIChatPanel] Message ${i} raw:`, JSON.stringify(m).substring(0, 500))
       })
 
-      // Timeout nach 2 Sekunden
-      const timeoutPromise = new Promise<Response>((_, reject) =>
-        setTimeout(() => reject(new Error("Router timeout")), 2000)
-      )
+      // Context sammeln
+      const route = getCurrentRoute()
+      const htmlDump = captureHtmlDump()
+      // Interactions können wir nicht direkt vom Hook holen,
+      // da wir außerhalb der Komponente sind
+      const interactions: unknown[] = []
 
-      const routerResponse = await Promise.race([routerPromise, timeoutPromise])
-
-      if (routerResponse.ok) {
-        const routerData = await routerResponse.json()
-        needsScreenshot = routerData.needsScreenshot === true
-        console.warn("[AIChatPanel] Router decision:", {
-          needsScreenshot,
-          category: routerData.category,
-          reason: routerData.reason,
+      // STUFE 1: Router-Endpoint aufrufen um zu entscheiden ob Screenshot benötigt wird
+      // Mit Timeout, damit der Chat nicht hängen bleibt
+      let needsScreenshot = false
+      try {
+        console.warn("[AIChatPanel] Checking if screenshot is needed...")
+        const routerPromise = fetch("/api/chat/route-router", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            messages: messages.map((m) => {
+              const content =
+                "content" in m && typeof m.content === "string" ? m.content : JSON.stringify(m)
+              return {
+                role: m.role,
+                content,
+              }
+            }),
+          }),
         })
-      } else {
-        console.warn("[AIChatPanel] Router endpoint failed, defaulting to no screenshot")
+
+        // Timeout nach 2 Sekunden
+        const timeoutPromise = new Promise<Response>((_, reject) =>
+          setTimeout(() => reject(new Error("Router timeout")), 2000)
+        )
+
+        const routerResponse = await Promise.race([routerPromise, timeoutPromise])
+
+        if (routerResponse.ok) {
+          const routerData = await routerResponse.json()
+          needsScreenshot = routerData.needsScreenshot === true
+          console.warn("[AIChatPanel] Router decision:", {
+            needsScreenshot,
+            category: routerData.category,
+            reason: routerData.reason,
+          })
+        } else {
+          console.warn("[AIChatPanel] Router endpoint failed, defaulting to no screenshot")
+          needsScreenshot = false // Fallback: Kein Screenshot (spart Ressourcen)
+        }
+      } catch (error) {
+        console.error("[AIChatPanel] Router endpoint error:", error)
         needsScreenshot = false // Fallback: Kein Screenshot (spart Ressourcen)
       }
-    } catch (error) {
-      console.error("[AIChatPanel] Router endpoint error:", error)
-      needsScreenshot = false // Fallback: Kein Screenshot (spart Ressourcen)
-    }
 
-    // STUFE 2: Screenshot nur erfassen wenn benötigt
-    let screenshot: string | null = null
-    if (needsScreenshot) {
-      console.warn("[AIChatPanel] Capturing screenshot (router requested it)...")
-      screenshot = await captureScreenshot()
-      console.warn("[AIChatPanel] Screenshot:", screenshot ? `${screenshot.length} chars` : "null")
-    } else {
-      console.warn("[AIChatPanel] Skipping screenshot (not needed according to router)")
-    }
+      // STUFE 2: Screenshot nur erfassen wenn benötigt
+      let screenshot: string | null = null
+      if (needsScreenshot) {
+        console.warn("[AIChatPanel] Capturing screenshot (router requested it)...")
+        screenshot = await captureScreenshot()
+        console.warn(
+          "[AIChatPanel] Screenshot:",
+          screenshot ? `${screenshot.length} chars` : "null"
+        )
+      } else {
+        console.warn("[AIChatPanel] Skipping screenshot (not needed according to router)")
+      }
 
-    // Verfügbare UI-Actions sammeln
-    const availableActions = collectAvailableActions()
-    console.warn("[AIChatPanel] Available actions:", availableActions.length)
+      // Verfügbare UI-Actions sammeln
+      const availableActions = collectAvailableActions()
+      console.warn("[AIChatPanel] Available actions:", availableActions.length)
 
-    const requestBody = {
-      messages,
-      sessionId: getChatSessionId(),
-      route,
-      htmlDump,
-      interactions,
-      screenshot,
-      availableActions,
-    }
+      const requestBody = {
+        messages,
+        sessionId,
+        route,
+        htmlDump,
+        interactions,
+        screenshot,
+        availableActions,
+      }
 
-    console.warn("[AIChatPanel] Request body keys:", Object.keys(requestBody))
-    console.warn("[AIChatPanel] ===== END SEND =====")
+      console.warn("[AIChatPanel] Request body keys:", Object.keys(requestBody))
+      console.warn("[AIChatPanel] ===== END SEND =====")
 
-    return { body: requestBody }
-  },
-})
+      return { body: requestBody }
+    },
+  })
+
+interface ChatRuntimeViewProps {
+  /**
+   * Zusätzliche CSS-Klassen des Panels.
+   */
+  className?: string
+  /**
+   * Persistenter Session-Key des aktuellen Browser-Tabs.
+   */
+  sessionId: string
+  /**
+   * Initiale, aus SpacetimeDB geladene Nachrichten.
+   */
+  initialMessages: UIMessage[]
+  /**
+   * Callback für Tool-Calls während des Streamings.
+   */
+  onToolCall: ({
+    toolCall,
+  }: {
+    toolCall: { toolName?: string; args?: unknown; input?: unknown }
+  }) => Promise<void>
+  /**
+   * Callback nach Abschluss einer Assistant-Antwort.
+   */
+  onFinish: ({
+    message,
+  }: {
+    message: { parts?: Array<{ type: string; toolName?: string; result?: unknown }> }
+  }) => Promise<void>
+}
+
+/**
+ * Kapselt den eigentlichen assistant-ui Runtime. Die Trennung von der
+ * Parent-Komponente erlaubt es, zuerst die Spacetime-Historie zu laden und
+ * danach den Runtime einmalig mit initialen Nachrichten zu initialisieren.
+ *
+ * @param props - Runtime-spezifische Initialdaten und Callbacks.
+ * @returns Das gerenderte Chat-Panel.
+ */
+function ChatRuntimeView({
+  className,
+  sessionId,
+  initialMessages,
+  onToolCall,
+  onFinish,
+}: ChatRuntimeViewProps): React.ReactElement {
+  const chatTransport = useMemo(() => createChatTransport(sessionId), [sessionId])
+
+  const runtime = useChatRuntime({
+    id: sessionId,
+    transport: chatTransport,
+    messages: initialMessages,
+    onError: (error) => {
+      console.error("[AIChatPanel] Chat onError:", error)
+    },
+    onToolCall,
+    onFinish,
+  })
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className={cn("flex h-full flex-col", className)}>
+        <Thread />
+      </div>
+    </AssistantRuntimeProvider>
+  )
+}
 
 /**
  * AIChatPanel Komponente
@@ -182,6 +327,10 @@ const chatTransport = new AssistantChatTransport({
 export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement {
   const { pathname } = useScreenshotCache()
   const router = useRouter()
+  const sessionId = useMemo(() => getChatSessionId(), [])
+  const [historyLoaded, setHistoryLoaded] = useState<boolean>(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([])
   // Verwende window.aiRegistry statt useAIRegistry() für executeAction,
   // da collectAvailableActions auch window.aiRegistry verwendet
   // und die React Context-Version möglicherweise eine veraltete actions Map hat
@@ -201,6 +350,60 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
         console.error("[AIChatPanel] Failed to load manifest:", err)
       })
   }, [])
+
+  /**
+   * Lädt die bestehende Spacetime-Historie der aktuellen Session, bevor der
+   * Chat-Runtime initialisiert wird. Dadurch zeigt das Panel beim Reload
+   * denselben Gesprächsverlauf statt nur einen leeren Thread.
+   */
+  useEffect(() => {
+    let cancelled = false
+
+    const loadHistory = async (): Promise<void> => {
+      setHistoryLoaded(false)
+      setHistoryError(null)
+
+      try {
+        const response = await fetch(
+          `/api/chat/history?sessionId=${encodeURIComponent(sessionId)}`,
+          {
+            cache: "no-store",
+            credentials: "include",
+          }
+        )
+
+        const payload = (await response.json().catch(() => ({}))) as ChatHistoryResponse
+        if (!response.ok) {
+          throw new Error(payload.error || "Chat-Historie konnte nicht geladen werden.")
+        }
+
+        if (cancelled) {
+          return
+        }
+
+        setInitialMessages(mapHistoryToInitialMessages(payload.messages ?? []))
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        setHistoryError(
+          error instanceof Error ? error.message : "Chat-Historie konnte nicht geladen werden."
+        )
+        setInitialMessages([])
+      } finally {
+        if (!cancelled) {
+          setHistoryLoaded(true)
+        }
+      }
+    }
+
+    void loadHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId])
 
   // Nach Navigation: Prüfe ob eine pendingUIAction ausgeführt werden soll
   // Verwendet Polling, da die AIInteractable Komponente möglicherweise noch nicht registriert ist
@@ -514,11 +717,11 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
         // Realtime-Invalidierung: app:invalidate triggert router.refresh() in Shell Layout
         console.warn("[AIChatPanel] 🔄 Emitting app:invalidate after DB modification...")
         setTimeout(() => {
-          emitMockEvent("app:invalidate", "db-modified", {})
+          emitRealtimeEvent("app:invalidate", "db-modified", {})
         }, 500)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- emitMockEvent ist module-level, kein router nötig
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- emitRealtimeEvent ist module-level, kein router nötig
     []
   )
 
@@ -603,26 +806,37 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
     [router]
   )
 
-  // useChatRuntime mit Transport
-  const runtime = useChatRuntime({
-    transport: chatTransport,
-    onError: (error) => {
-      console.error("[AIChatPanel] Chat onError:", error)
-    },
-    onToolCall: handleToolCall,
-    onFinish: handleFinish,
-  })
-
   // Log route changes
   useEffect(() => {
     console.warn("[AIChatPanel] Route changed to:", pathname)
   }, [pathname])
 
-  return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <div className={cn("flex h-full flex-col", className)}>
-        <Thread />
+  if (!historyLoaded) {
+    return (
+      <div className={cn("flex h-full items-center justify-center px-4 text-sm", className)}>
+        <span className="text-muted-foreground">Chat-Historie wird geladen...</span>
       </div>
-    </AssistantRuntimeProvider>
+    )
+  }
+
+  if (historyError) {
+    return (
+      <div className={cn("flex h-full items-center justify-center px-4 text-sm", className)}>
+        <div className="border-destructive/30 bg-destructive/5 rounded-md border p-4">
+          <p className="font-medium">Chat-Historie konnte nicht geladen werden</p>
+          <p className="text-muted-foreground mt-1">{historyError}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <ChatRuntimeView
+      className={className}
+      sessionId={sessionId}
+      initialMessages={initialMessages}
+      onToolCall={handleToolCall}
+      onFinish={handleFinish}
+    />
   )
 }

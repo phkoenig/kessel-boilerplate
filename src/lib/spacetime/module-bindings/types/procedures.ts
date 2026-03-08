@@ -7,6 +7,7 @@ import { type Infer as __Infer } from "spacetimedb"
 // Import all procedure arg schemas
 import * as GetAdminThemeProcedure from "../get_admin_theme_procedure"
 import * as GetAppSettingsProcedure from "../get_app_settings_procedure"
+import * as GetChatSessionOwnerProcedure from "../get_chat_session_owner_procedure"
 import * as GetTenantIdByClerkOrgIdProcedure from "../get_tenant_id_by_clerk_org_id_procedure"
 import * as GetThemeRegistryEntryProcedure from "../get_theme_registry_entry_procedure"
 import * as GetUserByClerkIdProcedure from "../get_user_by_clerk_id_procedure"
@@ -15,6 +16,7 @@ import * as GetWikiDocumentProcedure from "../get_wiki_document_procedure"
 import * as ListChatMessagesProcedure from "../list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "../list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "../list_module_permissions_procedure"
+import * as ListNavigationItemsProcedure from "../list_navigation_items_procedure"
 import * as ListRolesProcedure from "../list_roles_procedure"
 import * as ListTenantsProcedure from "../list_tenants_procedure"
 import * as ListThemeRegistryProcedure from "../list_theme_registry_procedure"
@@ -24,6 +26,8 @@ export type GetAdminThemeArgs = __Infer<typeof GetAdminThemeProcedure.params>
 export type GetAdminThemeResult = __Infer<typeof GetAdminThemeProcedure.returnType>
 export type GetAppSettingsArgs = __Infer<typeof GetAppSettingsProcedure.params>
 export type GetAppSettingsResult = __Infer<typeof GetAppSettingsProcedure.returnType>
+export type GetChatSessionOwnerArgs = __Infer<typeof GetChatSessionOwnerProcedure.params>
+export type GetChatSessionOwnerResult = __Infer<typeof GetChatSessionOwnerProcedure.returnType>
 export type GetTenantIdByClerkOrgIdArgs = __Infer<typeof GetTenantIdByClerkOrgIdProcedure.params>
 export type GetTenantIdByClerkOrgIdResult = __Infer<
   typeof GetTenantIdByClerkOrgIdProcedure.returnType
@@ -42,6 +46,8 @@ export type ListMembershipsArgs = __Infer<typeof ListMembershipsProcedure.params
 export type ListMembershipsResult = __Infer<typeof ListMembershipsProcedure.returnType>
 export type ListModulePermissionsArgs = __Infer<typeof ListModulePermissionsProcedure.params>
 export type ListModulePermissionsResult = __Infer<typeof ListModulePermissionsProcedure.returnType>
+export type ListNavigationItemsArgs = __Infer<typeof ListNavigationItemsProcedure.params>
+export type ListNavigationItemsResult = __Infer<typeof ListNavigationItemsProcedure.returnType>
 export type ListRolesArgs = __Infer<typeof ListRolesProcedure.params>
 export type ListRolesResult = __Infer<typeof ListRolesProcedure.returnType>
 export type ListTenantsArgs = __Infer<typeof ListTenantsProcedure.params>

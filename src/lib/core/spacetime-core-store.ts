@@ -5,6 +5,7 @@ import type {
   CoreChatMessageRecord,
   CoreMembershipRecord,
   CoreModulePermission,
+  CoreNavigationRecord,
   CoreRoleDefinition,
   CoreStore,
   CoreTenantDefinition,
@@ -191,6 +192,66 @@ const mapChatMessage = (
     toolName: value.toolName ?? null,
     toolState: value.toolState ?? null,
     createdAt,
+  }
+}
+
+const mapNavigationRecord = (
+  value:
+    | {
+        id: string
+        parentId?: string
+        scope: string
+        nodeType: string
+        label: string
+        sectionTitle?: string
+        slugSegment?: string
+        href?: string
+        iconName?: string
+        requiredRolesJson?: string
+        orderIndex: number
+        alwaysVisible: boolean
+      }
+    | undefined
+): CoreNavigationRecord | null => {
+  if (!value) {
+    return null
+  }
+
+  let requiredRoles: string[] = []
+  if (value.requiredRolesJson) {
+    try {
+      const parsed = JSON.parse(value.requiredRolesJson) as unknown
+      if (Array.isArray(parsed)) {
+        requiredRoles = parsed.filter((entry): entry is string => typeof entry === "string")
+      }
+    } catch {
+      requiredRoles = []
+    }
+  }
+
+  if (
+    (value.scope !== "sidebar" && value.scope !== "user") ||
+    (value.nodeType !== "section" &&
+      value.nodeType !== "group" &&
+      value.nodeType !== "page" &&
+      value.nodeType !== "action")
+  ) {
+    return null
+  }
+
+  return {
+    id: value.id,
+    parentId: value.parentId ?? null,
+    scope: value.scope,
+    nodeType: value.nodeType,
+    label: value.label,
+    sectionTitle: value.sectionTitle ?? null,
+    slugSegment: value.slugSegment ?? null,
+    href: value.href ?? null,
+    iconName: value.iconName ?? null,
+    requiredRoles,
+    orderIndex: value.orderIndex,
+    alwaysVisible: value.alwaysVisible,
   }
 }
 
@@ -548,6 +609,39 @@ export const createSpacetimeCoreStore = (): CoreStore => ({
     return result
       .map((row) => mapChatMessage(row))
       .filter((row): row is CoreChatMessageRecord => row !== null)
+  },
+
+  async getChatSessionOwner(sessionKey) {
+    const connection = await getSpacetimeServerConnection()
+    const result = await connection.procedures.getChatSessionOwner({ sessionKey })
+    return result ?? null
+  },
+
+  async listNavigationItems() {
+    const connection = await getSpacetimeServerConnection()
+    const result = await connection.procedures.listNavigationItems({})
+    return result
+      .map((row) => mapNavigationRecord(row))
+      .filter((row): row is CoreNavigationRecord => row !== null)
+  },
+
+  async upsertNavigationItem(input) {
+    const connection = await getSpacetimeServerConnection()
+    await connection.reducers.upsertNavigationItem({
+      id: input.id,
+      parentId: input.parentId ?? undefined,
+      scope: input.scope,
+      nodeType: input.nodeType,
+      label: input.label,
+      sectionTitle: input.sectionTitle ?? undefined,
+      slugSegment: input.slugSegment ?? undefined,
+      href: input.href ?? undefined,
+      iconName: input.iconName ?? undefined,
+      requiredRolesJson: JSON.stringify(input.requiredRoles),
+      orderIndex: input.orderIndex,
+      alwaysVisible: input.alwaysVisible,
+    })
+    return true
   },
 
   async getUserThemeState(clerkUserId) {

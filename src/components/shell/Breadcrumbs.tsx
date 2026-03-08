@@ -6,68 +6,15 @@ import { usePathname } from "next/navigation"
 import { ChevronRight, Home } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { allNavigationConfig } from "@/config/navigation"
-import { findNavItemBySlug } from "@/lib/navigation/utils"
-
-/**
- * Formatiert ein Route-Segment zu einem lesbaren Label.
- *
- * Verwendet die Navigation-Konfiguration als Single Source of Truth.
- * Fällt zurück auf Title Case für unbekannte Slugs.
- */
-function formatSegment(segment: string): string {
-  // 1. Suche in Navigation nach passendem Item
-  const navItem = findNavItemBySlug(segment, allNavigationConfig)
-  if (navItem) return navItem.label
-
-  // 2. Fallback: Slug → Title Case (kebab-case → Title Case)
-  return segment
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
+import { useNavigation } from "@/lib/navigation"
 
 /**
  * Breadcrumb Item Interface
  */
 interface BreadcrumbItem {
   label: string
-  href: string
+  href: string | null
   isLast: boolean
-}
-
-/**
- * Generiert Breadcrumb-Items aus dem aktuellen Pfad.
- */
-function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
-  // Root-Pfad
-  if (pathname === "/") {
-    return [{ label: "Home", href: "/", isLast: true }]
-  }
-
-  // Segmente extrahieren (ohne leere Strings)
-  const segments = pathname.split("/").filter(Boolean)
-
-  // Breadcrumb-Items generieren
-  const items: BreadcrumbItem[] = [{ label: "Home", href: "/", isLast: false }]
-
-  segments.forEach((segment, index) => {
-    const href = "/" + segments.slice(0, index + 1).join("/")
-    const isLast = index === segments.length - 1
-
-    items.push({
-      label: formatSegment(segment),
-      href,
-      isLast,
-    })
-  })
-
-  // Letztes Item als "isLast" markieren
-  if (items.length > 0) {
-    items[items.length - 1].isLast = true
-  }
-
-  return items
 }
 
 /**
@@ -100,7 +47,18 @@ export function Breadcrumbs({
   maxItems = 5,
 }: BreadcrumbsProps): React.ReactElement {
   const pathname = usePathname()
-  const items = generateBreadcrumbs(pathname)
+  const { getBreadcrumbs } = useNavigation()
+  const items: BreadcrumbItem[] =
+    pathname === "/"
+      ? [{ label: "Home", href: "/", isLast: true }]
+      : [
+          { label: "Home", href: "/", isLast: false },
+          ...getBreadcrumbs(pathname).map((item, index, all) => ({
+            label: item.label,
+            href: item.href,
+            isLast: index === all.length - 1,
+          })),
+        ]
 
   // Kürzen wenn zu viele Items
   let displayItems = items
@@ -129,6 +87,8 @@ export function Breadcrumbs({
                 </span>
               ) : item.label === "..." ? (
                 <span className="text-muted-foreground">...</span>
+              ) : !item.href ? (
+                <span className="text-muted-foreground">{item.label}</span>
               ) : (
                 <Link
                   href={item.href}

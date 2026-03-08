@@ -352,6 +352,60 @@ export interface CoreChatMessageRecord {
 }
 
 /**
+ * Beschreibt einen Navigationseintrag aus dem Boilerplate-Core.
+ */
+export interface CoreNavigationRecord {
+  /**
+   * Stabile technische ID des Navigationseintrags.
+   */
+  id: string
+  /**
+   * Optionale Parent-ID fuer hierarchische Ableitungen.
+   */
+  parentId: string | null
+  /**
+   * Scope des Eintrags (z. B. Sidebar oder User-Menue).
+   */
+  scope: "sidebar" | "user"
+  /**
+   * Typ des Knotens innerhalb der Navigation.
+   */
+  nodeType: "section" | "group" | "page" | "action"
+  /**
+   * Anzeigename des Knotens.
+   */
+  label: string
+  /**
+   * Optionaler Sektionstitel.
+   */
+  sectionTitle: string | null
+  /**
+   * URL-Segment fuer deterministische Route-Ableitungen.
+   */
+  slugSegment: string | null
+  /**
+   * Kanonischer Href des Eintrags.
+   */
+  href: string | null
+  /**
+   * Icon-Name fuer die Client-Aufloesung.
+   */
+  iconName: string | null
+  /**
+   * Erforderliche Rollen fuer die Sichtbarkeit.
+   */
+  requiredRoles: string[]
+  /**
+   * Sortierreihenfolge innerhalb desselben Parents.
+   */
+  orderIndex: number
+  /**
+   * Kennzeichnet Eintraege, die nicht per Rollenmatrix versteckt werden duerfen.
+   */
+  alwaysVisible: boolean
+}
+
+/**
  * Beschreibt ein Wiki-Dokument aus dem Boilerplate-Core.
  */
 export interface CoreWikiDocument {
@@ -530,6 +584,26 @@ export interface CoreStore {
    * @returns Die Nachrichten in chronologischer Reihenfolge.
    */
   listChatMessages: (sessionKey: string) => Promise<CoreChatMessageRecord[]>
+  /**
+   * Loest den Besitzer einer Chat-Session auf.
+   *
+   * @param sessionKey - Die stabile Session-ID des Chatfensters.
+   * @returns Die Clerk User ID des Session-Besitzers oder `null`.
+   */
+  getChatSessionOwner: (sessionKey: string) => Promise<string | null>
+  /**
+   * Laedt die zentrale Navigationsstruktur des Boilerplate-Core.
+   *
+   * @returns Eine flache Liste der Navigationseintraege.
+   */
+  listNavigationItems: () => Promise<CoreNavigationRecord[]>
+  /**
+   * Persistiert oder aktualisiert einen Navigationseintrag im Core.
+   *
+   * @param input - Der zu schreibende Navigationseintrag.
+   * @returns `true`, wenn der Upsert erfolgreich war.
+   */
+  upsertNavigationItem: (input: CoreNavigationRecord) => Promise<boolean>
   /**
    * Laedt tenant-spezifische App-Settings.
    *

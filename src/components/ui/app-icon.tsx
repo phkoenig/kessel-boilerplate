@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useAuth as useClerkAuth } from "@clerk/nextjs"
 import { Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MonochromeIcon } from "./monochrome-icon"
+import { useBranding } from "@/lib/branding"
 
 /**
  * AppIcon Props
@@ -31,54 +31,8 @@ export interface AppIconProps {
  * ```
  */
 export function AppIcon({ size = 32, className, iconUrl }: AppIconProps): React.ReactElement {
-  const { isLoaded, userId } = useClerkAuth()
-  const [currentIconUrl, setCurrentIconUrl] = React.useState<string | null>(iconUrl || null)
-  const [isLoading, setIsLoading] = React.useState(!iconUrl)
-
-  // Lade Icon aus app_settings wenn nicht übergeben
-  React.useEffect(() => {
-    if (iconUrl !== undefined) {
-      setCurrentIconUrl(iconUrl)
-      setIsLoading(false)
-      return
-    }
-
-    if (!isLoaded) {
-      return
-    }
-
-    if (!userId) {
-      setIsLoading(false)
-      return
-    }
-
-    const controller = new AbortController()
-
-    async function loadAppIcon() {
-      try {
-        const response = await fetch("/api/app-settings", { signal: controller.signal })
-        if (response.status === 401) {
-          return
-        }
-
-        if (response.ok) {
-          const data = await response.json()
-          setCurrentIconUrl(data.icon_url || null)
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return
-        }
-        console.error("Error loading app icon:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    void loadAppIcon()
-
-    return () => controller.abort()
-  }, [iconUrl, isLoaded, userId])
+  const { iconUrl: resolvedIconUrl, isLoading } = useBranding()
+  const currentIconUrl = iconUrl !== undefined ? iconUrl : resolvedIconUrl
 
   // Größe als CSS-Wert berechnen
   const sizeValue = typeof size === "number" ? `${size}px` : size

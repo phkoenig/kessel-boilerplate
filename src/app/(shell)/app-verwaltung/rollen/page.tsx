@@ -17,9 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
-import { allNavigationConfig } from "@/config/navigation"
+import { useNavigation } from "@/lib/navigation"
 import { RoleManagement, type Role } from "./_components/RoleManagement"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
+import type { CoreNavigationRecord } from "@/lib/core"
 
 // Berechtigungstyp
 interface Permission {
@@ -43,6 +44,7 @@ interface Permission {
 export default function RolesPage(): React.ReactElement {
   const { role, isLoading: authLoading } = useAuth()
   const { reload: reloadPermissions } = usePermissions()
+  const { records: navigationRecords } = useNavigation()
   const currentNavItem = useCurrentNavItem()
   const pageTitle = currentNavItem?.label ?? "Rollen & Berechtigungen"
   const [roles, setRoles] = useState<Role[]>([])
@@ -53,75 +55,28 @@ export default function RolesPage(): React.ReactElement {
   const scrollPosition = useRef(0)
 
   // Initialisiere Berechtigungen aus Navigation Config
-  function initializePermissions(availableRoles: Role[]): Permission[] {
+  function initializePermissions(
+    availableRoles: Role[],
+    records: CoreNavigationRecord[]
+  ): Permission[] {
     const perms: Permission[] = []
 
-    allNavigationConfig.forEach((section) => {
-      // Section-Level
-      const sectionRoleAccess = new Map<string, boolean>()
+    records.forEach((record) => {
+      const roleAccess = new Map<string, boolean>()
       availableRoles.forEach((r) => {
-        // Admin hat immer Zugriff, sonst prüfe requiredRoles
         const hasAccess =
           r.name === "admin" ||
-          !section.requiredRoles ||
-          section.requiredRoles.length === 0 ||
-          section.requiredRoles.includes(r.name)
-        sectionRoleAccess.set(r.name, hasAccess)
+          record.requiredRoles.length === 0 ||
+          record.requiredRoles.includes(r.name)
+        roleAccess.set(r.name, hasAccess)
       })
 
       perms.push({
-        moduleId: section.id,
-        moduleName: section.title || section.id,
-        roleAccess: sectionRoleAccess,
-      })
-
-      // Items in Section
-      section.items.forEach((item) => {
-        // Skip "account-login" - nicht relevant für eingeloggte User
-        if (item.id === "account-login") {
-          return
-        }
-
-        const itemRoleAccess = new Map<string, boolean>()
-        availableRoles.forEach((r) => {
-          // Admin hat immer Zugriff, sonst prüfe requiredRoles
-          const hasAccess =
-            r.name === "admin" ||
-            !item.requiredRoles ||
-            item.requiredRoles.length === 0 ||
-            item.requiredRoles.includes(r.name)
-          itemRoleAccess.set(r.name, hasAccess)
-        })
-
-        perms.push({
-          moduleId: item.id,
-          moduleName: item.label,
-          parentId: section.id,
-          roleAccess: itemRoleAccess,
-          alwaysVisible: item.alwaysVisible,
-        })
-
-        // Children (Sub-Module)
-        item.children?.forEach((child) => {
-          const childRoleAccess = new Map<string, boolean>()
-          availableRoles.forEach((r) => {
-            // Admin hat immer Zugriff, sonst prüfe requiredRoles
-            const hasAccess =
-              r.name === "admin" ||
-              !child.requiredRoles ||
-              child.requiredRoles.length === 0 ||
-              child.requiredRoles.includes(r.name)
-            childRoleAccess.set(r.name, hasAccess)
-          })
-
-          perms.push({
-            moduleId: child.id,
-            moduleName: child.label,
-            parentId: item.id,
-            roleAccess: childRoleAccess,
-            alwaysVisible: child.alwaysVisible,
-          })
-        })
+        moduleId: record.id,
+        moduleName: record.sectionTitle ?? record.label,
+        parentId: record.parentId ?? undefined,
+        roleAccess,
+        alwaysVisible: record.alwaysVisible,
       })
     })
 
@@ -202,7 +157,7 @@ export default function RolesPage(): React.ReactElement {
       const accessData = permissionsPayload.permissions ?? []
 
       // Starte mit Fallback (alle Module aus Navigation)
-      const fallbackPerms = initializePermissions(loadedRoles)
+      const fallbackPerms = initializePermissions(loadedRoles, navigationRecords)
       const mergedPerms = new Map<string, Permission>()
 
       // Initialisiere alle Module aus Fallback
@@ -247,7 +202,7 @@ export default function RolesPage(): React.ReactElement {
     } catch (err) {
       console.error("Fehler:", err)
       // Fallback: Nutze leere Rollen-Liste
-      setPermissions(initializePermissions([]))
+      setPermissions(initializePermissions([], navigationRecords))
     } finally {
       setIsLoading(false)
     }
@@ -265,10 +220,10 @@ export default function RolesPage(): React.ReactElement {
 
   useEffect(() => {
     if (role === "admin" || role === "super-user") {
-      loadPermissions(true)
+      void loadPermissions(true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPermissions sollte nur bei role-Änderung aufgerufen werden
-  }, [role])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPermissions wird absichtlich über role/navigation-Änderungen getriggert
+  }, [navigationRecords, role])
 
   // Speichere Berechtigungen in DB (Junction-Tabelle)
   async function savePermissions(updatedPermissions: Permission[]) {

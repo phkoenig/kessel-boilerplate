@@ -191,6 +191,32 @@ export const chatMessage = table(
   }
 )
 
+export const coreNavigation = table(
+  {
+    public: false,
+    indexes: [
+      { accessor: "coreNavigationParentNavId", algorithm: "btree", columns: ["parentNavId"] },
+      { accessor: "coreNavigationScope", algorithm: "btree", columns: ["scope"] },
+      { accessor: "coreNavigationHref", algorithm: "btree", columns: ["href"] },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    navId: t.string().unique(),
+    parentNavId: t.string().optional(),
+    scope: t.string(),
+    nodeType: t.string(),
+    label: t.string(),
+    sectionTitle: t.string().optional(),
+    slugSegment: t.string().optional(),
+    href: t.string().optional(),
+    iconName: t.string().optional(),
+    requiredRolesJson: t.string().optional(),
+    orderIndex: t.u32(),
+    alwaysVisible: t.bool(),
+  }
+)
+
 export const invalidationEvent = table(
   {
     public: true,
@@ -223,6 +249,7 @@ export const boilerplateCoreSchema = schema({
   chatMessage,
   chatSession,
   chatSessionAlias,
+  coreNavigation,
   coreRole,
   coreUser,
   coreUserPreference,

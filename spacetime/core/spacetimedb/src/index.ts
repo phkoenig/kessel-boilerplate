@@ -100,6 +100,21 @@ const chatMessageValue = t.object("ChatMessageValue", {
   createdAtMicros: t.string(),
 })
 
+const navigationItemValue = t.object("NavigationItemValue", {
+  id: t.string(),
+  parentId: t.string().optional(),
+  scope: t.string(),
+  nodeType: t.string(),
+  label: t.string(),
+  sectionTitle: t.string().optional(),
+  slugSegment: t.string().optional(),
+  href: t.string().optional(),
+  iconName: t.string().optional(),
+  requiredRolesJson: t.string().optional(),
+  orderIndex: t.u32(),
+  alwaysVisible: t.bool(),
+})
+
 const normalizeOptionalString = (value?: string | null): string | undefined => {
   if (!value) {
     return undefined
@@ -480,6 +495,56 @@ export const list_chat_messages = boilerplateCoreSchema.procedure(
     })
 )
 
+export const get_chat_session_owner = boilerplateCoreSchema.procedure(
+  { sessionKey: t.string() },
+  t.string().optional(),
+  (ctx, { sessionKey }) =>
+    ctx.withTx((tx) => {
+      const aliasRow = tx.db.chatSessionAlias.sessionKey.find(sessionKey)
+      if (!aliasRow) {
+        return undefined
+      }
+
+      const sessionRow = tx.db.chatSession.id.find(aliasRow.sessionId)
+      return sessionRow?.clerkUserId ?? undefined
+    })
+)
+
+export const list_navigation_items = boilerplateCoreSchema.procedure(
+  {},
+  t.array(navigationItemValue),
+  (ctx) =>
+    ctx.withTx((tx) =>
+      [...tx.db.coreNavigation.iter()]
+        .sort((left, right) => {
+          if (left.scope === right.scope) {
+            if (left.parentNavId === right.parentNavId) {
+              if (left.orderIndex === right.orderIndex) {
+                return left.navId.localeCompare(right.navId)
+              }
+              return left.orderIndex > right.orderIndex ? 1 : -1
+            }
+            return (left.parentNavId ?? "").localeCompare(right.parentNavId ?? "")
+          }
+          return left.scope.localeCompare(right.scope)
+        })
+        .map((row) => ({
+          id: row.navId,
+          parentId: row.parentNavId,
+          scope: row.scope,
+          nodeType: row.nodeType,
+          label: row.label,
+          sectionTitle: row.sectionTitle,
+          slugSegment: row.slugSegment,
+          href: row.href,
+          iconName: row.iconName,
+          requiredRolesJson: row.requiredRolesJson,
+          orderIndex: row.orderIndex,
+          alwaysVisible: row.alwaysVisible,
+        }))
+    )
+)
+
 export const upsert_role = boilerplateCoreSchema.reducer(
   {
     name: t.string(),
@@ -578,6 +643,75 @@ export const upsert_module_permission = boilerplateCoreSchema.reducer(
       moduleId,
       roleName,
       hasAccess,
+    })
+  }
+)
+
+export const upsert_navigation_item = boilerplateCoreSchema.reducer(
+  {
+    id: t.string(),
+    parentId: t.string().optional(),
+    scope: t.string(),
+    nodeType: t.string(),
+    label: t.string(),
+    sectionTitle: t.string().optional(),
+    slugSegment: t.string().optional(),
+    href: t.string().optional(),
+    iconName: t.string().optional(),
+    requiredRolesJson: t.string().optional(),
+    orderIndex: t.u32(),
+    alwaysVisible: t.bool(),
+  },
+  (
+    ctx,
+    {
+      id,
+      parentId,
+      scope,
+      nodeType,
+      label,
+      sectionTitle,
+      slugSegment,
+      href,
+      iconName,
+      requiredRolesJson,
+      orderIndex,
+      alwaysVisible,
+    }
+  ) => {
+    const existingRow = ctx.db.coreNavigation.navId.find(id)
+    if (existingRow) {
+      ctx.db.coreNavigation.id.update({
+        ...existingRow,
+        parentNavId: normalizeOptionalString(parentId),
+        scope,
+        nodeType,
+        label,
+        sectionTitle: normalizeOptionalString(sectionTitle),
+        slugSegment: normalizeOptionalString(slugSegment),
+        href: normalizeOptionalString(href),
+        iconName: normalizeOptionalString(iconName),
+        requiredRolesJson: normalizeOptionalString(requiredRolesJson),
+        orderIndex,
+        alwaysVisible,
+      })
+      return
+    }
+
+    ctx.db.coreNavigation.insert({
+      id: 0n,
+      navId: id,
+      parentNavId: normalizeOptionalString(parentId),
+      scope,
+      nodeType,
+      label,
+      sectionTitle: normalizeOptionalString(sectionTitle),
+      slugSegment: normalizeOptionalString(slugSegment),
+      href: normalizeOptionalString(href),
+      iconName: normalizeOptionalString(iconName),
+      requiredRolesJson: normalizeOptionalString(requiredRolesJson),
+      orderIndex,
+      alwaysVisible,
     })
   }
 )

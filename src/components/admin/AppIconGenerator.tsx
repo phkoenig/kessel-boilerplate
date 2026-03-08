@@ -13,7 +13,7 @@ import { MonochromeIcon } from "@/components/ui/monochrome-icon"
 import { InlineEditInput } from "@/components/ui/inline-edit-input"
 import { useAuth } from "@/components/auth"
 import { cn } from "@/lib/utils"
-import { emitMockEvent } from "@/lib/realtime"
+import { emitRealtimeEvent } from "@/lib/realtime"
 
 /**
  * AppIconGenerator Komponente
@@ -424,7 +424,7 @@ export function AppIconGenerator(): React.ReactElement {
 
       // Realtime-Invalidierung für Icon-Update
       setTimeout(() => {
-        emitMockEvent("app:invalidate", "db-modified", {})
+        emitRealtimeEvent("app:invalidate", "db-modified", {})
       }, 500)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Fehler beim Speichern"
@@ -570,7 +570,7 @@ export function AppIconGenerator(): React.ReactElement {
               label="Beschreibung *"
               value={description}
               onSave={(value) => handleSaveField("app_description", value)}
-              onSaveSuccess={() => emitMockEvent("app:invalidate", "db-modified", {})}
+              onSaveSuccess={() => emitRealtimeEvent("app:invalidate", "db-modified", {})}
               placeholder="z.B. Boilerplate für B2B-Apps"
               disabled={isGenerating}
             />

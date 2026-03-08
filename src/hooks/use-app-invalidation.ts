@@ -5,7 +5,7 @@
  * Ersetzt window.location.reload() durch sanftes Re-Fetch der Server Components.
  *
  * Verwendung:
- * - AIChatPanel / Write-Tools: emitMockEvent("app:invalidate", "db-modified", {})
+ * - AIChatPanel / Write-Tools: emitRealtimeEvent("app:invalidate", "db-modified", {})
  * - Shell Layout: useAppInvalidation()
  */
 

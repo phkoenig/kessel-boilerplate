@@ -1,9 +1,10 @@
 "use client"
 
 import { usePathname } from "next/navigation"
+import { createElement } from "react"
 import { type LucideIcon } from "lucide-react"
-import { navigationConfig, findNavItemByHref } from "@/config/navigation"
 import { cn } from "@/lib/utils"
+import { resolveNavigationIcon, useNavigation } from "@/lib/navigation"
 
 /**
  * PageHeader Props
@@ -45,20 +46,23 @@ export function PageHeader({
   className,
 }: PageHeaderProps): React.ReactElement {
   const pathname = usePathname()
+  const { findCurrentItem } = useNavigation()
 
   // Navigation-Item holen (für Icon und Titel)
-  const navItem = customIcon ? null : findNavItemByHref(navigationConfig, pathname)
-
-  // Icon: Custom oder aus Navigation
-  const Icon = customIcon || navItem?.icon
+  const navItem = customIcon ? null : findCurrentItem(pathname)
 
   // Titel: Custom oder aus Navigation
   const title = customTitle || navItem?.label || "Seite"
+  const iconElement = customIcon
+    ? createElement(customIcon, { className: "size-8 shrink-0" })
+    : navItem?.iconName
+      ? createElement(resolveNavigationIcon(navItem.iconName), { className: "size-8 shrink-0" })
+      : null
 
   return (
     <div className={cn("mb-8", className)}>
       <h1 className="text-foreground flex items-center gap-4 text-3xl font-bold tracking-tight">
-        {Icon && <Icon className="size-8 shrink-0" />}
+        {iconElement}
         <span>{title}</span>
       </h1>
       {description && <p className="text-muted-foreground mt-2">{description}</p>}

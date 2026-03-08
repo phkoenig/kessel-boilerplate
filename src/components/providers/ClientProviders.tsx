@@ -3,6 +3,8 @@
 import { type ReactNode } from "react"
 import { AuthProvider, PermissionsProvider } from "@/components/auth"
 import { AIRegistryProvider } from "@/lib/ai/ai-registry-context"
+import { BrandingProvider } from "@/lib/branding"
+import { NavigationProvider } from "@/lib/navigation"
 import { ThemeSyncProvider } from "@/hooks/use-theme-sync-with-user"
 import { ColorSchemeSyncProvider } from "@/hooks/use-color-scheme-sync"
 
@@ -19,13 +21,17 @@ import { ColorSchemeSyncProvider } from "@/hooks/use-color-scheme-sync"
 export function ClientProviders({ children }: { children: ReactNode }): React.ReactElement {
   return (
     <AuthProvider>
-      <PermissionsProvider>
-        <ColorSchemeSyncProvider>
-          <ThemeSyncProvider>
-            <AIRegistryProvider>{children}</AIRegistryProvider>
-          </ThemeSyncProvider>
-        </ColorSchemeSyncProvider>
-      </PermissionsProvider>
+      <BrandingProvider>
+        <NavigationProvider>
+          <PermissionsProvider>
+            <ColorSchemeSyncProvider>
+              <ThemeSyncProvider>
+                <AIRegistryProvider>{children}</AIRegistryProvider>
+              </ThemeSyncProvider>
+            </ColorSchemeSyncProvider>
+          </PermissionsProvider>
+        </NavigationProvider>
+      </BrandingProvider>
     </AuthProvider>
   )
 }

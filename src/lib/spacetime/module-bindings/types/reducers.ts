@@ -18,6 +18,7 @@ import UpdateUserThemeStateReducer from "../update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "../upsert_app_settings_reducer"
 import UpsertMembershipReducer from "../upsert_membership_reducer"
 import UpsertModulePermissionReducer from "../upsert_module_permission_reducer"
+import UpsertNavigationItemReducer from "../upsert_navigation_item_reducer"
 import UpsertRoleReducer from "../upsert_role_reducer"
 import UpsertTenantReducer from "../upsert_tenant_reducer"
 import UpsertThemeRegistryReducer from "../upsert_theme_registry_reducer"
@@ -37,6 +38,7 @@ export type UpdateUserThemeStateParams = __Infer<typeof UpdateUserThemeStateRedu
 export type UpsertAppSettingsParams = __Infer<typeof UpsertAppSettingsReducer>
 export type UpsertMembershipParams = __Infer<typeof UpsertMembershipReducer>
 export type UpsertModulePermissionParams = __Infer<typeof UpsertModulePermissionReducer>
+export type UpsertNavigationItemParams = __Infer<typeof UpsertNavigationItemReducer>
 export type UpsertRoleParams = __Infer<typeof UpsertRoleReducer>
 export type UpsertTenantParams = __Infer<typeof UpsertTenantReducer>
 export type UpsertThemeRegistryParams = __Infer<typeof UpsertThemeRegistryReducer>

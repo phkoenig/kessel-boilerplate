@@ -8,6 +8,17 @@ export {
   findLabelBySlug,
 } from "./utils"
 export { useCurrentNavItem } from "./use-current-nav-item"
+export { NavigationProvider, useNavigation } from "./provider"
+export {
+  buildBreadcrumbEntries,
+  buildNavigationSections,
+  findNavigationItemByHref,
+  findNavigationRecordById,
+  resolveNavigationIcon,
+  type BreadcrumbEntry,
+  type NavigationItem,
+  type NavigationSection,
+} from "./core-navigation"
 export {
   generateNavItemCode,
   generatePageTemplate,

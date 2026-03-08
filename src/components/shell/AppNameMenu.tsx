@@ -17,8 +17,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { AppIcon } from "@/components/ui/app-icon"
 import { useAuth, usePermissions } from "@/components/auth"
-import { navigationConfig } from "@/config/navigation"
 import { useAppSettings } from "@/hooks/use-app-settings"
+import { useNavigation } from "@/lib/navigation"
+import { isAdminRole } from "@/lib/auth/allowed-users"
 
 /**
  * AppNameMenu Komponente
@@ -35,26 +36,24 @@ import { useAppSettings } from "@/hooks/use-app-settings"
 export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): React.ReactElement {
   const { role } = useAuth()
   const { canAccess, isLoaded } = usePermissions()
+  const { sidebarSections } = useNavigation()
   const pathname = usePathname()
   const router = useRouter()
   const { appName } = useAppSettings()
+  const isAdminContext = pathname.startsWith("/app-verwaltung")
 
   // User-Rolle für Berechtigungsprüfung
   const userRole = role ?? "NoUser"
 
   // Finde Admin-Section
-  const adminSection = navigationConfig.find((section) => section.id === "admin")
+  const adminSection = sidebarSections.find((section) => section.id === "admin")
 
   const isRoleAllowed = (requiredRoles?: string[]): boolean => {
     if (!requiredRoles || requiredRoles.length === 0) {
       return true
     }
 
-    if (userRole === "admin") {
-      return true
-    }
-
-    if (userRole === "superuser") {
+    if (isAdminRole(userRole)) {
       return requiredRoles.includes("superuser") || requiredRoles.includes("admin")
     }
 
@@ -62,7 +61,9 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
   }
 
   const staticAdminItems = adminSection
-    ? adminSection.items.filter((item) => isRoleAllowed(item.requiredRoles))
+    ? adminSection.items.filter(
+        (item) => isRoleAllowed(item.requiredRoles) || (isAdminContext && userRole !== "NoUser")
+      )
     : []
 
   // Bevor die Permissions geladen sind oder wenn die Matrix unerwartet leer ist,
