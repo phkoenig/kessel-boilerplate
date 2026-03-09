@@ -1,5 +1,6 @@
 import { SenderError, t } from "spacetimedb/server"
 import boilerplateCoreSchema from "./schema"
+import { mergeAppSettingsUpdate } from "./app-settings"
 
 export { default } from "./schema"
 
@@ -902,24 +903,17 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
   (ctx, { tenantSlug, appName, appDescription, iconUrl, iconVariantsJson, iconProvider }) => {
     const existingSettings = ctx.db.appSetting.tenantSlug.find(tenantSlug)
     if (existingSettings) {
+      const mergedSettings = mergeAppSettingsUpdate(existingSettings, {
+        appName,
+        appDescription,
+        iconUrl,
+        iconVariantsJson,
+        iconProvider,
+      })
+
       ctx.db.appSetting.id.update({
         ...existingSettings,
-        appName:
-          appName === undefined ? existingSettings.appName : normalizeOptionalString(appName),
-        appDescription:
-          appDescription === undefined
-            ? existingSettings.appDescription
-            : normalizeOptionalString(appDescription),
-        iconUrl:
-          iconUrl === undefined ? existingSettings.iconUrl : normalizeOptionalString(iconUrl),
-        iconVariantsJson:
-          iconVariantsJson === undefined
-            ? existingSettings.iconVariantsJson
-            : normalizeOptionalString(iconVariantsJson),
-        iconProvider:
-          iconProvider === undefined
-            ? existingSettings.iconProvider
-            : normalizeOptionalString(iconProvider),
+        ...mergedSettings,
         updatedAt: ctx.timestamp,
       })
       return
