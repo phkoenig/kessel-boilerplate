@@ -123,6 +123,14 @@ function ShellInner({
   // Diese garantieren feste Pixel-Breiten unabhängig von der Fensterbreite
   const navbarCollapsedPercent = pxToPercent(NAVBAR_COLLAPSED_PX, containerWidth)
   const navbarMinPercent = pxToPercent(NAVBAR_MIN_PX, containerWidth)
+  const navbarDefaultSize = navbarCollapsed ? navbarCollapsedPercent : PANEL_SIZES.navbar
+  const mainDefaultSize = Math.max(
+    PANEL_CONSTRAINTS.main.min,
+    100 -
+      navbarDefaultSize -
+      (hasExplorer ? PANEL_SIZES.explorer : 0) -
+      (hasDetailDrawer ? PANEL_SIZES.assist : 0)
+  )
 
   // Synchronisiere Panel mit State (NUR für Keyboard-Shortcuts, nicht für Drag)
   useEffect(() => {
@@ -226,7 +234,7 @@ function ShellInner({
           ref={navbarPanelRef}
           id="navbar"
           order={1}
-          defaultSize={navbarCollapsed ? navbarCollapsedPercent : PANEL_SIZES.navbar}
+          defaultSize={navbarDefaultSize}
           minSize={navbarMinPercent}
           maxSize={PANEL_CONSTRAINTS.navbar.max}
           collapsible
@@ -278,6 +286,7 @@ function ShellInner({
         <ResizablePanel
           id="main"
           order={3}
+          defaultSize={mainDefaultSize}
           minSize={PANEL_CONSTRAINTS.main.min}
           className="bg-background"
         >

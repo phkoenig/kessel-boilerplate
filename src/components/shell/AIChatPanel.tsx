@@ -105,6 +105,9 @@ interface ChatHistoryResponse {
  */
 const WRITE_TOOL_PREFIXES = ["insert_", "update_", "delete_", "create_user", "delete_user"]
 const CHAT_SESSION_STORAGE_KEY = "ai-chat-session-id"
+const CHAT_HISTORY_CACHE_TTL_MS = 5_000
+const chatHistoryCache = new Map<string, { messages: UIMessage[]; cachedAt: number }>()
+const chatHistoryRequests = new Map<string, Promise<UIMessage[]>>()
 
 const getChatSessionId = (): string => {
   if (typeof window === "undefined") {
@@ -143,6 +146,59 @@ const mapHistoryToInitialMessages = (messages: PersistedChatHistoryMessage[]): U
       parts: [{ type: "text", text, state: "done" }],
     }
   })
+}
+
+const getCachedChatHistory = (sessionId: string): UIMessage[] | null => {
+  const cached = chatHistoryCache.get(sessionId)
+  if (!cached) {
+    return null
+  }
+
+  if (Date.now() - cached.cachedAt > CHAT_HISTORY_CACHE_TTL_MS) {
+    chatHistoryCache.delete(sessionId)
+    return null
+  }
+
+  return cached.messages
+}
+
+const loadChatHistory = async (sessionId: string): Promise<UIMessage[]> => {
+  const cachedMessages = getCachedChatHistory(sessionId)
+  if (cachedMessages) {
+    return cachedMessages
+  }
+
+  const existingRequest = chatHistoryRequests.get(sessionId)
+  if (existingRequest) {
+    return existingRequest
+  }
+
+  const request = (async () => {
+    const response = await fetch(`/api/chat/history?sessionId=${encodeURIComponent(sessionId)}`, {
+      cache: "no-store",
+      credentials: "include",
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as ChatHistoryResponse
+    if (!response.ok) {
+      throw new Error(payload.error || "Chat-Historie konnte nicht geladen werden.")
+    }
+
+    const messages = mapHistoryToInitialMessages(payload.messages ?? [])
+    chatHistoryCache.set(sessionId, {
+      messages,
+      cachedAt: Date.now(),
+    })
+    return messages
+  })()
+
+  chatHistoryRequests.set(sessionId, request)
+
+  try {
+    return await request
+  } finally {
+    chatHistoryRequests.delete(sessionId)
+  }
 }
 
 /**
@@ -364,24 +420,13 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
       setHistoryError(null)
 
       try {
-        const response = await fetch(
-          `/api/chat/history?sessionId=${encodeURIComponent(sessionId)}`,
-          {
-            cache: "no-store",
-            credentials: "include",
-          }
-        )
-
-        const payload = (await response.json().catch(() => ({}))) as ChatHistoryResponse
-        if (!response.ok) {
-          throw new Error(payload.error || "Chat-Historie konnte nicht geladen werden.")
-        }
+        const messages = await loadChatHistory(sessionId)
 
         if (cancelled) {
           return
         }
 
-        setInitialMessages(mapHistoryToInitialMessages(payload.messages ?? []))
+        setInitialMessages(messages)
       } catch (error) {
         if (cancelled) {
           return

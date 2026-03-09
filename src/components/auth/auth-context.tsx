@@ -49,10 +49,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 const AUTH_PROFILE_CACHE_KEY = "auth-profile-cache-v1"
+const AUTH_PROFILE_CACHE_TTL_MS = 60_000
+let profileRequest: Promise<
+  { user: User; isNewUser?: boolean; blocked?: false } | { blocked: true } | null
+> | null = null
 
 interface CachedProfileValue {
   clerkUserId: string
   user: User
+  cachedAt: number
 }
 
 /** Hook zum Zugriff auf Auth-State */
@@ -76,6 +81,45 @@ function getFallbackRole(email: string): UserRole {
   return getAllowedRoleForEmail(email) ?? "user"
 }
 
+function readCachedProfile(clerkUserId: string): { user: User; isFresh: boolean } | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const cachedValue = window.sessionStorage.getItem(AUTH_PROFILE_CACHE_KEY)
+  if (!cachedValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(cachedValue) as CachedProfileValue
+    if (parsed.clerkUserId !== clerkUserId) {
+      return null
+    }
+
+    return {
+      user: parsed.user,
+      isFresh: Date.now() - parsed.cachedAt < AUTH_PROFILE_CACHE_TTL_MS,
+    }
+  } catch {
+    window.sessionStorage.removeItem(AUTH_PROFILE_CACHE_KEY)
+    return null
+  }
+}
+
+function persistCachedProfile(clerkUserId: string, user: User): void {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  const cacheValue: CachedProfileValue = {
+    clerkUserId,
+    user,
+    cachedAt: Date.now(),
+  }
+  window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
+}
+
 /** Auth Provider - Clerk-basiert, Profil aus Supabase via API */
 export function AuthProvider({ children }: { children: ReactNode }): React.ReactElement {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
@@ -83,102 +127,91 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const [profile, setProfile] = useState<User | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
 
-  const loadProfile = useCallback(async () => {
-    if (!clerkUser?.id) {
-      setProfile(null)
-      setProfileLoading(false)
-      return
-    }
+  const loadProfile = useCallback(
+    async (force = false) => {
+      if (!clerkUser?.id) {
+        setProfile(null)
+        setProfileLoading(false)
+        return
+      }
 
-    if (typeof window !== "undefined") {
-      const cachedValue = window.sessionStorage.getItem(AUTH_PROFILE_CACHE_KEY)
-      if (cachedValue) {
-        try {
-          const parsed = JSON.parse(cachedValue) as CachedProfileValue
-          if (parsed.clerkUserId === clerkUser.id) {
-            setProfile(parsed.user)
-            setProfileLoading(false)
-          }
-        } catch {
-          window.sessionStorage.removeItem(AUTH_PROFILE_CACHE_KEY)
+      const cachedProfile = force ? null : readCachedProfile(clerkUser.id)
+      if (cachedProfile) {
+        setProfile(cachedProfile.user)
+        setProfileLoading(false)
+
+        if (cachedProfile.isFresh) {
+          return
         }
       }
-    }
 
-    setProfileLoading(true)
-    try {
-      const data = await fetchProfile()
-      if (data && "blocked" in data && data.blocked) {
-        setProfile(null)
-      } else if (data?.user) {
-        const merged: User = {
-          ...data.user,
-          id: data.user.id,
-          clerkUserId: data.user.clerkUserId ?? clerkUser.id,
-          email: data.user.email || clerkUser.primaryEmailAddress?.emailAddress || "",
-          name:
-            data.user.name ||
-            clerkUser.fullName ||
-            clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-            "User",
-          avatar: data.user.avatar || clerkUser.imageUrl,
+      if (!cachedProfile) {
+        setProfileLoading(true)
+      }
+
+      try {
+        if (!profileRequest) {
+          profileRequest = fetchProfile().finally(() => {
+            profileRequest = null
+          })
         }
-        setProfile(merged)
-        if (typeof window !== "undefined") {
-          const cacheValue: CachedProfileValue = {
-            clerkUserId: clerkUser.id,
-            user: merged,
+
+        const data = await profileRequest
+        if (data && "blocked" in data && data.blocked) {
+          setProfile(null)
+        } else if (data?.user) {
+          const merged: User = {
+            ...data.user,
+            id: data.user.id,
+            clerkUserId: data.user.clerkUserId ?? clerkUser.id,
+            email: data.user.email || clerkUser.primaryEmailAddress?.emailAddress || "",
+            name:
+              data.user.name ||
+              clerkUser.fullName ||
+              clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+              "User",
+            avatar: data.user.avatar || clerkUser.imageUrl,
           }
-          window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
+          setProfile(merged)
+          persistCachedProfile(clerkUser.id, merged)
+        } else {
+          const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
+          const fallbackProfile: User = {
+            id: clerkUser.id,
+            clerkUserId: clerkUser.id,
+            email: fallbackEmail,
+            name:
+              clerkUser.fullName ||
+              clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+              "User",
+            avatar: clerkUser.imageUrl,
+            role: getFallbackRole(fallbackEmail),
+            canSelectTheme: false,
+            colorScheme: "system",
+          }
+          setProfile(fallbackProfile)
+          persistCachedProfile(clerkUser.id, fallbackProfile)
         }
-      } else {
+      } catch {
         const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
         const fallbackProfile: User = {
           id: clerkUser.id,
           clerkUserId: clerkUser.id,
           email: fallbackEmail,
-          name:
-            clerkUser.fullName ||
-            clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-            "User",
+          name: clerkUser.fullName || "User",
           avatar: clerkUser.imageUrl,
           role: getFallbackRole(fallbackEmail),
           canSelectTheme: false,
           colorScheme: "system",
         }
         setProfile(fallbackProfile)
-        if (typeof window !== "undefined") {
-          const cacheValue: CachedProfileValue = {
-            clerkUserId: clerkUser.id,
-            user: fallbackProfile,
-          }
-          window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
-        }
+        persistCachedProfile(clerkUser.id, fallbackProfile)
+      } finally {
+        setProfileLoading(false)
       }
-    } catch {
-      const fallbackEmail = clerkUser.primaryEmailAddress?.emailAddress || ""
-      const fallbackProfile: User = {
-        id: clerkUser.id,
-        clerkUserId: clerkUser.id,
-        email: fallbackEmail,
-        name: clerkUser.fullName || "User",
-        avatar: clerkUser.imageUrl,
-        role: getFallbackRole(fallbackEmail),
-        canSelectTheme: false,
-        colorScheme: "system",
-      }
-      setProfile(fallbackProfile)
-      if (typeof window !== "undefined") {
-        const cacheValue: CachedProfileValue = {
-          clerkUserId: clerkUser.id,
-          user: fallbackProfile,
-        }
-        window.sessionStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify(cacheValue))
-      }
-    } finally {
-      setProfileLoading(false)
-    }
-  }, [clerkUser?.id, clerkUser?.primaryEmailAddress, clerkUser?.fullName, clerkUser?.imageUrl])
+    },
+    [clerkUser?.id, clerkUser?.primaryEmailAddress, clerkUser?.fullName, clerkUser?.imageUrl]
+  )
 
   useEffect(() => {
     if (!clerkLoaded) return
@@ -187,8 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       setProfileLoading(false)
       return
     }
-    loadProfile()
-  }, [clerkLoaded, clerkUser, loadProfile])
+    void loadProfile()
+  }, [clerkLoaded, clerkUser?.id, loadProfile])
 
   const logout = useCallback(async () => {
     await signOut()
@@ -208,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   )
 
   const refreshUser = useCallback(async () => {
-    await loadProfile()
+    await loadProfile(true)
   }, [loadProfile])
 
   const isLoading = !clerkLoaded || (!!clerkUser && profileLoading)

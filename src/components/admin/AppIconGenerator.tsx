@@ -23,6 +23,12 @@ import { cn } from "@/lib/utils"
  * - Rechts: Formularfelder + Generator-Controls
  */
 const BOILERPLATE_DEFAULTS = ["Kessel App", "Test Demo 123", "Testdemo123"]
+type AvailableProvider = { id: string; name: string; models: string[]; defaultModel: string }
+const FALLBACK_MEDIA_PROVIDERS: AvailableProvider[] = [
+  { id: "openrouter", name: "OpenRouter", models: ["flux-2"], defaultModel: "flux-2" },
+]
+let availableProvidersCache: AvailableProvider[] | null = null
+let availableProvidersRequest: Promise<AvailableProvider[]> | null = null
 
 export function AppIconGenerator(): React.ReactElement {
   const { user, isLoading: isAuthLoading } = useAuth()
@@ -65,9 +71,9 @@ export function AppIconGenerator(): React.ReactElement {
   } | null>(null)
 
   // Available Providers mit Modellen
-  const [availableProviders, setAvailableProviders] = useState<
-    Array<{ id: string; name: string; models: string[]; defaultModel: string }>
-  >([])
+  const [availableProviders, setAvailableProviders] = useState<AvailableProvider[]>(
+    availableProvidersCache ?? []
+  )
 
   // Lade app_settings beim Mount (via API für tenant_slug-Filterung)
   useEffect(() => {
@@ -177,30 +183,39 @@ export function AppIconGenerator(): React.ReactElement {
   // Lade verfügbare Provider
   useEffect(() => {
     async function loadProviders() {
+      if (availableProvidersCache) {
+        setAvailableProviders(availableProvidersCache)
+        return
+      }
+
       try {
-        const response = await fetch("/api/media-providers")
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-          console.error("[AppIconGenerator] Error loading providers:", errorData)
-          // Fallback: OpenRouter ist immer verfügbar
-          setAvailableProviders([
-            { id: "openrouter", name: "OpenRouter", models: ["flux-2"], defaultModel: "flux-2" },
-          ])
-          return
+        if (!availableProvidersRequest) {
+          availableProvidersRequest = (async () => {
+            const response = await fetch("/api/media-providers")
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+              console.error("[AppIconGenerator] Error loading providers:", errorData)
+              return FALLBACK_MEDIA_PROVIDERS
+            }
+
+            const data = await response.json()
+            return (data.providers || []) as AvailableProvider[]
+          })().finally(() => {
+            availableProvidersRequest = null
+          })
         }
-        const data = await response.json()
-        const providers = data.providers || []
+
+        const providers = await availableProvidersRequest
+        availableProvidersCache = providers
         setAvailableProviders(providers)
       } catch (err) {
         console.error("[AppIconGenerator] Error loading providers:", err)
-        // Fallback: OpenRouter ist immer verfügbar
-        setAvailableProviders([
-          { id: "openrouter", name: "OpenRouter", models: ["flux-2"], defaultModel: "flux-2" },
-        ])
+        availableProvidersCache = FALLBACK_MEDIA_PROVIDERS
+        setAvailableProviders(FALLBACK_MEDIA_PROVIDERS)
       }
     }
 
-    loadProviders()
+    void loadProviders()
   }, [])
 
   // Aktualisiere das Modell wenn sich der Provider ändert oder Provider geladen wurden
