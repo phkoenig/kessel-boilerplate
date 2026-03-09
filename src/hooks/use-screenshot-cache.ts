@@ -59,18 +59,12 @@ export function useScreenshotCache(): UseScreenshotCacheReturn {
       const timer = setTimeout(async () => {
         if (isCapturingRef.current) return // Bereits am Capturen
 
-        console.log("[ScreenshotCache] Route changed, capturing:", pathname)
         isCapturingRef.current = true
 
         try {
           const screenshot = await captureScreenshot()
           screenshotRef.current = screenshot
-          console.log(
-            "[ScreenshotCache] Cached screenshot:",
-            screenshot ? `${screenshot.length} chars` : "null"
-          )
-        } catch (error) {
-          console.error("[ScreenshotCache] Capture failed:", error)
+        } catch {
           screenshotRef.current = null
         } finally {
           isCapturingRef.current = false
@@ -90,7 +84,6 @@ export function useScreenshotCache(): UseScreenshotCacheReturn {
 
     // Wenn Force-Fresh oder kein Cache vorhanden
     if (forceFresh || !screenshotRef.current) {
-      console.log("[ScreenshotCache] Getting fresh screenshot (forceFresh:", forceFresh, ")")
       isCapturingRef.current = true
 
       const capturePromise = captureScreenshot()
@@ -98,8 +91,7 @@ export function useScreenshotCache(): UseScreenshotCacheReturn {
           screenshotRef.current = screenshot
           return screenshot
         })
-        .catch((error) => {
-          console.error("[ScreenshotCache] Fresh capture failed:", error)
+        .catch(() => {
           return null
         })
         .finally(() => {
@@ -111,8 +103,6 @@ export function useScreenshotCache(): UseScreenshotCacheReturn {
       return capturePromise
     }
 
-    // Cache verwenden
-    console.log("[ScreenshotCache] Using cached screenshot")
     return screenshotRef.current
   }, [])
 

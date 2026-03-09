@@ -13,6 +13,19 @@ import type { User } from "@/components/auth/auth-context"
 import { isAllowedEmail, resolveProvisioningRole } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
 
+const KNOWN_ROLES_CACHE_TTL_MS = 60_000
+let knownRolesCache: { roles: string[]; expiresAt: number } | null = null
+
+async function getKnownRoles(): Promise<string[]> {
+  if (knownRolesCache && knownRolesCache.expiresAt > Date.now()) {
+    return knownRolesCache.roles
+  }
+
+  const roles = (await getCoreStore().listUsers()).map((entry) => entry.role)
+  knownRolesCache = { roles, expiresAt: Date.now() + KNOWN_ROLES_CACHE_TTL_MS }
+  return roles
+}
+
 function profileRowToUser(
   row: {
     id: string
@@ -128,7 +141,7 @@ export async function GET() {
       return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
     }
 
-    const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+    const knownRoles = await getKnownRoles()
     const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
     if (resolvedRole && resolvedRole !== profile.role) {
       const reprovisioned = await coreStore.upsertUserFromClerk({
@@ -191,7 +204,7 @@ export async function PUT(request: Request) {
       await autoProvisionProfile(userId, effectiveEmail)
     }
 
-    const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
+    const knownRoles = await getKnownRoles()
     const mappedRole = resolveProvisioningRole(
       effectiveEmail,
       existingProfile?.role ?? null,
