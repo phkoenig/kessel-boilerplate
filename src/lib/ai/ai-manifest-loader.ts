@@ -29,7 +29,6 @@ export async function loadAIManifest(): Promise<AIComponent[]> {
       cache: "force-cache",
     })
     if (!response.ok) {
-      console.warn("[AIManifestLoader] Manifest nicht gefunden, verwende leeres Array")
       return []
     }
     const data = await response.json()

@@ -134,8 +134,6 @@ Generiere die dynamischen Teile für den Logo-Prompt basierend auf diesem Kontex
       temperature: 0.7,
     })
 
-    console.log("[Generate Icon Prompt] AI Response:", text)
-
     // Parse JSON-Antwort
     let dynamicParts: DynamicPromptParts
     try {
@@ -157,7 +155,6 @@ Generiere die dynamischen Teile für den Logo-Prompt basierend auf diesem Kontex
 
     // Baue finalen Prompt zusammen
     const finalPrompt = buildFinalPrompt(dynamicParts)
-    console.log("[Generate Icon Prompt] Final Prompt:", finalPrompt)
 
     return NextResponse.json({
       prompt: finalPrompt,

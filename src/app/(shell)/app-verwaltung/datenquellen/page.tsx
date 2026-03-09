@@ -207,10 +207,7 @@ export default function DatasourcesPage(): React.ReactElement {
   const loadRelationships = async () => {
     try {
       const { data, error } = await supabase.rpc("get_schema_relationships")
-      if (error) {
-        console.warn("Konnte Beziehungen nicht laden (evtl. fehlt Migration):", error.message)
-        return
-      }
+      if (error) return
 
       const relMap: Record<string, string[]> = {}
       if (data) {

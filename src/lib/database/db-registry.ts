@@ -188,11 +188,6 @@ export async function discoverTables(dbId: string): Promise<TableInfo[]> {
 
   // Für externe DBs ohne RPC: Leeres Array zurückgeben
   // User muss Tabellen manuell hinzufügen oder RPC-Funktion erstellen
-  console.warn(
-    `[DBRegistry] Keine RPC-Funktion "discover_tables" für ${dbId} gefunden. ` +
-      `Tabellen müssen manuell konfiguriert werden oder eine RPC-Funktion erstellt werden.`
-  )
-
   return []
 }
 
@@ -208,10 +203,7 @@ export async function syncDatasourcesForDatabase(dbId: string): Promise<void> {
   const kesselClient = await createKesselClient()
   const tables = await discoverTables(dbId)
 
-  if (tables.length === 0) {
-    console.warn(`[DBRegistry] Keine Tabellen für ${dbId} gefunden`)
-    return
-  }
+  if (tables.length === 0) return
 
   // Prüfe welche Tabellen bereits in ai_datasources existieren
   const { data: existing } = await kesselClient
@@ -224,10 +216,7 @@ export async function syncDatasourcesForDatabase(dbId: string): Promise<void> {
   // Füge fehlende Tabellen hinzu
   const newTables = tables.filter((t) => !existingTableNames.has(t.table_name))
 
-  if (newTables.length === 0) {
-    console.log(`[DBRegistry] Alle Tabellen für ${dbId} sind bereits synchronisiert`)
-    return
-  }
+  if (newTables.length === 0) return
 
   // Erstelle Einträge für neue Tabellen
   const inserts = newTables.map((table) => ({
@@ -245,10 +234,6 @@ export async function syncDatasourcesForDatabase(dbId: string): Promise<void> {
     console.error(`[DBRegistry] Fehler beim Synchronisieren von Tabellen für ${dbId}:`, error)
     throw error
   }
-
-  console.log(
-    `[DBRegistry] ${newTables.length} neue Tabellen für ${dbId} zu ai_datasources hinzugefügt`
-  )
 }
 
 /**

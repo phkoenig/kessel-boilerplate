@@ -131,9 +131,7 @@ export default function FeaturesPage(): React.ReactElement {
         .select("feature_id, user_id")
         .in("feature_id", featureIds)
 
-      if (votesError) {
-        console.warn("Fehler beim Laden der Votes:", votesError)
-      }
+      void votesError
 
       // Lade User-Votes (welche Features hat der User gevotet?)
       const { data: userVotesData } = await supabase

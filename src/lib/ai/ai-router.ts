@@ -109,7 +109,6 @@ export async function routeWithAI(messages: ModelMessage[]): Promise<RouteCatego
 
     // Validierung: Fallback auf CHAT wenn ungültige Antwort
     if (!["UI_ACTION", "DB_QUERY", "VISION", "CHAT"].includes(category)) {
-      console.warn(`[AI-Router] Invalid category "${text}", falling back to CHAT`)
       return "CHAT"
     }
 

@@ -154,7 +154,6 @@ async function loadDynamicThemeCSS(themeId: string, forceReload = false): Promis
   return new Promise((resolve) => {
     link.onload = () => resolve(true)
     link.onerror = () => {
-      console.warn(`[ThemeProvider] Failed to load CSS for theme: ${themeId}`)
       resolve(false)
     }
     document.head.appendChild(link)
@@ -236,13 +235,11 @@ const CustomThemeProvider = ({
 
         const contentType = response.headers.get("content-type")
         if (!contentType || !contentType.includes("application/json")) {
-          console.warn("API-Route /api/themes/list liefert kein JSON:", contentType)
           cachedThemes = []
           return []
         }
 
         if (!response.ok) {
-          console.warn(`API-Route /api/themes/list fehlgeschlagen: ${response.status}`)
           cachedThemes = []
           return []
         }
@@ -334,9 +331,6 @@ const CustomThemeProvider = ({
         // Wenn CSS nicht geladen werden konnte und es nicht das Default-Theme ist,
         // fallback auf Default-Theme
         if (!success && theme !== DEFAULT_THEME_ID) {
-          console.warn(
-            `[ThemeProvider] Theme CSS nicht geladen, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
-          )
           setThemeState(DEFAULT_THEME_ID)
           localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
         }
@@ -345,9 +339,6 @@ const CustomThemeProvider = ({
         console.error("Fehler beim Laden des Theme-CSS:", err)
         // Fallback auf Default-Theme bei Fehler
         if (theme !== DEFAULT_THEME_ID) {
-          console.warn(
-            `[ThemeProvider] CSS-Load-Fehler, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
-          )
           setThemeState(DEFAULT_THEME_ID)
           localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
         }
@@ -378,9 +369,6 @@ const CustomThemeProvider = ({
         localStorage.setItem(THEME_STORAGE_KEY, id)
       } else {
         // Theme existiert nicht → Fallback auf Default-Theme
-        console.warn(
-          `[ThemeProvider] Theme "${id}" existiert nicht, fallback auf Default-Theme: ${DEFAULT_THEME_ID}`
-        )
         setThemeState(DEFAULT_THEME_ID)
         localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME_ID)
       }

@@ -44,15 +44,6 @@ export const MessageCost: FC = () => {
 
   const metadata = msgMetadata?.custom
 
-  // Nur loggen wenn die Message "complete" ist, um Spam zu vermeiden
-  if (message?.status?.type === "complete" && !metadata?.usage) {
-    console.warn("[MessageCost] Complete message without usage data:", {
-      hasMetadata: !!msgMetadata,
-      hasCustom: !!msgMetadata?.custom,
-      custom: msgMetadata?.custom,
-    })
-  }
-
   // Keine Metadaten oder keine Usage-Daten
   if (!metadata?.usage || !metadata?.model) {
     return null

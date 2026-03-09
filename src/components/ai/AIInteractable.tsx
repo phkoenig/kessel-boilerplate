@@ -64,37 +64,25 @@ export function AIInteractable({
     // Execute-Funktion: Führt die Aktion aus
     const execute = () => {
       const element = elementRef.current
-      if (!element) {
-        console.warn(`[AIInteractable] Element not found for action ${id}`)
-        return
-      }
+      if (!element) return
 
-      // Navigation-Actions direkt über router.push() ausführen
       if (action === "navigate" && target) {
-        console.log(`[AIInteractable] Navigating to: ${target}`)
         router.push(target)
         return
       }
 
-      // Toggle-Actions: Suche nach Button/Click-Handler
       if (action === "toggle") {
-        // Suche nach klickbarem Element innerhalb des Containers
         const clickableElement = element.querySelector<HTMLElement>("button, a, [role='button']")
         if (clickableElement) {
-          console.log(`[AIInteractable] Clicking element for toggle action ${id}`)
           clickableElement.click()
           return
         }
       }
 
-      // Fallback: Suche nach klickbarem Element
       const clickableElement = element.querySelector<HTMLElement>("button, a, [role='button']")
       if (clickableElement) {
-        console.log(`[AIInteractable] Clicking element for action ${id}`)
         clickableElement.click()
       } else {
-        console.warn(`[AIInteractable] No clickable element found for action ${id}`)
-        // Fallback: Klicke den Container selbst
         element.click()
       }
     }

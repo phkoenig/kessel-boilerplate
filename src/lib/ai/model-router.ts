@@ -420,8 +420,6 @@ export function modelSupportsTools(modelId: string): boolean {
 export async function detectToolNeedWithAI(messages: ModelMessage[]): Promise<RouterDecision> {
   const category = await routeWithAI(messages)
 
-  console.log(`[AI-Router] Classified as: ${category}`)
-
   switch (category) {
     case "UI_ACTION":
       return {

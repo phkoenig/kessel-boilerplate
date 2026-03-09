@@ -69,7 +69,6 @@ export const boilerplateTools = {
       message: z.string().describe("Die Nachricht die zurückgegeben werden soll"),
     }),
     execute: async ({ message }: { message: string }): Promise<ToolResponse<{ echo: string }>> => {
-      console.log("[BOILERPLATE TOOLS] echo aufgerufen mit:", message)
       return {
         success: true,
         data: { echo: message },
@@ -191,8 +190,6 @@ export const boilerplateTools = {
       name: string
       description?: string
     }): Promise<NavigationAwareToolResult> => {
-      console.log("[BOILERPLATE TOOLS] create_resource_example aufgerufen:", name)
-
       // Hier würde normalerweise die Ressource erstellt werden
       // z.B. Datenbank-Eintrag, API-Call, etc.
 

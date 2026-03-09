@@ -394,14 +394,5 @@ export function isVisibleForRole(item: NavItem | NavSection, userRoles: string[]
   // Prüfe ob eine der erlaubten Rollen in userRoles enthalten ist
   const isVisible = item.requiredRoles.some((role) => userRoles.includes(role))
 
-  // Debug-Log für Entwicklung
-  if (process.env.NODE_ENV === "development" && !isVisible) {
-    console.log(`[isVisibleForRole] Item "${item.id || "unknown"}" nicht sichtbar:`, {
-      requiredRoles: item.requiredRoles,
-      userRoles: userRoles,
-      match: item.requiredRoles.some((role) => userRoles.includes(role)),
-    })
-  }
-
   return isVisible
 }

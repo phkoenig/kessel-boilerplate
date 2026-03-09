@@ -48,10 +48,7 @@ async function executeQuery(
   // Filter anwenden
   if (args.filters) {
     for (const [key, value] of Object.entries(args.filters)) {
-      if (ds.excluded_columns.includes(key)) {
-        console.warn(`[ToolExecutor] Excluded column "${key}" in filters, skipping`)
-        continue
-      }
+      if (ds.excluded_columns.includes(key)) continue
       query = query.eq(key, value)
     }
   }
@@ -142,10 +139,7 @@ async function executeUpdate(
   let query = supabase.from(ds.table_name).update(cleanData)
 
   for (const [key, value] of Object.entries(args.filters)) {
-    if (ds.excluded_columns.includes(key)) {
-      console.warn(`[ToolExecutor] Excluded column "${key}" in filters, skipping`)
-      continue
-    }
+    if (ds.excluded_columns.includes(key)) continue
     query = query.eq(key, value)
   }
 
@@ -189,10 +183,7 @@ async function executeDelete(
   let query = supabase.from(ds.table_name).delete()
 
   for (const [key, value] of Object.entries(args.filters)) {
-    if (ds.excluded_columns.includes(key)) {
-      console.warn(`[ToolExecutor] Excluded column "${key}" in filters, skipping`)
-      continue
-    }
+    if (ds.excluded_columns.includes(key)) continue
     query = query.eq(key, value)
   }
 

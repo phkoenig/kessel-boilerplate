@@ -97,19 +97,11 @@ async function getTableColumns(
     })
 
     if (error) {
-      console.warn(
-        `[ToolRegistry] RPC get_table_columns nicht verfügbar für ${databaseId}.${schema}.${table}. ` +
-          `Tools werden ohne Schema-Validation erstellt.`
-      )
       return []
     }
 
     return (data ?? []) as TableColumn[]
-  } catch (error) {
-    console.warn(
-      `[ToolRegistry] Fehler beim Laden der Spalten für ${databaseId}.${schema}.${table}:`,
-      error
-    )
+  } catch {
     return []
   }
 }
@@ -348,7 +340,6 @@ export async function generateAllTools(ctx: ToolExecutionContext): Promise<ToolS
   try {
     const specialTools = generateSpecialTools(ctx)
     Object.assign(allTools, specialTools)
-    console.log(`[ToolRegistry] Special Tools geladen: ${SPECIAL_TOOL_NAMES.join(", ")}`)
   } catch (error) {
     console.error("[ToolRegistry] Fehler beim Laden der Special Tools:", error)
   }

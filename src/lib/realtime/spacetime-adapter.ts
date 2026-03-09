@@ -119,9 +119,7 @@ const ensureConnection = async (): Promise<DbConnection | null> => {
     connected = false
     clientConnection = null
     connectionPromise = null
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[Realtime] Spacetime connection failed:", error)
-    }
+    void error
     return null
   })
 

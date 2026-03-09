@@ -91,11 +91,8 @@ export function MonochromeIcon({
   // Bild-Verarbeitung - wartet auf canvasReady
   React.useEffect(() => {
     if (!canvasReady) {
-      console.log("[MonochromeIcon] Waiting for canvas to be ready...")
       return
     }
-
-    console.log("[MonochromeIcon] Starting processing for:", src)
 
     const canvas = canvasRef.current
     if (!canvas) {
@@ -109,12 +106,8 @@ export function MonochromeIcon({
     const img = new Image()
     img.crossOrigin = "anonymous"
 
-    console.log("[MonochromeIcon] Loading image...")
-
     img.onload = () => {
       try {
-        console.log("[MonochromeIcon] Image loaded:", img.width, "x", img.height)
-
         const ctx = canvas.getContext("2d", { willReadFrequently: true })
         if (!ctx) {
           console.error("[MonochromeIcon] Failed to get canvas context")
@@ -134,22 +127,13 @@ export function MonochromeIcon({
         let imageData: ImageData
         try {
           imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        } catch (corsError) {
-          console.warn("[MonochromeIcon] CORS error - using CSS filter fallback:", corsError)
-          // Bei CORS-Fehler: Original-Bild mit CSS-Filter als Fallback
-          // Das Bild wird direkt angezeigt, CSS filter: invert() passt es ans Theme an
+        } catch {
           setProcessedImageUrl(src)
           setIsProcessing(false)
           return
         }
 
         const data = imageData.data
-        console.log(
-          "[MonochromeIcon] Processing",
-          data.length / 4,
-          "pixels with threshold:",
-          threshold
-        )
 
         // Post-Processing Pipeline:
         // 1. Thresholding: Graustufen → reines Schwarz oder Weiß
@@ -184,7 +168,6 @@ export function MonochromeIcon({
 
         // Canvas zu Data URL konvertieren (PNG mit Transparenz)
         const dataUrl = canvas.toDataURL("image/png")
-        console.log("[MonochromeIcon] Processing complete, dataUrl length:", dataUrl.length)
         setProcessedImageUrl(dataUrl)
       } catch (err) {
         console.error("[MonochromeIcon] Error processing image:", err)
@@ -200,7 +183,6 @@ export function MonochromeIcon({
       setIsProcessing(false)
     }
 
-    console.log("[MonochromeIcon] Setting img.src to:", src)
     img.src = src
   }, [src, threshold, canvasReady])
 

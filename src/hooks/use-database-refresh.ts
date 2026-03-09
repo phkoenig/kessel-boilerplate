@@ -51,8 +51,6 @@ export function useDatabaseRefresh(onRefresh?: () => void): void {
 
   useEffect(() => {
     const handleDatabaseUpdate = () => {
-      console.log("[useDatabaseRefresh] Database update detected, refreshing...")
-
       if (onRefresh) {
         // Custom Refresh-Logik
         onRefresh()

@@ -50,8 +50,7 @@ export async function POST(request: NextRequest) {
     const { error: storageError } = await supabase.storage.from("themes").remove([storagePath])
 
     if (storageError) {
-      console.warn(`CSS-Datei für Theme "${themeId}" konnte nicht gelöscht werden:`, storageError)
-      // Fortfahren, auch wenn CSS nicht existiert
+      // CSS-Datei existiert möglicherweise nicht – fortfahren
     }
 
     const deleted = await coreStore.deleteThemeRegistryEntry(themeId)

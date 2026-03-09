@@ -292,18 +292,6 @@ export default function RolesPage(): React.ReactElement {
     // IMMER alle Children rekursiv finden (nicht nur für Sections!)
     const allChildrenIds = findAllChildren(moduleId)
 
-    // Debug-Log
-    if (process.env.NODE_ENV === "development") {
-      console.log("[RolesPage] handlePermissionChange:", {
-        moduleId,
-        targetRoleName,
-        checked,
-        isSection,
-        childrenFound: allChildrenIds.length,
-        children: allChildrenIds,
-      })
-    }
-
     // Optimistic Update: UI sofort aktualisieren
     // 1. Das geklickte Modul selbst aktualisieren
     // 2. ALLE Children rekursiv aktualisieren

@@ -62,10 +62,7 @@ export const loadGoogleFont = async (
   fontName: string,
   weights: number[] = [400, 500, 600, 700]
 ): Promise<void> => {
-  if (typeof document === "undefined") {
-    console.warn("loadGoogleFont: document nicht verfügbar (SSR)")
-    return
-  }
+  if (typeof document === "undefined") return
 
   // Prüfe ob bereits geladen
   if (isFontLoaded(fontName)) {
@@ -82,10 +79,7 @@ export const loadGoogleFont = async (
 
   // Füge zum Head hinzu
   return new Promise((resolve, reject) => {
-    link.onload = () => {
-      console.log(`Font "${fontName}" erfolgreich geladen`)
-      resolve()
-    }
+    link.onload = () => resolve()
     link.onerror = () => {
       console.error(`Fehler beim Laden von Font "${fontName}"`)
       reject(new Error(`Font "${fontName}" konnte nicht geladen werden`))

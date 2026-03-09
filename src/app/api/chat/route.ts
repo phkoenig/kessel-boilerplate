@@ -327,32 +327,9 @@ export async function POST(req: Request) {
     // WICHTIG: Screenshot erstmal NICHT mitkonvertieren, da Router entscheidet ob benötigt
     const modelMessages = convertMessages(messages, null)
 
-    // DEBUG: Log incoming messages - vollständig
-    console.log("[Chat API] RAW messages:", JSON.stringify(messages, null, 2).substring(0, 2000))
-    console.log(
-      "[Chat API] Converted messages:",
-      modelMessages.map((m) => ({
-        role: m.role,
-        content:
-          typeof m.content === "string"
-            ? m.content.substring(0, 100)
-            : Array.isArray(m.content)
-              ? m.content.map((c) => c.type).join(", ")
-              : "(unknown)",
-      }))
-    )
-
     // 5. AI-GESTÜTZTER MODEL-ROUTER
     // Entscheidet ob Tools/Screenshot benötigt werden und wählt passendes Modell
     const routerDecision: RouterDecision = await detectToolNeedWithAI(modelMessages)
-
-    console.log("[Chat API] Router decision:", {
-      needsTools: routerDecision.needsTools,
-      needsScreenshot: routerDecision.needsScreenshot,
-      reason: routerDecision.reason,
-      model: routerDecision.model,
-      maxSteps: routerDecision.maxSteps,
-    })
 
     // 6. Screenshot nur verwenden wenn Router es als notwendig erachtet
     // UND wenn Screenshot tatsächlich vorhanden ist
@@ -398,7 +375,6 @@ export async function POST(req: Request) {
       }
       tools = await generateAllTools(toolContext)
       availableToolNames = Object.keys(tools)
-      console.log("[Chat API] Tools loaded:", availableToolNames.join(", ") || "none")
     }
 
     // 8.5. UI-Action Tool: Alle Aktionen aus Manifest laden
@@ -444,13 +420,6 @@ export async function POST(req: Request) {
         tools = uiActionTool
       }
       availableToolNames.push(...Object.keys(uiActionTool))
-      console.log(
-        "[Chat API] UI-Action Tool loaded:",
-        availableOnCurrentPage.length,
-        "on current page,",
-        requiresNavigation.length,
-        "require navigation"
-      )
     }
 
     // 8.7. Navigation Tools: Für das Anlegen von Navigation-Einträgen (nur in Dev)
@@ -462,7 +431,6 @@ export async function POST(req: Request) {
         tools = navigationToolSet
       }
       availableToolNames.push(...Object.keys(navigationToolSet))
-      console.log("[Chat API] Navigation Tools loaded:", Object.keys(navigationToolSet).join(", "))
     }
 
     // 9. Modell aus Router-Decision verwenden (oder explizit überschrieben)
@@ -533,12 +501,7 @@ export async function POST(req: Request) {
       },
       // Usage-Daten für Kostenanzeige mitsenden (kostenlos, da Teil des Streams)
       messageMetadata: ({ part }) => {
-        console.log("[Chat API] messageMetadata called, part.type:", part.type)
         if (part.type === "finish") {
-          console.log("[Chat API] ✅ Sending usage metadata:", {
-            model: selectedModel,
-            usage: part.totalUsage,
-          })
           return {
             model: selectedModel,
             usage: part.totalUsage,

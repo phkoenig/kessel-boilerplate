@@ -55,7 +55,6 @@ export class FalMediaService implements MediaService {
     // Check cache first
     const cached = FalMediaService.priceCache.get(modelEndpoint)
     if (cached && Date.now() - cached.timestamp < FalMediaService.CACHE_TTL) {
-      console.log(`[FalMediaService] Using cached price for ${modelEndpoint}: $${cached.price}`)
       return cached.price
     }
 
@@ -67,12 +66,10 @@ export class FalMediaService implements MediaService {
       })
 
       if (!response.ok) {
-        console.warn(`[FalMediaService] Pricing API error: ${response.status}, using fallback`)
         return FalMediaService.FALLBACK_COSTS[modelKey] || FalMediaService.FALLBACK_COSTS.default
       }
 
       const data = await response.json()
-      console.log(`[FalMediaService] Pricing API response:`, JSON.stringify(data, null, 2))
 
       // fal.ai Pricing API gibt eine Liste von Preisen zurück
       // Wir suchen nach dem Preis für unser Modell (unit: "image" oder "megapixel")
@@ -97,11 +94,9 @@ export class FalMediaService implements MediaService {
 
       // Cache the price
       FalMediaService.priceCache.set(modelEndpoint, { price: unitPrice, timestamp: Date.now() })
-      console.log(`[FalMediaService] Price for ${modelEndpoint}: $${unitPrice}/image`)
 
       return unitPrice
-    } catch (error) {
-      console.warn(`[FalMediaService] Failed to fetch pricing:`, error)
+    } catch {
       return FalMediaService.FALLBACK_COSTS[modelKey] || FalMediaService.FALLBACK_COSTS.default
     }
   }
@@ -153,14 +148,6 @@ export class FalMediaService implements MediaService {
       optimizedPrompt = `${optimizedPrompt} [square 1:1]`
     }
 
-    console.log("[FalMediaService] ====== REQUEST DEBUG ======")
-    console.log("[FalMediaService] Endpoint:", `${this.baseURL}/${modelEndpoint}`)
-    console.log("[FalMediaService] Model:", model, "->", modelEndpoint)
-    console.log("[FalMediaService] Is Recraft:", isRecraftModel)
-    console.log("[FalMediaService] Variants:", variants)
-    console.log("[FalMediaService] Prompt:", optimizedPrompt)
-    console.log("[FalMediaService] ===========================")
-
     // Request-Body erstellen
     let requestBody: Record<string, unknown>
 
@@ -174,7 +161,6 @@ export class FalMediaService implements MediaService {
         size: "square_hd",
         output_format: "png",
       }
-      console.log("[FalMediaService] Recraft V3 - style: digital_illustration (PNG output)")
     } else {
       // Standard fal.ai Modelle (FLUX etc.)
       const imageSize = size.width === size.height ? "square_hd" : `${size.width}x${size.height}`
@@ -184,8 +170,6 @@ export class FalMediaService implements MediaService {
         output_format: "png",
       }
     }
-
-    console.log("[FalMediaService] Request body:", JSON.stringify(requestBody, null, 2))
 
     // Parallele Requests für mehrere Varianten
     const requests = Array.from({ length: variants }).map(() =>
@@ -199,7 +183,6 @@ export class FalMediaService implements MediaService {
       })
     )
 
-    console.log("[FalMediaService] Sending", requests.length, "parallel requests...")
     const responses = await Promise.all(requests)
 
     // Sammle alle Bilder
@@ -280,9 +263,6 @@ export class FalMediaService implements MediaService {
       imageCount: images.length,
     }
 
-    console.log(
-      `[FalMediaService] Generated ${images.length} image(s), cost: $${totalCost.toFixed(4)} ($${costPerImage.toFixed(4)}/image)`
-    )
     return { images, cost }
   }
 

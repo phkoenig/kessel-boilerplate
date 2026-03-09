@@ -101,8 +101,6 @@ export const addNavigationEntryToolDef = {
   inputSchema: AddNavigationEntrySchema,
   metadata: navigationToolMetadata,
   execute: async (args: AddNavigationEntryInput): Promise<NavigationToolResponse> => {
-    console.log("[NAVIGATION TOOLS] add_navigation_entry aufgerufen mit:", args)
-
     try {
       // Generiere die ID
       const suggestedId = generateNavItemId(args.parentPath, args.label)
