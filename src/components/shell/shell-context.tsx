@@ -201,6 +201,24 @@ function saveToStorage<T>(key: string, value: T): void {
   }
 }
 
+function buildInitialShellState(initialState?: Partial<ShellState>): ShellState {
+  const baseState: ShellState = {
+    ...defaultState,
+    ...initialState,
+  }
+
+  if (typeof window === "undefined") {
+    return baseState
+  }
+
+  return {
+    ...baseState,
+    navbarCollapsed: loadFromStorage(STORAGE_KEYS.navbarCollapsed, baseState.navbarCollapsed),
+    explorerOpen: loadFromStorage(STORAGE_KEYS.explorerOpen, baseState.explorerOpen),
+    chatOverlayOpen: loadFromStorage(STORAGE_KEYS.chatOverlayOpen, baseState.chatOverlayOpen),
+  }
+}
+
 /**
  * Shell Provider Props
  */
@@ -219,23 +237,11 @@ interface ShellProviderProps {
  */
 export function ShellProvider({ children, initialState }: ShellProviderProps): React.ReactElement {
   const [mounted, setMounted] = useState(false)
-  const [state, setState] = useState<ShellState>(() => ({
-    ...defaultState,
-    ...initialState,
-  }))
+  const [state, setState] = useState<ShellState>(() => buildInitialShellState(initialState))
 
-  // Lade gespeicherte Toggle-Zustände vor dem Paint, damit Route-Wechsel
-  // keinen sichtbaren Reset von Chat/Explorer/Navbar erzeugen.
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting mounted state after hydration is intentional
     setMounted(true)
-
-    setState((prev) => ({
-      ...prev,
-      navbarCollapsed: loadFromStorage(STORAGE_KEYS.navbarCollapsed, prev.navbarCollapsed),
-      explorerOpen: loadFromStorage(STORAGE_KEYS.explorerOpen, prev.explorerOpen),
-      chatOverlayOpen: loadFromStorage(STORAGE_KEYS.chatOverlayOpen, prev.chatOverlayOpen),
-    }))
   }, [])
 
   // Persist to LocalStorage on change

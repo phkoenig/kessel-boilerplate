@@ -15,14 +15,13 @@
 "use client"
 
 import { useEffect, useCallback, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { AssistantRuntimeProvider } from "@assistant-ui/react"
 import type { UIMessage } from "@ai-sdk/react"
 import { useChatRuntime, AssistantChatTransport } from "@assistant-ui/react-ai-sdk"
 import { cn } from "@/lib/utils"
 import { emitRealtimeEvent } from "@/lib/realtime"
 import { Thread } from "@/components/thread"
-import { useScreenshotCache } from "@/hooks/use-screenshot-cache"
 import {
   captureHtmlDump,
   getCurrentRoute,
@@ -378,7 +377,7 @@ function ChatRuntimeView({
  * AIChatPanel Komponente
  */
 export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement {
-  const { pathname } = useScreenshotCache()
+  const pathname = usePathname()
   const router = useRouter()
   const sessionId = useMemo(() => getChatSessionId(), [])
   const [historyLoaded, setHistoryLoaded] = useState<boolean>(false)
