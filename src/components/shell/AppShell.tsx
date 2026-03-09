@@ -131,6 +131,9 @@ function ShellInner({
       (hasExplorer ? PANEL_SIZES.explorer : 0) -
       (hasDetailDrawer ? PANEL_SIZES.assist : 0)
   )
+  const panelLayoutKey = `app-shell:${hasExplorer ? "explorer" : "no-explorer"}:${
+    hasDetailDrawer ? "detail" : "no-detail"
+  }`
 
   // Synchronisiere Panel mit State (NUR für Keyboard-Shortcuts, nicht für Drag)
   useEffect(() => {
@@ -219,9 +222,10 @@ function ShellInner({
       suppressHydrationWarning
     >
       <ResizablePanelGroup
+        key={panelLayoutKey}
         id="app-shell-panels"
         direction="horizontal"
-        autoSaveId="app-shell"
+        autoSaveId={panelLayoutKey}
         className="h-full"
       >
         {/* Spalte 1: Navbar

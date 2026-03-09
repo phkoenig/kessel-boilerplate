@@ -16,7 +16,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     const coreStore = getCoreStore()
-    const ownerClerkUserId = await coreStore.getChatSessionOwner(sessionId)
+    const [ownerClerkUserId, messages] = await Promise.all([
+      coreStore.getChatSessionOwner(sessionId),
+      coreStore.listChatMessages(sessionId),
+    ])
     if (ownerClerkUserId && ownerClerkUserId !== userOrError.clerkUserId) {
       return NextResponse.json(
         { error: "Keine Berechtigung fuer diese Chat-Session" },
@@ -24,7 +27,6 @@ export async function GET(request: Request): Promise<NextResponse> {
       )
     }
 
-    const messages = await coreStore.listChatMessages(sessionId)
     return NextResponse.json({ success: true, messages })
   } catch (error) {
     return NextResponse.json(
