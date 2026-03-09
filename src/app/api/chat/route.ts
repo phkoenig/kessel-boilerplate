@@ -437,11 +437,11 @@ export async function POST(req: Request) {
     const selectedModel = model ?? routerDecision.model
     const maxSteps = routerDecision.maxSteps
 
-    // 10. Chatbot-Einstellungen aus dem Boilerplate-Core laden
-    const profile = await getCoreStore().getUserByClerkId(user.clerkUserId)
-
-    // 11. Kontext und System-Prompt aufbauen
-    const wikiContent = await loadWikiContent()
+    // 10. Chatbot-Einstellungen + Wiki parallel laden
+    const [profile, wikiContent] = await Promise.all([
+      getCoreStore().getUserByClerkId(user.clerkUserId),
+      loadWikiContent(),
+    ])
     const systemPrompt = buildSystemPrompt({
       wikiContent: wikiContent || "Wiki-Content nicht verfügbar.",
       interactions: formatInteractions(interactions ?? []),

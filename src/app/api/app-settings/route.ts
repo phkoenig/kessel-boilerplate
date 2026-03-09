@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+import { getCachedAppSettings, invalidateAppSettingsCache } from "@/lib/core/server-cache"
 import { resolveAppBranding } from "@/lib/branding"
 
 /**
@@ -28,7 +29,7 @@ function getTenantSlug(): string {
 export async function GET(): Promise<NextResponse> {
   try {
     const tenantSlug = getTenantSlug()
-    const data = await getCoreStore().getAppSettings(tenantSlug)
+    const data = await getCachedAppSettings(tenantSlug)
     const resolved = resolveAppBranding(
       data
         ? {
@@ -75,6 +76,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   try {
     const tenantSlug = getTenantSlug()
+    invalidateAppSettingsCache(tenantSlug)
     const body = await request.json()
     const data = await getCoreStore().upsertAppSettings(tenantSlug, {
       appName: typeof body.app_name === "string" ? body.app_name : undefined,

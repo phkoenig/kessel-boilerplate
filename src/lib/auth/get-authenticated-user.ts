@@ -17,22 +17,7 @@ import {
   resolveProvisioningRole,
 } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
-
-const KNOWN_ROLES_CACHE_TTL_MS = 60_000
-let knownRolesCache: { roles: string[]; expiresAt: number } | null = null
-
-async function getKnownRoles(coreStore: ReturnType<typeof getCoreStore>): Promise<string[]> {
-  if (knownRolesCache && knownRolesCache.expiresAt > Date.now()) {
-    return knownRolesCache.roles
-  }
-
-  const roles = (await coreStore.listUsers()).map((entry) => entry.role)
-  knownRolesCache = {
-    roles,
-    expiresAt: Date.now() + KNOWN_ROLES_CACHE_TTL_MS,
-  }
-  return roles
-}
+import { getKnownRoles } from "@/lib/auth/known-roles-cache"
 
 export interface AuthenticatedUser {
   /** Clerk User ID (user_xxx) - fuer Anzeige/API-Responses */
@@ -72,20 +57,20 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 
   const coreStore = getCoreStore()
 
-  let tenantId: string | null = null
-  if (orgId) {
-    tenantId = await coreStore.getTenantIdByClerkOrgId(orgId)
-  }
+  const [tenantIdResult, profileResult, knownRoles] = await Promise.all([
+    orgId ? coreStore.getTenantIdByClerkOrgId(orgId) : Promise.resolve(null),
+    coreStore.getUserByClerkId(userId),
+    getKnownRoles(),
+  ])
 
-  let profile = await coreStore.getUserByClerkId(userId)
+  let tenantId: string | null = tenantIdResult
+  let profile = profileResult
 
   if (!profile) {
     const provisioned = await autoProvisionProfile(userId, sessionClaims, tenantId)
     if (!provisioned) return null
     profile = provisioned
   }
-
-  const knownRoles = await getKnownRoles(coreStore)
   const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
   if (resolvedRole && resolvedRole !== profile.role) {
     const reprovisioned = await coreStore.upsertUserFromClerk({

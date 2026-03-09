@@ -14,13 +14,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const permissions = body.permissions ?? []
-    for (const permission of permissions) {
-      await getCoreStore().upsertModulePermission({
-        moduleId: permission.moduleId,
-        roleName: permission.roleName,
-        hasAccess: permission.hasAccess,
-      })
-    }
+    const coreStore = getCoreStore()
+    await Promise.all(
+      permissions.map((permission) =>
+        coreStore.upsertModulePermission({
+          moduleId: permission.moduleId,
+          roleName: permission.roleName,
+          hasAccess: permission.hasAccess,
+        })
+      )
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

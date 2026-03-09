@@ -7,7 +7,7 @@
  * die bestehenden Markdown-Dateien.
  */
 
-import { getCoreStore } from "@/lib/core"
+import { getCachedWikiDocument } from "@/lib/core/server-cache"
 
 /**
  * Lädt den Wiki-Content als String (Server-seitig)
@@ -18,7 +18,7 @@ import { getCoreStore } from "@/lib/core"
  * @returns Wiki-Content als Markdown-String
  */
 export async function loadWikiContent(): Promise<string> {
-  const document = await getCoreStore().getWikiDocument("wiki")
+  const document = await getCachedWikiDocument("wiki")
   return document?.content ?? ""
 }
 
@@ -31,7 +31,7 @@ export async function loadWikiContent(): Promise<string> {
  * @returns Public-Wiki-Content als Markdown-String
  */
 export async function loadPublicWikiContent(): Promise<string> {
-  const document = await getCoreStore().getWikiDocument("public-wiki")
+  const document = await getCachedWikiDocument("public-wiki")
   return document?.content ?? ""
 }
 

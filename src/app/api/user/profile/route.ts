@@ -12,19 +12,7 @@ import { NextResponse } from "next/server"
 import type { User } from "@/components/auth/auth-context"
 import { isAllowedEmail, resolveProvisioningRole } from "@/lib/auth/allowed-users"
 import { getCoreStore } from "@/lib/core"
-
-const KNOWN_ROLES_CACHE_TTL_MS = 60_000
-let knownRolesCache: { roles: string[]; expiresAt: number } | null = null
-
-async function getKnownRoles(): Promise<string[]> {
-  if (knownRolesCache && knownRolesCache.expiresAt > Date.now()) {
-    return knownRolesCache.roles
-  }
-
-  const roles = (await getCoreStore().listUsers()).map((entry) => entry.role)
-  knownRolesCache = { roles, expiresAt: Date.now() + KNOWN_ROLES_CACHE_TTL_MS }
-  return roles
-}
+import { getKnownRoles } from "@/lib/auth/known-roles-cache"
 
 function profileRowToUser(
   row: {
