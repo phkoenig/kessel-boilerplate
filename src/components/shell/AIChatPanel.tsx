@@ -108,6 +108,8 @@ const CHAT_SESSION_STORAGE_KEY = "ai-chat-session-id"
 const CHAT_HISTORY_CACHE_TTL_MS = 5_000
 const chatHistoryCache = new Map<string, { messages: UIMessage[]; cachedAt: number }>()
 const chatHistoryRequests = new Map<string, Promise<UIMessage[]>>()
+let manifestCache: ManifestComponent[] | null = null
+let manifestRequest: Promise<ManifestComponent[]> | null = null
 
 const getChatSessionId = (): string => {
   if (typeof window === "undefined") {
@@ -201,6 +203,31 @@ const loadChatHistory = async (sessionId: string): Promise<UIMessage[]> => {
   }
 }
 
+const loadManifestComponents = async (): Promise<ManifestComponent[]> => {
+  if (manifestCache) {
+    return manifestCache
+  }
+
+  if (manifestRequest) {
+    return manifestRequest
+  }
+
+  const request = fetch("/ai-manifest.json")
+    .then((res) => res.json())
+    .then((data: { components?: ManifestComponent[] }) => {
+      const components = data.components ?? []
+      manifestCache = components
+      return components
+    })
+    .catch(() => [])
+    .finally(() => {
+      manifestRequest = null
+    })
+
+  manifestRequest = request
+  return request
+}
+
 /**
  * Erstellt einen Chat-Transport, der den Session-Key fuer alle Requests
  * konsistent mitsendet. Dadurch bleibt die Frontend-Session an dieselbe
@@ -214,15 +241,6 @@ const createChatTransport = (sessionId: string): AssistantChatTransport =>
     api: "/api/chat",
     credentials: "include",
     prepareSendMessagesRequest: async ({ messages }) => {
-      console.warn("[AIChatPanel] ===== SEND REQUEST =====")
-      console.warn("[AIChatPanel] Messages count:", messages.length)
-
-      // Log ALLE Messages mit Content - mit null-safety
-      messages.forEach((m, i) => {
-        console.warn(`[AIChatPanel] Message ${i}: role=${m.role}`)
-        console.warn(`[AIChatPanel] Message ${i} raw:`, JSON.stringify(m).substring(0, 500))
-      })
-
       // Context sammeln
       const route = getCurrentRoute()
       const htmlDump = captureHtmlDump()
@@ -234,7 +252,6 @@ const createChatTransport = (sessionId: string): AssistantChatTransport =>
       // Mit Timeout, damit der Chat nicht hängen bleibt
       let needsScreenshot = false
       try {
-        console.warn("[AIChatPanel] Checking if screenshot is needed...")
         const routerPromise = fetch("/api/chat/route-router", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -261,36 +278,19 @@ const createChatTransport = (sessionId: string): AssistantChatTransport =>
         if (routerResponse.ok) {
           const routerData = await routerResponse.json()
           needsScreenshot = routerData.needsScreenshot === true
-          console.warn("[AIChatPanel] Router decision:", {
-            needsScreenshot,
-            category: routerData.category,
-            reason: routerData.reason,
-          })
-        } else {
-          console.warn("[AIChatPanel] Router endpoint failed, defaulting to no screenshot")
-          needsScreenshot = false // Fallback: Kein Screenshot (spart Ressourcen)
         }
-      } catch (error) {
-        console.error("[AIChatPanel] Router endpoint error:", error)
+      } catch {
         needsScreenshot = false // Fallback: Kein Screenshot (spart Ressourcen)
       }
 
       // STUFE 2: Screenshot nur erfassen wenn benötigt
       let screenshot: string | null = null
       if (needsScreenshot) {
-        console.warn("[AIChatPanel] Capturing screenshot (router requested it)...")
         screenshot = await captureScreenshot()
-        console.warn(
-          "[AIChatPanel] Screenshot:",
-          screenshot ? `${screenshot.length} chars` : "null"
-        )
-      } else {
-        console.warn("[AIChatPanel] Skipping screenshot (not needed according to router)")
       }
 
       // Verfügbare UI-Actions sammeln
       const availableActions = collectAvailableActions()
-      console.warn("[AIChatPanel] Available actions:", availableActions.length)
 
       const requestBody = {
         messages,
@@ -301,9 +301,6 @@ const createChatTransport = (sessionId: string): AssistantChatTransport =>
         screenshot,
         availableActions,
       }
-
-      console.warn("[AIChatPanel] Request body keys:", Object.keys(requestBody))
-      console.warn("[AIChatPanel] ===== END SEND =====")
 
       return { body: requestBody }
     },
@@ -396,15 +393,17 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
 
   // Lade Manifest beim Mount
   useEffect(() => {
-    fetch("/ai-manifest.json")
-      .then((res) => res.json())
-      .then((data: { components?: ManifestComponent[] }) => {
-        manifestRef.current = data.components ?? []
-        console.warn("[AIChatPanel] Manifest loaded:", manifestRef.current.length, "components")
-      })
-      .catch((err) => {
-        console.error("[AIChatPanel] Failed to load manifest:", err)
-      })
+    let cancelled = false
+
+    void loadManifestComponents().then((components) => {
+      if (!cancelled) {
+        manifestRef.current = components
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   /**
@@ -473,11 +472,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
           return
         }
 
-        console.warn(
-          "[AIChatPanel] 🚀 Found pending UI-Action after navigation:",
-          pendingAction.actionId
-        )
-
         // Polling: Warte bis die Aktion in der Registry verfügbar ist
         const pollForAction = async (): Promise<void> => {
           if (cancelled) return
@@ -487,11 +481,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
           const actionExists = availableActions.some((a) => a.id === pendingAction.actionId)
 
           if (actionExists) {
-            console.warn(
-              "[AIChatPanel] ✅ Action found in registry after",
-              pollCount,
-              "polls. Executing..."
-            )
             sessionStorage.removeItem("pendingUIAction")
 
             try {
@@ -499,25 +488,13 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
                 pendingAction.actionId
               ) ?? Promise.resolve({ success: false, message: "aiRegistry nicht verfügbar" }))
 
-              if (actionResult.success) {
-                console.warn(
-                  "[AIChatPanel] ✅ Pending UI-Action executed successfully:",
-                  actionResult.message
-                )
-              } else {
+              if (!actionResult.success) {
                 console.error("[AIChatPanel] ❌ Pending UI-Action failed:", actionResult.message)
               }
             } catch (error) {
               console.error("[AIChatPanel] ❌ Error executing pending UI-Action:", error)
             }
           } else if (pollCount < maxPolls) {
-            // Action noch nicht verfügbar, weiter warten
-            console.warn(
-              "[AIChatPanel] ⏳ Action not yet in registry, polling...",
-              pollCount,
-              "/",
-              maxPolls
-            )
             setTimeout(pollForAction, 250)
           } else {
             // Timeout erreicht
@@ -527,10 +504,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
               "not found after",
               maxPolls,
               "polls"
-            )
-            console.warn(
-              "[AIChatPanel] Available actions:",
-              availableActions.map((a) => a.id)
             )
             sessionStorage.removeItem("pendingUIAction")
           }
@@ -557,22 +530,11 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
     }: {
       message: { parts?: Array<{ type: string; toolName?: string; result?: unknown }> }
     }) => {
-      console.warn("[AIChatPanel] ===== handleFinish CALLED =====")
-      console.warn("[AIChatPanel] Message parts:", message.parts?.length ?? 0)
-      console.warn("[AIChatPanel] Message parts details:", JSON.stringify(message.parts, null, 2))
-
       // Prüfe auf UI-Actions in Tool-Results
       // WICHTIG: Verwende for...of statt forEach für async/await
       // AI SDK v5 verwendet: type: "tool-{toolName}" mit output statt result
       if (message.parts) {
         for (const part of message.parts) {
-          console.warn("[AIChatPanel] Processing part:", {
-            type: part.type,
-            toolName: (part as { toolName?: string }).toolName,
-            hasResult: !!(part as { result?: unknown }).result,
-            hasOutput: !!(part as { output?: unknown }).output,
-          })
-
           // Prüfe auf tool-* Parts mit output (AI SDK v5 Format)
           const partWithOutput = part as { type: string; output?: unknown }
           if (
@@ -591,11 +553,8 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
               [key: string]: unknown
             }
 
-            console.warn("[AIChatPanel] Tool output:", JSON.stringify(result, null, 2))
-
             // Prüfe auf Theme-Actions
             if (result.__theme_action) {
-              console.warn("[AIChatPanel] ✅ Theme-Action detected! Type:", result.__theme_action)
               try {
                 const root = document.documentElement
                 const isDark = root.classList.contains("dark")
@@ -610,7 +569,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
                           root.style.setProperty(token.name, value)
                         }
                       })
-                      console.warn("[AIChatPanel] ✅ Theme preview applied")
                     }
                     break
 
@@ -630,7 +588,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
                         }
                       }
                     }
-                    console.warn("[AIChatPanel] ✅ Theme preview reset")
                     break
 
                   case "save_as_new":
@@ -641,12 +598,9 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
                         detail: { name: result.name, description: result.description },
                       })
                     )
-                    console.warn("[AIChatPanel] ✅ Theme save requested:", result.name)
                     break
 
                   case "get_tokens":
-                    // Client-seitige Funktion - wird später implementiert
-                    console.warn("[AIChatPanel] ⚠️ get_tokens not yet implemented client-side")
                     break
                 }
               } catch (error) {
@@ -655,12 +609,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
             }
             // Prüfe auf navigate_then_execute (Aktion auf anderer Seite)
             else if (result.__ui_action === "navigate_then_execute" && result.navigateTo) {
-              console.warn(
-                "[AIChatPanel] 🚀 Navigation required! Target:",
-                result.navigateTo,
-                "Action:",
-                result.id
-              )
               // Speichere Aktion für nach der Navigation
               if (result.id) {
                 sessionStorage.setItem(
@@ -679,30 +627,17 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
               const uiActionId = result.__ui_action === "execute" ? result.id : result.action_id
 
               if (uiActionId) {
-                console.warn("[AIChatPanel] ✅ UI-Action detected! ID:", uiActionId)
-                console.warn("[AIChatPanel] Calling executeAction via window.aiRegistry...")
                 try {
                   // Verwende window.aiRegistry.executeAction statt React Context-Version
                   // um sicherzustellen, dass wir die gleiche Instanz wie collectAvailableActions verwenden
                   const actionResult = await (window.aiRegistry?.executeAction(uiActionId) ??
                     Promise.resolve({ success: false, message: "aiRegistry nicht verfügbar" }))
-                  if (actionResult.success) {
-                    console.warn(
-                      "[AIChatPanel] ✅ UI-Action executed successfully:",
-                      actionResult.message
-                    )
-                  } else {
+                  if (!actionResult.success) {
                     console.error("[AIChatPanel] ❌ UI-Action failed:", actionResult.message)
                   }
                 } catch (error) {
                   console.error("[AIChatPanel] ❌ Error executing UI-Action:", error)
                 }
-              } else {
-                console.warn("[AIChatPanel] ⚠️ Tool output does not contain UI-Action:", {
-                  __ui_action: result.__ui_action,
-                  id: result.id,
-                  action_id: result.action_id,
-                })
               }
             }
           }
@@ -719,22 +654,14 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
               [key: string]: unknown
             }
 
-            console.warn("[AIChatPanel] Tool result (legacy):", JSON.stringify(result, null, 2))
-
             const uiActionId = result.__ui_action === "execute" ? result.id : result.action_id
 
             if (uiActionId) {
-              console.warn("[AIChatPanel] ✅ UI-Action detected (legacy)! ID:", uiActionId)
               try {
                 // Verwende window.aiRegistry.executeAction statt React Context-Version
                 const actionResult = await (window.aiRegistry?.executeAction(uiActionId) ??
                   Promise.resolve({ success: false, message: "aiRegistry nicht verfügbar" }))
-                if (actionResult.success) {
-                  console.warn(
-                    "[AIChatPanel] ✅ UI-Action executed successfully:",
-                    actionResult.message
-                  )
-                } else {
+                if (!actionResult.success) {
                   console.error("[AIChatPanel] ❌ UI-Action failed:", actionResult.message)
                 }
               } catch (error) {
@@ -751,16 +678,11 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
         if (!part.type?.startsWith("tool-")) return false
         // Extrahiere Tool-Namen aus dem Type (z.B. "tool-update_roles" → "update_roles")
         const toolName = part.type.replace("tool-", "")
-        const isWriteTool = WRITE_TOOL_PREFIXES.some((prefix) => toolName.startsWith(prefix))
-        if (isWriteTool) {
-          console.warn("[AIChatPanel] ✅ Write-Tool detected:", toolName)
-        }
-        return isWriteTool
+        return WRITE_TOOL_PREFIXES.some((prefix) => toolName.startsWith(prefix))
       })
 
       if (hasWriteToolCall) {
         // Realtime-Invalidierung: app:invalidate triggert router.refresh() in Shell Layout
-        console.warn("[AIChatPanel] 🔄 Emitting app:invalidate after DB modification...")
         setTimeout(() => {
           emitRealtimeEvent("app:invalidate", "db-modified", {})
         }, 500)
@@ -775,9 +697,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
   // Dies ermöglicht sofortige Navigation/Ausführung BEVOR der Text gestreamt wird
   const handleToolCall = useCallback(
     async ({ toolCall }: { toolCall: { toolName?: string; args?: unknown; input?: unknown } }) => {
-      console.warn("[AIChatPanel] ===== handleToolCall CALLED =====")
-      console.warn("[AIChatPanel] Tool call:", JSON.stringify(toolCall, null, 2))
-
       // Prüfe ob es ein UI-Action Tool ist
       if (toolCall.toolName === "execute_ui_action") {
         // WICHTIG: assistant-ui sendet 'input', nicht 'args'!
@@ -785,24 +704,16 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
         const uiActionId = inputData?.action_id
 
         if (uiActionId) {
-          console.warn("[AIChatPanel] ✅ UI-Action detected in tool call! ID:", uiActionId)
-
           // SCHRITT 1: Prüfe ob Aktion lokal verfügbar ist
           const localActions = window.aiRegistry?.getAvailableActions() ?? []
           const isLocallyAvailable = localActions.some((a) => a.id === uiActionId)
 
           if (isLocallyAvailable) {
             // Aktion ist lokal → sofort ausführen
-            console.warn("[AIChatPanel] Action is locally available, executing immediately...")
             try {
               const actionResult = await (window.aiRegistry?.executeAction(uiActionId) ??
                 Promise.resolve({ success: false, message: "aiRegistry nicht verfügbar" }))
-              if (actionResult.success) {
-                console.warn(
-                  "[AIChatPanel] ✅ UI-Action executed successfully:",
-                  actionResult.message
-                )
-              } else {
+              if (!actionResult.success) {
                 console.error("[AIChatPanel] ❌ UI-Action failed:", actionResult.message)
               }
             } catch (error) {
@@ -810,23 +721,10 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
             }
           } else {
             // SCHRITT 2: Aktion nicht lokal → Im Manifest nach Route suchen
-            console.warn("[AIChatPanel] Action not locally available, checking manifest...")
-            console.warn(
-              "[AIChatPanel] Manifest IDs:",
-              manifestRef.current.map((c) => c.id).join(", ")
-            )
             const manifestAction = manifestRef.current.find((c) => c.id === uiActionId)
-            console.warn("[AIChatPanel] Found manifestAction:", JSON.stringify(manifestAction))
 
             if (manifestAction?.route && manifestAction.route !== "global") {
               // Aktion ist auf anderer Seite → sofort navigieren
-              console.warn(
-                "[AIChatPanel] 🚀 Immediate navigation to:",
-                manifestAction.route,
-                "for action:",
-                uiActionId
-              )
-
               // Speichere pendingAction für nach der Navigation
               sessionStorage.setItem(
                 "pendingUIAction",
@@ -838,11 +736,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
 
               // Navigiere SOFORT (vor dem Text-Streaming)
               router.push(manifestAction.route)
-            } else {
-              console.warn(
-                "[AIChatPanel] ⚠️ Action not found in manifest or is global:",
-                uiActionId
-              )
             }
           }
         }
@@ -850,11 +743,6 @@ export function AIChatPanel({ className }: AIChatPanelProps): React.ReactElement
     },
     [router]
   )
-
-  // Log route changes
-  useEffect(() => {
-    console.warn("[AIChatPanel] Route changed to:", pathname)
-  }, [pathname])
 
   if (!historyLoaded) {
     return (
