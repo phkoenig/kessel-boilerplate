@@ -904,11 +904,22 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
     if (existingSettings) {
       ctx.db.appSetting.id.update({
         ...existingSettings,
-        appName: normalizeOptionalString(appName),
-        appDescription: normalizeOptionalString(appDescription),
-        iconUrl: normalizeOptionalString(iconUrl),
-        iconVariantsJson: normalizeOptionalString(iconVariantsJson),
-        iconProvider: normalizeOptionalString(iconProvider),
+        appName:
+          appName === undefined ? existingSettings.appName : normalizeOptionalString(appName),
+        appDescription:
+          appDescription === undefined
+            ? existingSettings.appDescription
+            : normalizeOptionalString(appDescription),
+        iconUrl:
+          iconUrl === undefined ? existingSettings.iconUrl : normalizeOptionalString(iconUrl),
+        iconVariantsJson:
+          iconVariantsJson === undefined
+            ? existingSettings.iconVariantsJson
+            : normalizeOptionalString(iconVariantsJson),
+        iconProvider:
+          iconProvider === undefined
+            ? existingSettings.iconProvider
+            : normalizeOptionalString(iconProvider),
         updatedAt: ctx.timestamp,
       })
       return

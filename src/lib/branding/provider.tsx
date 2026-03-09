@@ -14,56 +14,98 @@ import { resolveAppBranding, type AppBrandingPayload, type ResolvedAppBranding }
 interface BrandingContextValue extends ResolvedAppBranding {
   isLoading: boolean
   reload: () => Promise<void>
+  applyBranding: (payload: AppBrandingPayload | ResolvedAppBranding) => void
 }
 
 const BrandingContext = createContext<BrandingContextValue | null>(null)
 const FALLBACK_BRANDING = resolveAppBranding()
+const BRANDING_CACHE_KEY = "branding-cache-v1"
 let brandingCache: ResolvedAppBranding | null = null
 let brandingRequest: Promise<ResolvedAppBranding> | null = null
+
+const isResolvedBranding = (
+  payload: AppBrandingPayload | ResolvedAppBranding
+): payload is ResolvedAppBranding => "tenantSlug" in payload
 
 const syncDocumentBranding = (branding: ResolvedAppBranding): void => {
   if (typeof document === "undefined") {
     return
   }
 
-  document.title = branding.appName
-
-  const iconSelectors = [
-    'link[rel="icon"]',
-    'link[rel="shortcut icon"]',
-    'link[rel="apple-touch-icon"]',
-  ]
+  if (branding.appName) {
+    document.title = branding.appName
+  }
 
   if (!branding.iconUrl) {
-    iconSelectors.forEach((selector) => {
-      const node = document.head.querySelector<HTMLLinkElement>(selector)
-      if (node) {
-        node.remove()
-      }
-    })
     return
   }
 
   const ensureLink = (rel: string): HTMLLinkElement => {
-    const existing = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`)
+    const existing = document.head.querySelector<HTMLLinkElement>(
+      `link[rel="${rel}"][data-branding-live="true"]`
+    )
     if (existing) {
       return existing
     }
 
     const link = document.createElement("link")
     link.rel = rel
+    link.setAttribute("data-branding-live", "true")
     document.head.appendChild(link)
     return link
   }
 
-  ensureLink("icon").href = branding.iconUrl
-  ensureLink("shortcut icon").href = branding.iconUrl
-  ensureLink("apple-touch-icon").href = branding.iconUrl
+  const rels = ["icon", "shortcut icon", "apple-touch-icon"] as const
+
+  rels.forEach((rel) => {
+    const existingLinks = document.head.querySelectorAll<HTMLLinkElement>(`link[rel="${rel}"]`)
+
+    if (existingLinks.length > 0) {
+      existingLinks.forEach((link) => {
+        link.href = branding.iconUrl as string
+      })
+      return
+    }
+
+    ensureLink(rel).href = branding.iconUrl
+  })
+}
+
+const persistBranding = (branding: ResolvedAppBranding): void => {
+  brandingCache = branding
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(branding))
+  }
 }
 
 export function BrandingProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [branding, setBranding] = useState<ResolvedAppBranding>(brandingCache ?? FALLBACK_BRANDING)
+  const [branding, setBranding] = useState<ResolvedAppBranding>(() => {
+    if (brandingCache) {
+      return brandingCache
+    }
+
+    if (typeof window !== "undefined") {
+      const cachedValue = window.sessionStorage.getItem(BRANDING_CACHE_KEY)
+      if (cachedValue) {
+        try {
+          const parsed = JSON.parse(cachedValue) as ResolvedAppBranding
+          brandingCache = parsed
+          return parsed
+        } catch {
+          window.sessionStorage.removeItem(BRANDING_CACHE_KEY)
+        }
+      }
+    }
+
+    return FALLBACK_BRANDING
+  })
   const [isLoading, setIsLoading] = useState<boolean>(brandingCache === null)
+
+  const applyBranding = useCallback((payload: AppBrandingPayload | ResolvedAppBranding): void => {
+    const resolved = isResolvedBranding(payload) ? payload : resolveAppBranding(payload)
+    persistBranding(resolved)
+    setBranding(resolved)
+  }, [])
 
   const loadBranding = useCallback(async (force = false): Promise<void> => {
     if (!force && brandingCache) {
@@ -83,20 +125,21 @@ export function BrandingProvider({ children }: { children: ReactNode }): React.R
       try {
         const response = await fetch("/api/app-settings", {
           method: "GET",
+          cache: "no-store",
           headers: { "Content-Type": "application/json" },
         })
 
         if (!response.ok) {
-          brandingCache = FALLBACK_BRANDING
+          persistBranding(FALLBACK_BRANDING)
           return FALLBACK_BRANDING
         }
 
         const payload = (await response.json()) as AppBrandingPayload
         const resolved = resolveAppBranding(payload)
-        brandingCache = resolved
+        persistBranding(resolved)
         return resolved
       } catch {
-        brandingCache = FALLBACK_BRANDING
+        persistBranding(FALLBACK_BRANDING)
         return FALLBACK_BRANDING
       } finally {
         brandingRequest = null
@@ -126,8 +169,9 @@ export function BrandingProvider({ children }: { children: ReactNode }): React.R
       ...branding,
       isLoading,
       reload: () => loadBranding(true),
+      applyBranding,
     }),
-    [branding, isLoading, loadBranding]
+    [applyBranding, branding, isLoading, loadBranding]
   )
 
   return <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>
