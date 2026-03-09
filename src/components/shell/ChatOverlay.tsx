@@ -21,7 +21,9 @@ export function ChatOverlay(): React.ReactElement | null {
   const { isOpen, setOpen } = useChatOverlay()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Escape-Key zum Schließen + Click Outside
+  // Escape-Key zum Schließen. Der Overlay soll bei Navigationen
+  // und anderen Shell-Interaktionen offen bleiben, damit der Chat
+  // wirklich persistent über Seitenwechsel nutzbar ist.
   useEffect(() => {
     if (!isOpen) return
 
@@ -31,22 +33,10 @@ export function ChatOverlay(): React.ReactElement | null {
       }
     }
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-
     window.addEventListener("keydown", handleEscape)
-    // Kleiner Delay damit der Click, der das Panel öffnet, es nicht sofort wieder schließt
-    const timeoutId = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside)
-    }, 100)
 
     return () => {
       window.removeEventListener("keydown", handleEscape)
-      document.removeEventListener("mousedown", handleClickOutside)
-      clearTimeout(timeoutId)
     }
   }, [isOpen, setOpen])
 

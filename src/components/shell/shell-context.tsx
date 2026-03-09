@@ -1,6 +1,14 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  type ReactNode,
+} from "react"
 
 /**
  * LocalStorage Keys für Shell-State
@@ -216,13 +224,12 @@ export function ShellProvider({ children, initialState }: ShellProviderProps): R
     ...initialState,
   }))
 
-  // Load from LocalStorage on mount
-  useEffect(() => {
+  // Lade gespeicherte Toggle-Zustände vor dem Paint, damit Route-Wechsel
+  // keinen sichtbaren Reset von Chat/Explorer/Navbar erzeugen.
+  useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting mounted state after hydration is intentional
     setMounted(true)
 
-    // Lade gespeicherte Toggle-Zustände
-    // HINWEIS: Panel-Breiten werden von react-resizable-panels via autoSaveId verwaltet
     setState((prev) => ({
       ...prev,
       navbarCollapsed: loadFromStorage(STORAGE_KEYS.navbarCollapsed, prev.navbarCollapsed),
@@ -287,13 +294,18 @@ export function ShellProvider({ children, initialState }: ShellProviderProps): R
   }, [])
 
   const toggleChatOverlay = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      chatOverlayOpen: !prev.chatOverlayOpen,
-    }))
+    setState((prev) => {
+      const nextOpen = !prev.chatOverlayOpen
+      saveToStorage(STORAGE_KEYS.chatOverlayOpen, nextOpen)
+      return {
+        ...prev,
+        chatOverlayOpen: nextOpen,
+      }
+    })
   }, [])
 
   const setChatOverlayOpen = useCallback((open: boolean) => {
+    saveToStorage(STORAGE_KEYS.chatOverlayOpen, open)
     setState((prev) => ({
       ...prev,
       chatOverlayOpen: open,
