@@ -38,73 +38,82 @@
     {
       "envName": "SUPABASE_SERVICE_ROLE_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReference": "op://VAULT/KB - App Runtime/SUPABASE_SERVICE_ROLE_KEY",
       "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
       "required": true,
+      "vercel": true,
       "description": "Server-seitiger Service Role Key der App-Supabase"
     },
     {
       "envName": "SERVICE_ROLE_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReference": "op://VAULT/KB - App Runtime/SUPABASE_SERVICE_ROLE_KEY",
       "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
       "required": true,
+      "vercel": true,
       "description": "Legacy-Alias fuer Server-Code"
     },
     {
       "envName": "OPENROUTER_API_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/AI Runtime/OPENROUTER_API_KEY",
+      "opReference": "op://VAULT/KB - AI Runtime/OPENROUTER_API_KEY",
       "opReferenceEnvName": "OP_REF_OPENROUTER_API_KEY",
       "required": false,
+      "vercel": true,
       "description": "LLM Runtime Key"
     },
     {
       "envName": "FAL_API_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/AI Runtime/FAL_API_KEY",
+      "opReference": "op://VAULT/KB - AI Runtime/FAL_API_KEY",
       "opReferenceEnvName": "OP_REF_FAL_API_KEY",
       "required": false,
+      "vercel": true,
       "description": "Bild-/Media-Runtime Key"
     },
     {
       "envName": "CLERK_SECRET_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/Auth Runtime/CLERK_SECRET_KEY",
+      "opReference": "op://VAULT/KB - Auth Runtime/CLERK_SECRET_KEY",
       "opReferenceEnvName": "OP_REF_CLERK_SECRET_KEY",
       "required": false,
+      "vercel": true,
       "description": "Clerk Server Secret"
     },
     {
       "envName": "CLERK_WEBHOOK_SIGNING_SECRET",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/Auth Runtime/CLERK_WEBHOOK_SIGNING_SECRET",
+      "opReference": "op://VAULT/KB - Auth Runtime/CLERK_WEBHOOK_SIGNING_SECRET",
       "opReferenceEnvName": "OP_REF_CLERK_WEBHOOK_SIGNING_SECRET",
       "required": false,
+      "vercel": true,
       "description": "Webhook Secret fuer Clerk"
     },
     {
       "envName": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/Auth Runtime/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "opReference": "op://VAULT/KB - Auth Runtime/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "required": false,
+      "vercel": true,
       "description": "Clerk Publishable Key fuer den Client"
     },
     {
       "envName": "NEXT_PUBLIC_SPACETIMEDB_URI",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_URI",
+      "opReference": "op://VAULT/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_URI",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_URI",
       "required": false,
+      "vercel": true,
       "description": "SpacetimeDB URI fuer den Boilerplate Core"
     },
     {
       "envName": "NEXT_PUBLIC_SPACETIMEDB_DATABASE",
       "source": "1password",
-      "opReference": "op://Kessel Boilerplate/Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+      "opReference": "op://VAULT/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_DATABASE",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_DATABASE",
       "required": false,
+      "vercel": true,
       "description": "SpacetimeDB Datenbankname fuer den Boilerplate Core"
     }
   ]

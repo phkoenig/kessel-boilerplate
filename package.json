@@ -6,6 +6,7 @@
   "scripts": {
     "postinstall": "node scripts/postinstall.mjs",
     "dev": "next dev --webpack",
+    "dev:secrets": "op run --env-file=.env.1password --no-masking -- next dev --webpack",
     "version:write": "tsx scripts/write-version.ts",
     "prebuild": "pnpm version:write && pnpm validate:ai",
     "build": "next build",
@@ -14,7 +15,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "pull-env": "node scripts/pull-env.mjs",
+    "pull-env": "bash scripts/pull-env.sh",
+    "sync-vercel": "node scripts/sync-secrets-to-vercel.mjs",
     "setup": "node scripts/full-setup.mjs",
     "setup:users": "node scripts/create-test-users.mjs && node scripts/setup-auth-config.mjs && node scripts/disable-email-confirmation.mjs",
     "verify": "node scripts/verify-setup.mjs",
