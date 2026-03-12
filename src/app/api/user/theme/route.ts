@@ -29,7 +29,7 @@ import { getCoreStore } from "@/lib/core"
  */
 export async function GET() {
   try {
-    const { userId } = await auth()
+    const { userId } = await auth({ treatPendingAsSignedOut: false })
     if (!userId) {
       // Nicht eingeloggt - Default-Theme zurückgeben
       return NextResponse.json({
@@ -84,7 +84,7 @@ export async function GET() {
  */
 export async function PUT(request: Request) {
   try {
-    const { userId } = await auth()
+    const { userId } = await auth({ treatPendingAsSignedOut: false })
     if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }

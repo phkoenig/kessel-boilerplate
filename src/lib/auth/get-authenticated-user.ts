@@ -52,7 +52,7 @@ export interface AuthenticatedUser {
  * Bei neuem Clerk-User ohne Profil: Auto-Provisioning via Webhook oder on-demand.
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const { userId, sessionClaims, orgId } = await auth()
+  const { userId, sessionClaims, orgId } = await auth({ treatPendingAsSignedOut: false })
   if (!userId) return null
 
   const coreStore = getCoreStore()

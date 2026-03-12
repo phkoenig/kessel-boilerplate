@@ -109,7 +109,7 @@ async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | n
 
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth()
+    const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false })
     if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
@@ -160,7 +160,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const { userId, sessionClaims } = await auth()
+    const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false })
     if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
