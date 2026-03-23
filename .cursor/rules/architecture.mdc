@@ -54,3 +54,9 @@ Dein Ziel ist es, Code im Stil eines erfahrenen Principal Engineers zu schreiben
 - **Data Fetching:** Bevorzuge Server-seitiges Fetching in Server Components gegenüber Client-seitigem Fetching.
 - **File-based Routing:** Nutze die App Router Konventionen (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`).
 - **Keine Business-Logik in UI:** Komponenten sind für Darstellung zuständig. Business-Logik gehört in eigene Layer (Services, Use-Cases, Server Actions).
+
+## UI PERFORMANCE
+
+- **Referenzanker:** Fuer UI-Datenfluss, Domain-Grenzen und Performance-Patterns ist `docs/02_architecture/ui-performance-architecture.md` verbindlich.
+- **Domain beats framework default:** Fuer Live-Domaenen gilt push-first mit serverseitig normalisierten Snapshots plus Shared Client Stores. Erzwinge dort kein zusaetzliches page-lokales Server-Fetching, wenn bereits ein kanonischer Push-/Store-Pfad existiert.
+- **Cursor-Rule:** `.cursor/rules/ui-performance.mdc` fasst die kritischen Kurzregeln zusammen.

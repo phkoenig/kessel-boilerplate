@@ -1,0 +1,16 @@
+---
+description: UI-Datenfluss und Performance-Architektur fuer alle Seiten
+alwaysApply: true
+---
+
+# UI Performance Architektur
+
+- Baue pro Domaene genau einen Read-Pfad: serverseitig normalisierter Snapshot, clientseitig Shared Store; keine parallelen Multi-Fetch- oder Multi-SSE-Loesungen.
+- Behandle teure Reads als Hot Paths: cachen, Invalidation nutzen, In-Flight-Requests deduplizieren und schwere Detailflaechen nur lazy mounten.
+- Halte globale Shell-Daten (`app-settings`, Theme, Profile, Permissions, Navigation-Configs) in gemeinsamen Bootstraps/Stores statt in seitenlokalen Einzel-Fetches.
+- Fuer Live-Domaenen gilt push-first und SpacetimeDB-first, wenn SpacetimeDB dort fachlich die richtige Source of Truth ist. Admin-, Auth-, Theme- und Produkt-Metadaten bleiben auf ihren primaeren Systemen und werden nicht kuenstlich nach SpacetimeDB verschoben.
+- Server Components First: `'use client'` nur fuer interaktive Komponenten, Hooks, Streams, Shared Stores. Read-mostly Flaechen als Server Components bauen.
+- Commands loesen gezielte Store-Updates oder Invalidation aus — keine Full-Page-Reloads nach Mutationen.
+- Schwere Nebenflaechen (Drawer, Dialoge, Editoren, Historien) erst on-demand mounten, nicht beim Page-Load.
+
+Details und Zielmuster: `docs/02_architecture/ui-performance-architecture.md`
