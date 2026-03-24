@@ -1,0 +1,22 @@
+---
+description: Navigation is the Single Source of Truth for URLs, breadcrumbs, and page titles
+globs: src/app/(shell)/**/*.tsx, src/lib/navigation/**/*.ts
+alwaysApply: true
+---
+
+# Navigation SSOT
+
+The navigation configuration (`src/lib/navigation/seed.ts`) is the **single source of truth** for page titles, breadcrumbs, and URLs.
+
+## Rules
+
+1. **NEVER hardcode `title` in `<PageHeader>`** — omit it so the title is derived from navigation `label`
+2. **`description` is allowed** in `<PageHeader>` for project context or additional info
+3. **Every new page** must have a corresponding entry in `NAVIGATION_SEED` with correct `href`, `label`, and `parentId`
+4. **Breadcrumbs are automatic** — they follow the `parentId` chain in the navigation tree
+5. **Dynamic routes** (e.g. `[id]`) may use explicit `title` since they represent data objects, not static pages
+6. **URL structure** must match: `href` in seed → `slugSegment` path → filesystem `(shell)/...` directory
+
+## Extended docs
+
+See `docs/architecture/navigation-ssot.md` for full documentation, examples, and checklists.

@@ -1,16 +1,96 @@
 ---
-description: UI-Datenfluss und Performance-Architektur fuer alle Seiten
+description: Performance & Snappiness Guidelines - kritische Patterns fuer Next.js + Supabase + SpacetimeDB Projekte
+globs: ["**/*.tsx", "**/*.ts"]
 alwaysApply: true
 ---
 
-# UI Performance Architektur
+# Performance & Snappiness
 
-- Baue pro Domaene genau einen Read-Pfad: serverseitig normalisierter Snapshot, clientseitig Shared Store; keine parallelen Multi-Fetch- oder Multi-SSE-Loesungen.
-- Behandle teure Reads als Hot Paths: cachen, Invalidation nutzen, In-Flight-Requests deduplizieren und schwere Detailflaechen nur lazy mounten.
-- Halte globale Shell-Daten (`app-settings`, Theme, Profile, Permissions, Navigation-Configs) in gemeinsamen Bootstraps/Stores statt in seitenlokalen Einzel-Fetches.
-- Fuer Live-Domaenen gilt push-first und SpacetimeDB-first, wenn SpacetimeDB dort fachlich die richtige Source of Truth ist. Admin-, Auth-, Theme- und Produkt-Metadaten bleiben auf ihren primaeren Systemen und werden nicht kuenstlich nach SpacetimeDB verschoben.
-- Server Components First: `'use client'` nur fuer interaktive Komponenten, Hooks, Streams, Shared Stores. Read-mostly Flaechen als Server Components bauen.
-- Commands loesen gezielte Store-Updates oder Invalidation aus — keine Full-Page-Reloads nach Mutationen.
-- Schwere Nebenflaechen (Drawer, Dialoge, Editoren, Historien) erst on-demand mounten, nicht beim Page-Load.
+Diese Regeln basieren auf erprobten Patterns aus dem Market Magnet Projekt und gelten fuer alle Supabase-lastigen Next.js-Projekte.
 
-Details und Zielmuster: `docs/02_architecture/ui-performance-architecture.md`
+## 1. Ein Read-Pfad pro Domaene
+
+- Pro Domaene (Projekte, Bauvorlagen, Benutzer) genau EINEN serverseitigen Snapshot bauen.
+- Clientseitig genau EINEN Shared Store pro Domaene, der diesen Snapshot konsumiert.
+- KEIN paralleles Fetchen derselben Daten aus verschiedenen Komponenten.
+
+**VERBOTEN:**
+```tsx
+// Header laedt Profil, Sidebar laedt Profil, Page laedt Profil
+function Header() { const { data } = useFetch("/api/profile") }
+function Sidebar() { const { data } = useFetch("/api/profile") }
+```
+
+**RICHTIG:**
+```tsx
+// Ein Provider, alle konsumieren
+function App() { return <ProfileProvider><Header /><Sidebar /></ProfileProvider> }
+function Header() { const { profile } = useProfile() }
+```
+
+## 2. Globale Shell-Daten zentral bootstrappen
+
+- Profile, Permissions, Theme, App-Settings, Navigation in dauerhafte Shared Stores legen.
+- Diese Stores ueberleben Routenwechsel (kein Neuboot bei Navigation).
+- Nur bei expliziter Invalidation neu laden (z.B. nach Settings-Aenderung).
+- KEIN router.refresh() oder window.location.reload() als Lazy-Fix.
+
+## 3. Teure Reads als Hot Paths
+
+- In-Flight-Request-Deduplizierung: Wenn 3 Komponenten denselben Endpunkt aufrufen, nur 1 Request.
+- Stale-while-revalidate: Sofort Cache ausliefern, im Hintergrund aktualisieren.
+- Event-getriggerte Invalidation bei Mutationen, nicht nur TTL.
+
+## 4. Lazy Mounting
+
+- Nur primaeren Screen-Inhalt im Initial-Render-Pfad.
+- Detail-Drawer, Editoren, Historien, Upload-Dialoge: erst on-demand mounten.
+- Kein Pre-Fetch fuer Dialoge, die 90% der User nie oeffnen.
+
+## 5. Gezielte Invalidation nach Mutations
+
+- Commands loesen nur betroffene Store-Teile als Update/Invalidation aus.
+- Optimistic Updates wo sinnvoll (UI sofort, Server bestaetigt im Hintergrund).
+
+**VERBOTEN nach Mutation:**
+- `router.refresh()`
+- `window.location.reload()`
+- Kompletten Datensatz refetchen
+
+**RICHTIG:**
+```tsx
+const updateVorlage = async (id, updates) => {
+  setVorlagen(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v)) // optimistic
+  await fetch("/api/bauvorlagen", { method: "PATCH", body: JSON.stringify({ id, ...updates }) })
+}
+```
+
+## 6. SpacetimeDB Domain-Grenzen
+
+- SpacetimeDB NUR fuer Push-first / Sub-Sekunden-Latenz (Live-Status, Echtzeit-Kollaboration).
+- Admin-Daten, Auth, Theme, Projekt-Metadaten, Asset-Kataloge: Supabase/Postgres.
+- Faustregel: "Braucht diese Entitaet wirklich Realtime-Push, oder reicht REST mit Cache?"
+
+## 7. Server Components First
+
+- Default: Server Components fuer read-mostly Flaechen.
+- `'use client'` nur fuer: Hooks, Event Handler, Browser-APIs, Shared Stores.
+- Initiale Daten serverseitig als Snapshot bereitstellen, auch fuer Live-Domaenen.
+
+## 8. Keine Business-Logik in der UI
+
+- Komponenten nur fuer Darstellung.
+- Filterung, Sortierung, Aggregation in Services/Use-Cases/Server Actions.
+- Fallbacks serverseitig aufloesen.
+
+## Quick-Audit Checkliste
+
+| Symptom | Fix |
+|---------|-----|
+| Network Tab zeigt 3-5x denselben Endpunkt | Shared Store + Dedupe |
+| Jeder Routenwechsel = Waterfall an Requests | Root-Bootstrap |
+| Grosser Initial-Bundle, lange TTFB | Lazy Mount |
+| Seite flackert nach Save | Targeted Invalidation |
+| Riesiges JS-Bundle, langsamer FCP | Server Components First |
+| Unnoetige Subscription-Komplexitaet | SpacetimeDB Domain-Grenzen |
+| Langsame API-Responses | Server-Cache + Invalidation |

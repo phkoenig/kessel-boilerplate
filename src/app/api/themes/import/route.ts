@@ -417,6 +417,14 @@ function generateThemeCSSBlock(
     "accent-foreground",
     "destructive",
     "destructive-foreground",
+    "success",
+    "success-foreground",
+    "warning",
+    "warning-foreground",
+    "info",
+    "info-foreground",
+    "neutral",
+    "neutral-foreground",
     "border",
     "input",
     "ring",
@@ -455,6 +463,22 @@ function generateThemeCSSBlock(
       }
       if (fallbackVariables[varName]) {
         return `  --${varName}: ${fallbackVariables[varName]};`
+      }
+      const STATUS_DEFAULTS = {
+        "success": { light: "oklch(0.45 0.16 145)", dark: "oklch(0.65 0.19 145)" },
+        "success-foreground": { light: "oklch(1 0 0)", dark: "oklch(0.15 0 0)" },
+        "warning": { light: "oklch(0.55 0.16 85)", dark: "oklch(0.75 0.18 85)" },
+        "warning-foreground": { light: "oklch(0.15 0 0)", dark: "oklch(0.15 0 0)" },
+        "info": { light: "oklch(0.45 0.14 240)", dark: "oklch(0.65 0.17 240)" },
+        "info-foreground": { light: "oklch(1 0 0)", dark: "oklch(0.15 0 0)" },
+        "neutral": { light: "oklch(0.45 0 0)", dark: "oklch(0.65 0 0)" },
+        "neutral-foreground": { light: "oklch(1 0 0)", dark: "oklch(0.15 0 0)" },
+        "destructive": { light: "oklch(0.45 0.18 25)", dark: "oklch(0.6 0.2 25)" },
+        "destructive-foreground": { light: "oklch(1 0 0)", dark: "oklch(1 0 0)" },
+      }
+      if (STATUS_DEFAULTS[varName]) {
+        const val = isDark ? STATUS_DEFAULTS[varName].dark : STATUS_DEFAULTS[varName].light
+        return `  --${varName}: ${val};`
       }
       if (isDark) {
         if (varName === "background") return `  --${varName}: oklch(0.15 0 0);`

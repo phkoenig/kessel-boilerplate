@@ -130,9 +130,14 @@ body { font-family: var(--font-sans); }
 ## 3. Dark Mode
 
 ### Architektur
-- `next-themes` setzt `.dark` auf `<html>`
-- Theme-Selektoren: `.dark[data-theme="x"]`
-- CSS-Variablen wechseln automatisch
+-  setzt  auf - Theme-Selektoren: - CSS-Variablen wechseln automatisch
+- Siehe vollständige Doku: 
+### Light/Dark Farbstrategie (OKLCH)
+- **Light Mode**: Farben brauchen **niedrige Lightness** (L ≤ 0.5) für Kontrast auf weißem BG
+- **Dark Mode**: Farben brauchen **hohe Lightness** (L ≥ 0.6) für Kontrast auf dunklem BG
+- **Hue** bleibt identisch über beide Modi
+- **Chroma** im Dark Mode leicht höher (dunkle BGs entsättigen visuell)
+- **Foreground** ist immer die Gegenfarbe: Light-FG = Weiß, Dark-FG = Dunkel
 
 ### Beispiel Theme-CSS
 ```css
@@ -141,6 +146,8 @@ body { font-family: var(--font-sans); }
   --background: oklch(0.98 0.01 230);
   --foreground: oklch(0.15 0.02 230);
   --primary: oklch(0.55 0.2 230);
+  --success: oklch(0.45 0.16 145);       /* L ≤ 0.5 für Light */
+  --success-foreground: oklch(1 0 0);    /* Weiß auf dunkler Farbe */
 }
 
 /* Dark Mode */
@@ -148,6 +155,8 @@ body { font-family: var(--font-sans); }
   --background: oklch(0.12 0.02 230);
   --foreground: oklch(0.95 0.01 230);
   --primary: oklch(0.65 0.18 230);
+  --success: oklch(0.65 0.19 145);       /* L ≥ 0.6 für Dark */
+  --success-foreground: oklch(0.15 0 0); /* Dunkel auf heller Farbe */
 }
 ```
 
@@ -241,3 +250,7 @@ Die Regel `local/no-next-font-classname-on-root` erzwingt:
 - [ ] Keine rohen Fontnamen (nur `var(--font-x)`)
 - [ ] Fonts validiert oder dynamisch geladen
 - [ ] Radius-Werte kompatibel mit `max(0px, ...)` Schutz
+- [ ] Status-Colors (success, warning, info, neutral) vorhanden
+- [ ] Light-Mode: Status-Farben haben Lightness ≤ 0.5
+- [ ] Dark-Mode: Status-Farben haben Lightness ≥ 0.6
+- [ ] Foreground-Farben sind Gegenfarbe (Light: Weiß, Dark: Dunkel)

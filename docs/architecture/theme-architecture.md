@@ -234,3 +234,56 @@ Theme-Wechsel → localStorage + DB (profiles.selected_theme)
 2. `NEXT_PUBLIC_TENANT_SLUG=meine-app` in `.env.local`
 3. Migrationen ausführen (042, 043 auf KESSEL)
 4. Default-Theme CSS in Storage uploaden: `themes/meine-app/default.css`
+
+---
+
+## Light/Dark Mode Farbstrategie
+
+### Grundprinzip: Kontrast über Lightness
+
+OKLCH trennt Farben in drei Achsen: **Lightness** (L), **Chroma** (C) und **Hue** (H). Der Hue bleibt über beide Modi identisch (Grün bleibt Grün). Für den Moduswechsel wird primär die **Lightness** angepasst:
+
+```
+Light Mode: Farbe auf weißem Hintergrund → Farbe muss DUNKEL sein (L ≤ 0.5)
+Dark Mode:  Farbe auf dunklem Hintergrund → Farbe muss HELL sein  (L ≥ 0.6)
+```
+
+### WCAG AA Kontrast-Regeln
+
+| Kontext | Hintergrund-L | Farb-L | Kontrast |
+|---------|---------------|--------|----------|
+| Light Mode | 1.0 (Weiß) | ≤ 0.5 | WCAG AA ✓ |
+| Dark Mode | 0.15 (Dunkel) | ≥ 0.6 | WCAG AA ✓ |
+
+### Foreground-Strategie
+
+Die Foreground-Farbe (Text auf farbigem Hintergrund) ist immer die **Gegenfarbe** des Modus:
+
+- **Light Mode**: Farbe ist dunkel → Foreground = Weiß `oklch(1 0 0)`
+- **Dark Mode**: Farbe ist hell → Foreground = Dunkel `oklch(0.15 0 0)`
+
+Ausnahme: `--warning-foreground` ist in BEIDEN Modi dunkel, da Amber-Töne auch im Light Mode hell genug sind.
+
+### Chroma-Anpassung
+
+Dark Mode benötigt leicht **höhere Chroma** (Farbsättigung), weil dunkle Hintergründe Farben visuell entsättigen:
+
+| Token | Light Chroma | Dark Chroma | Delta |
+|-------|-------------|------------|-------|
+| `--success` | 0.16 | 0.19 | +0.03 |
+| `--info` | 0.14 | 0.17 | +0.03 |
+| `--destructive` | 0.18 | 0.20 | +0.02 |
+
+### Status-Token Referenz
+
+| Token | Light Mode | Dark Mode | Hue |
+|-------|------------|-----------|-----|
+| `--destructive` | `oklch(0.45 0.18 25)` | `oklch(0.6 0.2 25)` | Rot (25°) |
+| `--success` | `oklch(0.45 0.16 145)` | `oklch(0.65 0.19 145)` | Grün (145°) |
+| `--warning` | `oklch(0.55 0.16 85)` | `oklch(0.75 0.18 85)` | Amber (85°) |
+| `--info` | `oklch(0.45 0.14 240)` | `oklch(0.65 0.17 240)` | Blau (240°) |
+| `--neutral` | `oklch(0.45 0 0)` | `oklch(0.65 0 0)` | Achromatisch |
+
+### TweakCN Import-Handling
+
+TweakCN-Themes enthalten typischerweise **keine** Status-Farben. Der Import-Prozess (`/api/themes/import`) ergänzt fehlende Status-Tokens automatisch mit den oben definierten Werten via `STATUS_DEFAULTS`.

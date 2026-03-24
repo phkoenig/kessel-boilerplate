@@ -9,7 +9,7 @@ import { HexColorPicker, HexColorInput } from "react-colorful"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useThemeEditor } from "@/hooks/use-theme-editor"
+import { useThemeEditorOptional, type ThemeEditorContextValue } from "@/hooks/use-theme-editor"
 import { SaveThemeDialog } from "@/components/theme/SaveThemeDialog"
 
 // Culori Converter für OKLCH
@@ -68,8 +68,14 @@ function hexToOklch(hex: string): string {
  * Zeigt kontextabhängig den Editor für ausgewählte Elemente.
  * Immer sichtbar: Reset + Save Buttons oben.
  */
-export function ThemeDetailPanel(): React.ReactElement {
-  const { selectedElement, previewToken, getCurrentTokens } = useThemeEditor()
+export function ThemeDetailPanel(): React.ReactElement | null {
+  const editorContext = useThemeEditorOptional()
+  if (!editorContext) return null
+  return <ThemeDetailPanelInner context={editorContext} />
+}
+
+function ThemeDetailPanelInner({ context }: { context: ThemeEditorContextValue }): React.ReactElement {
+  const { selectedElement, previewToken, getCurrentTokens } = context
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
@@ -282,9 +288,11 @@ export function ThemeDetailPanelSaveButton({
   forceVisible = false,
 }: {
   forceVisible?: boolean
-}): React.ReactElement {
+}): React.ReactElement | null {
   const pathname = usePathname()
-  const { isDirty } = useThemeEditor()
+  const editorCtx = useThemeEditorOptional()
+  if (!editorCtx) return null
+  const { isDirty } = editorCtx
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   useEffect(() => {

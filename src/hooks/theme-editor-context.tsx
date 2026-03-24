@@ -62,7 +62,7 @@ export interface SelectedElement {
 /**
  * Theme Editor Context Value
  */
-interface ThemeEditorContextValue {
+export interface ThemeEditorContextValue {
   baseThemeId: string | null
   pendingChanges: Map<string, TokenValue>
   isDirty: boolean
@@ -295,4 +295,12 @@ export function useThemeEditor(): ThemeEditorContextValue {
     throw new Error("useThemeEditor must be used within ThemeEditorProvider")
   }
   return context
+}
+
+/**
+ * Optional Hook - returns null if outside ThemeEditorProvider.
+ * Use in components that may render during navigation transitions.
+ */
+export function useThemeEditorOptional(): ThemeEditorContextValue | null {
+  return useContext(ThemeEditorContext)
 }

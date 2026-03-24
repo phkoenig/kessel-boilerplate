@@ -52,12 +52,20 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 - TweakCN-Themes können sie nicht überschreiben (außer sie definieren explizit diese Variablen)
 - Sie dienen als **permanente Fallbacks** für konsistentes Feedback im gesamten Design-System
 
-**OKLCH-Farbwerte**:
+**OKLCH-Farbwerte (Light/Dark Mode Strategie)**:
+
+> **Designregel:** Light-Mode-Farben brauchen niedrige Lightness (L ≤ 0.5) für WCAG-AA-Kontrast auf weißem Hintergrund (L=1.0). Dark-Mode-Farben brauchen hohe Lightness (L ≥ 0.6) für Kontrast auf dunklem Hintergrund (L=0.15). Foreground-Farben sind immer die Gegenfarbe des jeweiligen Modus.
+> Siehe auch: [Light/Dark Mode Farbstrategie](../architecture/theme-architecture.md#lightdark-mode-farbstrategie)
+
 | Token | Light Mode | Dark Mode | Hue |
 |-------|------------|-----------|-----|
-| `--success` | `oklch(0.55 0.18 145)` | `oklch(0.6 0.2 145)` | Grün (145°) |
-| `--warning` | `oklch(0.7 0.18 85)` | `oklch(0.75 0.18 85)` | Amber (85°) |
-| `--info` | `oklch(0.55 0.15 240)` | `oklch(0.6 0.15 240)` | Blau (240°) |
+| `--destructive` | `oklch(0.45 0.18 25)` | `oklch(0.6 0.2 25)` | Rot (25°) |
+| `--success` | `oklch(0.45 0.16 145)` | `oklch(0.65 0.19 145)` | Grün (145°) |
+| `--warning` | `oklch(0.55 0.16 85)` | `oklch(0.75 0.18 85)` | Amber (85°) |
+| `--info` | `oklch(0.45 0.14 240)` | `oklch(0.65 0.17 240)` | Blau (240°) |
+| `--neutral` | `oklch(0.45 0 0)` | `oklch(0.65 0 0)` | Achromatisch |
+
+**TweakCN-Import-Handling**: Fehlende Status-Tokens werden beim Theme-Import automatisch mit den obigen Werten ergänzt (via `STATUS_DEFAULTS` in `/api/themes/import`).
 
 **Verwendung in der Codebase**:
 

@@ -43,6 +43,8 @@ Diese Dokumentation listet alle verwendeten Design Tokens im Projekt auf und kat
 | `--warning-foreground` | ❌      | ✅       | ❌         | Text auf Warning      |
 | `--info`               | ❌      | ✅       | ✅         | Informations-Feedback |
 | `--info-foreground`    | ❌      | ✅       | ❌         | Text auf Info         |
+| `--neutral`            | ❌      | ✅       | ✅         | Neutraler Status      |
+| `--neutral-foreground` | ❌      | ✅       | ❌         | Text auf Neutral      |
 
 **Hinweis**: Status-Farben sind **nicht** Teil des Standard-TweakCN-Exports, wurden aber in unserer Codebase hinzugefügt.
 
