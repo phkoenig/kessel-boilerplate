@@ -1,3 +1,4 @@
+// AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
@@ -66,6 +67,22 @@ export async function POST(request: NextRequest) {
       if (storageError) {
         return NextResponse.json(
           { error: `CSS-Update fehlgeschlagen: ${storageError.message}` },
+          { status: 500 }
+        )
+      }
+
+      // Post-Save-Verifikation (Plan E2 / C5 / Assessment 10.1):
+      // Nach Overwrite re-fetch und mit erwartetem Content vergleichen.
+      const { data: verifyBlob, error: verifyError } = await supabase.storage
+        .from("themes")
+        .download(storagePath)
+      const verifiedText = verifyBlob ? await verifyBlob.text() : null
+      if (verifyError || verifiedText !== cssContent) {
+        return NextResponse.json(
+          {
+            error:
+              "Theme-Persistenz-Verifikation fehlgeschlagen — CSS wurde nicht korrekt abgelegt",
+          },
           { status: 500 }
         )
       }

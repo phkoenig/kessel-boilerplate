@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth/auth-context"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 interface DevUser {
   id: string
@@ -110,7 +111,7 @@ export function DevUserSelector(): React.ReactElement {
 
   // Rolle-Icon
   function getRoleIcon(role: string) {
-    return role === "admin" ? (
+    return isAdminRole(role) ? (
       <Shield className="text-primary size-4" />
     ) : (
       <User className="text-muted-foreground size-4" />
@@ -119,7 +120,7 @@ export function DevUserSelector(): React.ReactElement {
 
   // Rolle-Badge-Farbe
   function getRoleBadgeClass(role: string): string {
-    return role === "admin"
+    return isAdminRole(role)
       ? "bg-primary/10 text-primary border-primary/20"
       : "bg-muted text-muted-foreground border-border"
   }

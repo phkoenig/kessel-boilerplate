@@ -16,6 +16,8 @@ import navigationRouteConsistency from "./eslint/rules/navigation-route-consiste
 import noRawNavHref from "./eslint/rules/no-raw-nav-href.js"
 import noHardcodedPageTitle from "./eslint/rules/no-hardcoded-page-title.js"
 import noSpacetimeReducersInClient from "./eslint/rules/no-spacetime-reducers-in-client.js"
+import requireApiAuthClassification from "./eslint/rules/require-api-auth-classification.js"
+import noRawRoleComparison from "./eslint/rules/no-raw-role-comparison.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -40,6 +42,8 @@ const localPlugin = {
     "no-raw-nav-href": noRawNavHref,
     "no-hardcoded-page-title": noHardcodedPageTitle,
     "no-spacetime-reducers-in-client": noSpacetimeReducersInClient,
+    "require-api-auth-classification": requireApiAuthClassification,
+    "no-raw-role-comparison": noRawRoleComparison,
   },
 }
 
@@ -167,6 +171,35 @@ const eslintConfig = defineConfig([
     },
     rules: {
       "local/no-spacetime-reducers-in-client": "error",
+    },
+  },
+  // H-9: Jede API-Route muss eine // AUTH:-Annotation tragen
+  {
+    files: ["src/app/api/**/route.ts"],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      "local/require-api-auth-classification": "error",
+    },
+  },
+  // M-6: Verbietet rohe Rollen-Vergleiche (admin|superuser|super-user)
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: [
+      "src/lib/auth/provisioning-role.ts",
+      "src/lib/auth/guards.ts",
+      "**/__tests__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+    ],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      "local/no-raw-role-comparison": "error",
     },
   },
   // Navigation Route Consistency: nur Shell (sonst false positives z. B. Root-Layout, APIs).

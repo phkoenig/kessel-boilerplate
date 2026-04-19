@@ -1,3 +1,4 @@
+// AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
@@ -63,6 +64,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (storageError) {
       return NextResponse.json(
         { error: `CSS-Speicherung fehlgeschlagen: ${storageError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // Post-Save-Verifikation (Plan E2 / C5 / Assessment 10.1):
+    // Re-Fetch und String-Vergleich absichern, dass der Storage tatsaechlich den
+    // erwarteten Inhalt haelt (Schutz gegen stille Upload-Fehler / CDN-Staleness).
+    const { data: verifyBlob, error: verifyError } = await supabase.storage
+      .from("themes")
+      .download(storagePath)
+    const verifiedText = verifyBlob ? await verifyBlob.text() : null
+    if (verifyError || verifiedText !== cssContent) {
+      await supabase.storage
+        .from("themes")
+        .remove([storagePath])
+        .catch(() => {})
+      return NextResponse.json(
+        { error: "Theme-Persistenz-Verifikation fehlgeschlagen — Save wurde zurueckgerollt" },
         { status: 500 }
       )
     }

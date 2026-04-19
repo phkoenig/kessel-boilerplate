@@ -1,4 +1,6 @@
+// AUTH: admin
 import { NextResponse } from "next/server"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 
@@ -59,6 +61,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       isSystem: body.isSystem ?? false,
     })
 
+    await recordAudit(userOrError.clerkUserId, "role.upserted", "role", roleName, {
+      displayName,
+      isSystem: body.isSystem ?? false,
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json(
@@ -83,6 +90,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     }
 
     await getCoreStore().deleteRole(roleName)
+    await recordAudit(userOrError.clerkUserId, "role.deleted", "role", roleName)
     return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json(

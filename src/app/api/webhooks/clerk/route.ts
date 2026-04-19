@@ -1,3 +1,4 @@
+// AUTH: webhook
 /**
  * Clerk Webhook Endpoint
  *
@@ -134,8 +135,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (err) {
+    // Plan M-11: keine Stack-/Error-Details an den Caller leaken.
+    console.error("[webhooks/clerk] Webhook-Verifizierung fehlgeschlagen:", err)
     return NextResponse.json(
-      { error: "Webhook-Verifizierung fehlgeschlagen", details: String(err) },
+      { error: "Webhook-Verifizierung fehlgeschlagen", code: "WEBHOOK_VERIFY_FAILED" },
       { status: 401 }
     )
   }

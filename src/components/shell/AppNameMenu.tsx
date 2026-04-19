@@ -45,6 +45,8 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
   const userRole = role ?? "NoUser"
 
   // Finde Admin-Section
+  // Section-ID (nicht Rolle) — daher kein isAdminRole noetig.
+  // eslint-disable-next-line local/no-raw-role-comparison
   const adminSection = sidebarSections.find((section) => section.id === "admin")
 
   const isRoleAllowed = (requiredRoles?: string[]): boolean => {

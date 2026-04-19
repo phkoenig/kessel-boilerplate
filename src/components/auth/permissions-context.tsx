@@ -33,11 +33,27 @@ interface PermissionsContextValue {
 }
 
 const PermissionsContext = createContext<PermissionsContextValue | null>(null)
-let permissionsCache: Array<{ moduleId: string; roleName: string; hasAccess: boolean }> | null =
-  null
-let permissionsRequest: Promise<
-  Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
-> | null = null
+
+// Plan M-7: Cache nach `clerkUserId` scopen, damit ein schneller User-Wechsel
+// keine "Geist-Permissions" des Vorgaengers zeigt.
+type PermissionsRow = { moduleId: string; roleName: string; hasAccess: boolean }
+let permissionsCacheUserId: string | null = null
+let permissionsCache: PermissionsRow[] | null = null
+let permissionsRequest: Promise<PermissionsRow[]> | null = null
+
+/**
+ * Test-Hook: Leert den globalen Permissions-Cache.
+ *
+ * Wird beim Logout in `permissions-context.tsx` automatisch aufgerufen, kann
+ * aber auch von Tests / externen Konsumenten genutzt werden.
+ *
+ * Plan M-7.
+ */
+export function invalidatePermissionsCache(): void {
+  permissionsCacheUserId = null
+  permissionsCache = null
+  permissionsRequest = null
+}
 
 /** Hook zum Zugriff auf Permissions */
 export function usePermissions(): PermissionsContextValue {
@@ -98,7 +114,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
   const [permissions, setPermissions] = useState<Map<string, ModulePermission>>(fallbackPermissions)
   const [isLoaded, setIsLoaded] = useState(true)
 
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
+  const currentUserId = user?.clerkUserId ?? null
 
   const mergePermissions = useCallback(
     (
@@ -149,22 +166,27 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
         return
       }
 
-      if (!force && permissionsCache) {
+      // Plan M-7: Cache nur verwenden, wenn er zum aktuellen User gehoert.
+      const cacheValid = permissionsCacheUserId === currentUserId
+      if (!force && cacheValid && permissionsCache) {
         setPermissions(mergePermissions(permissionsCache))
         setIsLoaded(true)
         return
       }
 
-      if (!force && permissionsRequest) {
+      if (!force && cacheValid && permissionsRequest) {
         const cachedResult = await permissionsRequest
         setPermissions(mergePermissions(cachedResult))
         setIsLoaded(true)
         return
       }
 
-      const request = (async (): Promise<
-        Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
-      > => {
+      // Cache gehoerte zu einem anderen User → wegwerfen.
+      if (!cacheValid) {
+        invalidatePermissionsCache()
+      }
+
+      const request = (async (): Promise<PermissionsRow[]> => {
         try {
           const response = await fetch("/api/core/permissions", {
             method: "GET",
@@ -176,14 +198,16 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
           if (!response.ok) {
             permissionsCache = []
+            permissionsCacheUserId = currentUserId
             return []
           }
 
           const payload = (await response.json()) as {
-            permissions?: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+            permissions?: PermissionsRow[]
           }
           const accessData = payload.permissions ?? []
           permissionsCache = accessData
+          permissionsCacheUserId = currentUserId
           return accessData
         } finally {
           permissionsRequest = null
@@ -200,7 +224,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
         setIsLoaded(true)
       }
     },
-    [authLoading, fallbackPermissions, isAuthenticated, mergePermissions]
+    [authLoading, currentUserId, fallbackPermissions, isAuthenticated, mergePermissions]
   )
 
   useEffect(() => {
@@ -227,8 +251,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
   useEffect(() => {
     if (authLoading) return
     if (prevAuthRef.current && !isAuthenticated) {
-      permissionsCache = null
-      permissionsRequest = null
+      invalidatePermissionsCache()
       setPermissions(fallbackPermissions)
     }
     prevAuthRef.current = isAuthenticated

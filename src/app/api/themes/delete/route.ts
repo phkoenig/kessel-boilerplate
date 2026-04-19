@@ -1,3 +1,4 @@
+// AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"

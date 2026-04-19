@@ -1,3 +1,4 @@
+// AUTH: authenticated
 /**
  * API Route: AI Chat mit OpenRouter + Intelligentem Model-Router
  *
@@ -12,7 +13,6 @@
  * Provider: OpenRouter
  */
 
-// AUTH: authenticated
 import { streamText, stepCountIs, type ModelMessage, type ImagePart, type TextPart } from "ai"
 import { z } from "zod"
 import { openrouter } from "@/lib/ai/openrouter-provider"
@@ -35,8 +35,24 @@ export const maxDuration = 60
 // - Size-Limits (max. Anzahl Messages, max. Textlaenge)
 // - Einfaches In-Memory-Rate-Limit pro User-ID (pro Instanz)
 const MAX_MESSAGES = 50
-const MAX_MESSAGE_TEXT_LENGTH = 20_000
+// Plan M-13: htmlDump auf 50 KB begrenzen (Plain-HTML-Snapshot reicht); separat
+// vom Gesamt-Payload-Limit (2 MB inkl. Screenshot-Base64).
+const MAX_HTML_DUMP_BYTES = 50 * 1024
 const MAX_BODY_BYTES = 2 * 1024 * 1024 // 2 MB (inkl. Screenshot-Base64)
+
+/**
+ * Entfernt potentiell gefaehrliche Tags aus einem HTML-Dump bevor er an das LLM
+ * weitergereicht wird (Plan M-13). Wir koennen kein vollstaendiges HTML-Sanitizing
+ * leisten, schneiden aber `<script>`-Bloecke + `on*`-Handler raus, die ohnehin nichts
+ * im Kontext-Snapshot zu suchen haben.
+ */
+function sanitizeHtmlDump(input: string): string {
+  return input
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "<!-- script removed -->")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "<!-- iframe removed -->")
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, "")
+}
 
 const ClientMessageSchema = z
   .object({
@@ -50,10 +66,7 @@ const ChatRequestSchema = z.object({
   messages: z.array(ClientMessageSchema).min(1).max(MAX_MESSAGES),
   sessionId: z.string().max(200).optional(),
   screenshot: z.string().nullable().optional(),
-  htmlDump: z
-    .string()
-    .max(MAX_MESSAGE_TEXT_LENGTH * 2)
-    .optional(),
+  htmlDump: z.string().max(MAX_HTML_DUMP_BYTES).optional(),
   route: z.string().max(500).optional(),
   interactions: z.array(z.unknown()).max(200).optional(),
   availableActions: z.array(z.unknown()).max(100).optional(),
@@ -390,13 +403,16 @@ export async function POST(req: Request) {
       messages,
       sessionId,
       screenshot,
-      htmlDump,
+      htmlDump: rawHtmlDump,
       route,
       interactions,
       availableActions: _availableActions, // eslint-disable-line @typescript-eslint/no-unused-vars
       model,
       dryRun,
     } = body
+    // Plan M-13: Sanitizer entfernt <script>/<iframe>/on*-Handler bevor das Snippet
+    // an das LLM weitergereicht wird.
+    const htmlDump = rawHtmlDump ? sanitizeHtmlDump(rawHtmlDump) : undefined
 
     if (!messages || messages.length === 0) {
       return Response.json({ error: "No messages provided" }, { status: 400 })

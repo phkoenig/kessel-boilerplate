@@ -1,3 +1,4 @@
+// AUTH: public
 /**
  * API Route: Wiki Content
  *

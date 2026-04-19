@@ -1,3 +1,4 @@
+// AUTH: authenticated
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"

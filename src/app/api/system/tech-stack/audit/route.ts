@@ -1,12 +1,15 @@
+// AUTH: admin
 /**
  * GET /api/system/tech-stack/audit
  *
  * Prueft auf Security Vulnerabilities via pnpm audit.
  * In Production deaktiviert (Sicherheit + Performance).
+ * Auth: admin (System-Internals nur fuer Administratoren).
  */
 
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
+import { requireAdmin } from "@/lib/auth/guards"
 import type { AuditResponse, SecurityVulnerability } from "@/lib/tech-stack"
 
 const execAsync = promisify(exec)
@@ -37,6 +40,8 @@ interface PnpmAuditResult {
 }
 
 export async function GET(): Promise<Response> {
+  const userOrErr = await requireAdmin()
+  if (userOrErr instanceof Response) return userOrErr
   // In Production deaktiviert
   const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
   if (isProd) {

@@ -1,3 +1,4 @@
+// AUTH: admin
 import { NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"

@@ -1,3 +1,4 @@
+// AUTH: authenticated
 /**
  * API Route: App Settings
  *

@@ -66,7 +66,7 @@ export default function RolesPage(): React.ReactElement {
       const roleAccess = new Map<string, boolean>()
       availableRoles.forEach((r) => {
         const hasAccess =
-          r.name === "admin" ||
+          isAdminRole(r.name) ||
           record.requiredRoles.length === 0 ||
           record.requiredRoles.includes(r.name)
         roleAccess.set(r.name, hasAccess)
@@ -188,7 +188,7 @@ export default function RolesPage(): React.ReactElement {
               roleAccess: new Map(),
             }
             loadedRoles.forEach((r) => {
-              perm!.roleAccess.set(r.name, r.name === "admin" ? true : false)
+              perm!.roleAccess.set(r.name, isAdminRole(r.name))
             })
             mergedPerms.set(moduleId, perm)
           }
@@ -475,7 +475,7 @@ export default function RolesPage(): React.ReactElement {
                           </TableCell>
                           {roles.map((r) => {
                             const isSaving = savingModuleId === perm.moduleId
-                            const isAdmin = r.name === "admin"
+                            const isAdmin = isAdminRole(r.name)
                             const isAlwaysVisible = perm.alwaysVisible === true
                             // Admin-Spalte und alwaysVisible Items sind IMMER gesperrt
                             const isDisabled = isAlwaysVisible || isAdmin || isSaving

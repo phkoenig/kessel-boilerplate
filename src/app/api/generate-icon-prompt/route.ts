@@ -1,3 +1,4 @@
+// AUTH: authenticated
 /**
  * API Route: Icon Prompt Generation
  *

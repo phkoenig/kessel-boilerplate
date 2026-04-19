@@ -13,6 +13,7 @@
 
 import { unstable_noStore } from "next/cache"
 import { auth } from "@clerk/nextjs/server"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
 import { createServiceClient } from "@/utils/supabase/service"
 import { resolveThemeCss, extractCornerStyleFromCss } from "./css"
@@ -67,9 +68,7 @@ export async function getEffectiveThemeSnapshot(): Promise<ThemeSnapshot> {
   const canSelectTheme = isAdmin
 
   // Global: Admin-Theme wird als Vorgabe fuer alle User verwendet.
-  const adminUser = allUsers.find(
-    (u) => u.role === "admin" || u.role === "superuser" || u.role === "super-user"
-  )
+  const adminUser = allUsers.find((u) => isAdminRole(u.role))
   const adminThemeState = adminUser
     ? await coreStore.getUserThemeState(adminUser.clerkUserId)
     : null

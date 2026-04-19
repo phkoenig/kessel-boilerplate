@@ -1,4 +1,6 @@
+// AUTH: admin
 import { NextResponse } from "next/server"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 
@@ -24,6 +26,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         })
       )
     )
+
+    await recordAudit(userOrError.clerkUserId, "permission.changed", "module_permission", null, {
+      count: permissions.length,
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

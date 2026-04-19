@@ -1,3 +1,4 @@
+// AUTH: authenticated
 /**
  * API Route: User Profile
  *
@@ -61,11 +62,12 @@ function getEmailFromSessionClaims(sessionClaims: unknown): string | null {
   return null
 }
 
+// HINWEIS: `selected_theme` und `color_scheme` werden NICHT ueber diese Route
+// aktualisiert. Theme-Aenderungen laufen ausschliesslich ueber
+// `PUT /api/user/theme` (admin-only fuer Theme, alle fuer Color-Scheme).
 const PUT_BODY_KEYS = [
   "display_name",
   "avatar_seed",
-  "selected_theme",
-  "color_scheme",
   "chatbot_avatar_seed",
   "chatbot_tone",
   "chatbot_detail_level",
@@ -198,32 +200,6 @@ export async function PUT(request: Request) {
     // Allowlist-Sync passiert beim Login in `getAuthenticatedUser`
     // und beim Clerk-Webhook; Profil-Settings duerfen nicht stillschweigend
     // Rollen aendern.
-
-    const themeChanged =
-      typeof updateData.selected_theme === "string" ||
-      updateData.color_scheme === "dark" ||
-      updateData.color_scheme === "light" ||
-      updateData.color_scheme === "system"
-
-    if (themeChanged) {
-      const updateResult = await coreStore.updateUserThemeState(userId, {
-        theme:
-          typeof updateData.selected_theme === "string" ? updateData.selected_theme : undefined,
-        colorScheme:
-          updateData.color_scheme === "dark" ||
-          updateData.color_scheme === "light" ||
-          updateData.color_scheme === "system"
-            ? updateData.color_scheme
-            : undefined,
-      })
-
-      if (!updateResult) {
-        return NextResponse.json(
-          { error: "Profil konnte nicht aktualisiert werden" },
-          { status: 500 }
-        )
-      }
-    }
 
     const profileSettingsChanged =
       updateData.display_name !== undefined ||

@@ -1,3 +1,4 @@
+// AUTH: authenticated
 /**
  * Router-Endpoint für AI-Chat
  *

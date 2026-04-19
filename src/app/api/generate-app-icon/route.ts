@@ -1,3 +1,4 @@
+// AUTH: admin
 /**
  * API Route: App Icon Generation
  *
@@ -9,6 +10,7 @@ import { NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { createMediaService } from "@/lib/media"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { createServiceClient } from "@/utils/supabase/service"
 
@@ -178,6 +180,12 @@ export async function POST(req: Request): Promise<NextResponse> {
           }
         : undefined,
     }
+
+    await recordAudit(userOrError.clerkUserId, "app_icon.generated", "app_icon", appName, {
+      provider,
+      model: model ?? null,
+      variants,
+    })
 
     return NextResponse.json(response)
   } catch (error) {
