@@ -12,6 +12,12 @@ import { getCoreStore } from "@/lib/core"
 import { blobStorageDecode, getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { env } from "@/env.mjs"
+import { performBootCheck } from "@/lib/config/boot-check"
+
+// Plan H2: einmaliger Config-Check direkt beim ersten Modul-Import des Root-Layouts.
+// Wenn Pflicht-Envs (Clerk / SpacetimeDB) fehlen, faellt der Server hart aus statt
+// spaeter mit kryptischen Folgefehlern zu sterben.
+performBootCheck()
 
 /** CI / `SKIP_ENV_VALIDATION`: verhindert statisches Pre-Rendering von Shell-Seiten, die Supabase im Modulgraph erwarten. */
 export const dynamic = "force-dynamic"

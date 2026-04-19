@@ -23,20 +23,21 @@ Ein **produktionsreifes Next.js 16 Template** mit:
 
 ## 🏗️ Tech Stack
 
-| Kategorie      | Technologie                                       |
-| -------------- | ------------------------------------------------- |
-| **Framework**  | Next.js 16.0.7 (Turbopack, App Router)            |
-| **UI**         | React 19, ShadCN UI, Radix UI Primitives          |
-| **Styling**    | Tailwind CSS v4 (OKLCH-basiert), CSS-First Config |
-| **Identity**   | Clerk                                             |
-| **Core**       | SpacetimeDB Core ueber `src/lib/core`             |
-| **Backend**    | Supabase (App-DB, Storage)                        |
-| **AI**         | Vercel AI SDK, Gemini 2.5 Flash, assistant-ui     |
-| **State**      | React Context, LocalStorage Persistence           |
-| **Linting**    | ESLint 9 (Custom Rules), Prettier                 |
-| **Testing**    | Vitest, Playwright                                |
-| **Secrets**    | 1Password CLI (`op`) + `pnpm pull-env`            |
-| **Deployment** | Vercel-optimiert                                  |
+| Kategorie      | Technologie                                         |
+| -------------- | --------------------------------------------------- |
+| **Framework**  | Next.js 16.0.7 (Turbopack, App Router)              |
+| **UI**         | React 19, ShadCN UI, Radix UI Primitives            |
+| **Styling**    | Tailwind CSS v4 (OKLCH-basiert), CSS-First Config   |
+| **Identity**   | Clerk                                               |
+| **Core**       | SpacetimeDB Core ueber `src/lib/core`               |
+| **Storage**    | SpacetimeDB Blob-Storage (Themes, App-Icons)        |
+| **App-DB**     | Supabase — **optional**, nur fuer Beispiel-Features |
+| **AI**         | Vercel AI SDK, Gemini 2.5 Flash, assistant-ui       |
+| **State**      | React Context, LocalStorage Persistence             |
+| **Linting**    | ESLint 9 (Custom Rules), Prettier                   |
+| **Testing**    | Vitest, Playwright                                  |
+| **Secrets**    | 1Password CLI (`op`) + `pnpm pull-env`              |
+| **Deployment** | Vercel-optimiert                                    |
 
 ---
 
@@ -47,7 +48,9 @@ Ein **produktionsreifes Next.js 16 Template** mit:
 - Node.js 18+ (empfohlen: 20+)
 - pnpm 8+
 - 1Password CLI (`op`) mit Zugriff auf die Runtime-Secrets
-- Supabase-Projekt für App-DB + Storage
+- Clerk-Projekt (Pflicht, Identity)
+- SpacetimeDB-Core (Pflicht, Themes/Icons/Nav/Profile)
+- Supabase-Projekt **optional**, nur wenn die Beispiel-Features (Bug-Report, Feature-Wishlist, Datenquellen) aktiv sein sollen
 - API-Keys: Google Gemini, OpenAI (optional)
 
 ### 2. Installation mit kessel-cli (empfohlen)
@@ -180,6 +183,34 @@ Dieses Projekt nutzt **genau einen Supabase-MCP** in Cursor:
 - SpacetimeDB und andere Systeme werden nicht ueber zusaetzliche Supabase-MCPs angesprochen
 
 → [MCP Governance Rules](.cursor/rules/mcp-governance.mdc)
+
+---
+
+## 🧩 Boilerplate-Kern vs. Beispiel-Features
+
+Der Kern dieser Boilerplate laeuft vollstaendig **ohne Supabase**. Supabase ist nur
+fuer optionale Beispiel-Features vorgesehen. Entscheidung + Hintergrund:
+[docs/12_plans/260419-boilerplate-db-agnostik.md](docs/12_plans/260419-boilerplate-db-agnostik.md).
+
+| Bereich               | Kern (immer aktiv)                        | Beispiel-Feature (optional)                                                                    |
+| --------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Identity              | Clerk                                     | —                                                                                              |
+| Profile / Rollen      | SpacetimeDB-Core                          | —                                                                                              |
+| Navigation / Branding | SpacetimeDB-Core                          | —                                                                                              |
+| Themes (Metadaten)    | SpacetimeDB-Core `theme_registry`         | —                                                                                              |
+| Theme-CSS / Icons     | SpacetimeDB-Core `blob_asset` + API-Proxy | —                                                                                              |
+| App-Daten             | —                                         | Supabase (`feature_votes`, `bug_reports`, `ai_datasources`, ...)                               |
+| Beispiel-UI-Routen    | —                                         | `/ueber-die-app/feature-wishlist`, `/ueber-die-app/bug-report`, `/app-verwaltung/datenquellen` |
+
+Wenn `NEXT_PUBLIC_SUPABASE_URL` nicht gesetzt ist:
+
+- die Nav blendet Beispiel-Routen aus (`SUPABASE_EXAMPLE_NAV_IDS` in `src/lib/config/features.ts`),
+- betroffene API-Routen antworten mit 503 (`SUPABASE_NOT_CONFIGURED`),
+- der Boot-Check (`src/lib/config/boot-check.ts`) protokolliert den Zustand beim Start.
+
+Neue Kern-Features duerfen **keine** Supabase-Imports enthalten. Quellenhinweis:
+Dateien mit Marker-Kommentar `// BOILERPLATE: example-feature (depends on Supabase)` sind
+ausdruecklich vom Kern ausgenommen.
 
 ---
 

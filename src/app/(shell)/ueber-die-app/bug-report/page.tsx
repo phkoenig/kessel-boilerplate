@@ -1,3 +1,7 @@
+// BOILERPLATE: example-feature (depends on Supabase)
+// Siehe docs/12_plans/260419-boilerplate-db-agnostik.md (Plan I1).
+// Diese Seite ist Teil der optionalen App-Beispiel-Features und wird bei fehlender
+// Supabase-Konfiguration vom Boot-Check + Nav-Seed ausgeblendet.
 "use client"
 
 import { useEffect, useState } from "react"

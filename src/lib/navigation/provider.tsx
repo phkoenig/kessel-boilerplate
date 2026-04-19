@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import type { CoreNavigationRecord } from "@/lib/core"
+import { isSupabaseExamplesEnabled, SUPABASE_EXAMPLE_NAV_IDS } from "@/lib/config/features"
 import {
   buildBreadcrumbEntries,
   buildNavigationSections,
@@ -18,6 +19,13 @@ import {
   type NavigationSection,
 } from "./core-navigation"
 import { NAVIGATION_SEED } from "./seed"
+
+// Plan I2: Nav-Eintraege mit Supabase-Abhaengigkeit werden ausgeblendet, wenn
+// das optionale Beispiel-Feature-Set deaktiviert ist (`isSupabaseExamplesEnabled`).
+const filterExampleRecords = (records: CoreNavigationRecord[]): CoreNavigationRecord[] => {
+  if (isSupabaseExamplesEnabled()) return records
+  return records.filter((record) => !SUPABASE_EXAMPLE_NAV_IDS.has(record.id))
+}
 
 interface NavigationContextValue {
   records: CoreNavigationRecord[]
@@ -40,7 +48,7 @@ const buildFallbackSections = (): {
   sidebarSections: NavigationSection[]
   userMenuSection: NavigationSection | null
 } => {
-  const records = SEED_RECORDS
+  const records = filterExampleRecords(SEED_RECORDS)
   const sidebarSections = buildNavigationSections(records, "sidebar")
   const userMenuSection = buildNavigationSections(records, "user")[0] ?? null
 
@@ -114,15 +122,17 @@ export function NavigationProvider({ children }: { children: ReactNode }): React
     return () => clearTimeout(timeoutId)
   }, [loadNavigation])
 
+  const visibleRecords = useMemo(() => filterExampleRecords(records), [records])
+
   const sections = useMemo(() => {
-    const sidebarSections = buildNavigationSections(records, "sidebar")
-    const userMenuSection = buildNavigationSections(records, "user")[0] ?? null
+    const sidebarSections = buildNavigationSections(visibleRecords, "sidebar")
+    const userMenuSection = buildNavigationSections(visibleRecords, "user")[0] ?? null
     return { sidebarSections, userMenuSection }
-  }, [records])
+  }, [visibleRecords])
 
   const value = useMemo<NavigationContextValue>(() => {
     const fallback = buildFallbackSections()
-    const activeRecords = records.length > 0 ? records : fallback.records
+    const activeRecords = visibleRecords.length > 0 ? visibleRecords : fallback.records
     const sidebarSections =
       sections.sidebarSections.length > 0 ? sections.sidebarSections : fallback.sidebarSections
     const userMenuSection = sections.userMenuSection ?? fallback.userMenuSection
@@ -136,7 +146,7 @@ export function NavigationProvider({ children }: { children: ReactNode }): React
       findCurrentItem: (href) => findNavigationItemByHref(activeRecords, href),
       getBreadcrumbs: (href) => buildBreadcrumbEntries(activeRecords, href),
     }
-  }, [isLoaded, loadNavigation, records, sections.sidebarSections, sections.userMenuSection])
+  }, [isLoaded, loadNavigation, visibleRecords, sections.sidebarSections, sections.userMenuSection])
 
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>
 }

@@ -1,17 +1,12 @@
 // AUTH: dev-only (hart gegen Production geblockt via Modul-Guard + next.config redirect)
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getCoreStore } from "@/lib/core"
 
 /**
- * Dev-Route: Liste aller registrierten User (Supabase Auth).
+ * Dev-Route: Liste aller registrierten User.
  *
- * Strikt Dev-only. Plan H-3:
- * - Kein Modul-`throw` bei `NODE_ENV=production` (sonst schlaegt `next build` fehl).
- * - Runtime-Check: 403 wenn nicht Development oder `BOILERPLATE_AUTH_BYPASS !== "true"`.
- * - `next.config.ts redirects()`: leitet `/api/dev/*` in Production hart auf 404.
- *
- * Die Variable heisst **nicht** mehr `NEXT_PUBLIC_AUTH_BYPASS`, damit sie nicht
- * ins Client-Bundle laekt.
+ * Plan G4: Liest ausschliesslich aus dem Spacetime-Core (kein Supabase mehr).
+ * Siehe `dev/impersonate/route.ts` fuer Details zum Dev-Guard.
  */
 export async function GET() {
   const isDev = process.env.NODE_ENV === "development"
@@ -21,35 +16,17 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "Supabase credentials not configured" }, { status: 500 })
-  }
-
   try {
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    const coreStore = getCoreStore()
+    const users = await coreStore.listUsers()
 
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers()
-
-    if (error) {
-      console.error("[DEV API] Fehler beim Laden der User:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    const userList = users.users.map((user) => ({
-      id: user.id,
+    const userList = users.map((user) => ({
+      id: user.clerkUserId,
       email: user.email,
-      displayName: user.user_metadata?.display_name || user.email?.split("@")[0] || "Unbekannt",
-      role: user.user_metadata?.role || "user",
-      createdAt: user.created_at,
-      lastSignIn: user.last_sign_in_at,
+      displayName: user.displayName || user.email?.split("@")[0] || "Unbekannt",
+      role: user.role,
+      createdAt: user.createdAt,
+      lastSignIn: null,
     }))
 
     return NextResponse.json({ users: userList })

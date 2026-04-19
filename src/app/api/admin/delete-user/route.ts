@@ -5,8 +5,8 @@ import { z } from "zod"
 import { apiError } from "@/lib/api/errors"
 import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
+import { isSupabaseExamplesEnabled } from "@/lib/config/features"
 import { getCoreStore } from "@/lib/core"
-import { createServiceClient } from "@/utils/supabase/service"
 
 const DeleteUserSchema = z.object({
   clerkUserId: z.string().min(1).max(200),
@@ -40,7 +40,11 @@ export async function POST(request: Request) {
     const coreStore = getCoreStore()
     const existingProfile = await coreStore.getUserByClerkId(clerkUserId)
 
-    if (existingProfile) {
+    // Supabase-spezifische Beispiel-Feature-Cleanups (feature_votes, Tenant-Assignments
+    // in App-DB) laufen nur, wenn Supabase als optionale App-DB konfiguriert ist.
+    // Siehe Plan G3/H3/I — der Boilerplate-Kern bleibt vollstaendig ohne Supabase lauffaehig.
+    if (existingProfile && isSupabaseExamplesEnabled()) {
+      const { createServiceClient } = await import("@/utils/supabase/service")
       const supabase = createServiceClient()
 
       try {
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
           p_user_id: existingProfile.id,
         })
       } catch {
-        // Membership-Cleanup bleibt best effort, bis der App-DB-Pfad vollstaendig migriert ist.
+        // Membership-Cleanup in der App-DB bleibt best effort.
       }
 
       await Promise.allSettled([

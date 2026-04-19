@@ -1,5 +1,9 @@
 // AUTH: admin
+// BOILERPLATE: example-feature (depends on Supabase)
+// Siehe docs/12_plans/260419-boilerplate-db-agnostik.md (Plan I1).
 import { NextResponse } from "next/server"
+import { apiError } from "@/lib/api/errors"
+import { isSupabaseExamplesEnabled } from "@/lib/config/features"
 import { createClient } from "@/utils/supabase/server"
 import { discoverTables, syncDatasourcesForDatabase } from "@/lib/database/db-registry"
 import { requireAdmin } from "@/lib/auth/guards"
@@ -11,6 +15,14 @@ import { requireAdmin } from "@/lib/auth/guards"
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!isSupabaseExamplesEnabled()) {
+      return apiError(
+        "SUPABASE_NOT_CONFIGURED",
+        "Dieses Beispiel-Feature (Datenquellen) benoetigt eine Supabase-Konfiguration.",
+        503
+      )
+    }
+
     const { id } = await params
 
     const userOrError = await requireAdmin()
@@ -65,6 +77,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!isSupabaseExamplesEnabled()) {
+      return apiError(
+        "SUPABASE_NOT_CONFIGURED",
+        "Dieses Beispiel-Feature (Datenquellen) benoetigt eine Supabase-Konfiguration.",
+        503
+      )
+    }
+
     const { id } = await params
 
     const userOrError = await requireAdmin()

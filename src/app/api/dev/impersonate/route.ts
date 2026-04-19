@@ -1,14 +1,17 @@
 // AUTH: dev-only (hart gegen Production geblockt via Modul-Guard + next.config redirect)
+import { clerkClient } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import { createServerClient } from "@supabase/ssr"
 
 /**
- * Dev-Route: User-Impersonation (Magic-Link → Session).
+ * Dev-Route: User-Impersonation via Clerk Sign-In-Token.
  *
- * Strikt Dev-only. Plan H-3. Siehe `dev/users/route.ts` fuer Details (kein Build-Zeit-Throw).
+ * Plan G4: Kein Supabase-Magic-Link mehr. Wir erzeugen ueber
+ * `clerkClient.signInTokens.createSignInToken` ein Ticket und geben die
+ * zugehoerige Sign-In-URL zurueck. Der Client redirected darauf, Clerk
+ * setzt die Session-Cookies in seinem eigenen Flow.
+ *
+ * Strikt Dev-only. Siehe `dev/users/route.ts` fuer Details zum Dev-Guard.
  */
-
 export async function POST(request: NextRequest) {
   const isDev = process.env.NODE_ENV === "development"
   const bypassEnabled = process.env.BOILERPLATE_AUTH_BYPASS === "true"
@@ -18,98 +21,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json()
-    const { userId, email } = body
+    const body = (await request.json()) as { userId?: string; email?: string }
+    const { userId } = body
 
-    if (!userId || !email) {
-      return NextResponse.json({ error: "userId and email are required" }, { status: 400 })
+    if (!userId) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const anonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-      return NextResponse.json({ error: "Supabase credentials not configured" }, { status: 500 })
-    }
-
-    // Erstelle Admin-Client für Token-Generierung
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    const clerk = await clerkClient()
+    const signInToken = await clerk.signInTokens.createSignInToken({
+      userId,
+      expiresInSeconds: 60 * 5,
     })
 
-    // Generiere Magic Link Token für den User
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: email,
+    if (!signInToken?.token) {
+      return NextResponse.json({ error: "Failed to create sign-in token" }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      userId,
+      token: signInToken.token,
+      signInUrl: `/sign-in?__clerk_ticket=${encodeURIComponent(signInToken.token)}`,
     })
-
-    if (linkError || !linkData) {
-      console.error("[DEV API] Fehler beim Generieren des Magic Links:", linkError)
-      return NextResponse.json(
-        { error: linkError?.message || "Failed to generate magic link" },
-        { status: 500 }
-      )
-    }
-
-    // Extrahiere Token-Hash (direkt aus Properties oder aus Magic Link URL)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase Typen sind nicht vollständig
-    const properties = linkData.properties as any
-    let tokenHash = properties.token_hash
-
-    // Fallback: Extrahiere Token aus Magic Link URL falls token_hash nicht verfügbar
-    if (!tokenHash) {
-      const magicLink = properties.action_link
-      const tokenMatch = magicLink?.match(/token=([^&]+)/)
-      tokenHash = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null
-    }
-
-    if (!tokenHash) {
-      return NextResponse.json(
-        { error: "Failed to extract token from magic link" },
-        { status: 500 }
-      )
-    }
-
-    // Erstelle Response mit Cookie-Setup
-    const response = NextResponse.json({ success: true, userId, email })
-
-    // Erstelle Server-Client für Cookie-Management
-    const supabaseServer = createServerClient(supabaseUrl, anonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    })
-
-    // Verifiziere den Token und erstelle Session
-    const { data: verifyData, error: verifyError } = await supabaseServer.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: "magiclink",
-    })
-
-    if (verifyError || !verifyData.user) {
-      console.error("[DEV API] Fehler beim Verifizieren des Tokens:", verifyError)
-      return NextResponse.json(
-        { error: verifyError?.message || "Failed to verify token" },
-        { status: 500 }
-      )
-    }
-
-    // Session wurde automatisch in Cookies gesetzt
-    return response
   } catch (error) {
-    console.error("[DEV API] Unerwarteter Fehler:", error)
+    console.error("[DEV API] Impersonate Fehler:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

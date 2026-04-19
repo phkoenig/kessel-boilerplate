@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Loader2 } from "lucide-react"
-import { createClient } from "@/utils/supabase/client"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { AIInteractable } from "@/components/ai/AIInteractable"
 
@@ -20,7 +19,6 @@ import { AIInteractable } from "@/components/ai/AIInteractable"
  */
 export default function ProfilePage(): React.ReactElement {
   const { user, isLoading, refreshUser } = useAuth()
-  const supabase = createClient()
 
   // Form States
   const [displayName, setDisplayName] = useState("")
@@ -279,22 +277,21 @@ export default function ProfilePage(): React.ReactElement {
     setSavedEmail(false)
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: email.trim(),
+      const response = await fetch("/api/user/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
       })
 
-      if (updateError) {
-        if (updateError.message.includes("already registered")) {
-          throw new Error("Diese E-Mail-Adresse wird bereits verwendet")
-        }
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error || "E-Mail konnte nicht geaendert werden")
       }
 
       setSavedEmail(true)
-      setSuccess(
-        "Eine Bestätigungs-E-Mail wurde an die neue Adresse gesendet. Bitte bestätige die Änderung, bevor die neue E-Mail-Adresse aktiv wird."
-      )
+      setSuccess("E-Mail-Adresse wurde aktualisiert.")
       setTimeout(() => setSuccess(null), 10000)
+      await refreshUser?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Ändern der E-Mail-Adresse")
     } finally {
@@ -329,12 +326,15 @@ export default function ProfilePage(): React.ReactElement {
     setSavedPassword(false)
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
+      const response = await fetch("/api/user/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
       })
 
-      if (updateError) {
-        throw updateError
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error || "Passwort konnte nicht aktualisiert werden")
       }
 
       setNewPassword("")

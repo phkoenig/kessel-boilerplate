@@ -1,8 +1,10 @@
 /**
  * getAuthenticatedUser — Clerk Auth + Boilerplate-Core-Profil
  *
- * Kombiniert Clerk Auth mit Profil-Lookup im Spacetime-Core.
- * Verwende in API Routes statt `supabase.auth.getUser()`.
+ * Einzige zentrale Auth-Quelle im Boilerplate-Kern: Clerk fuer Identity,
+ * Spacetime-Core fuer Profil-Attribute (Role, Tenant, Display-Name).
+ * Die Funktion kennt explizit kein Supabase — siehe Plan G5
+ * (`docs/12_plans/260419-boilerplate-db-agnostik.md`).
  *
  * @returns {@link AuthenticatedUser} oder `null` wenn nicht eingeloggt / kein Profil
  */

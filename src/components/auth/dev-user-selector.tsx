@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Loader2, User, Shield, AlertCircle } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAuth } from "@/components/auth/auth-context"
 import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 interface DevUser {
@@ -26,10 +25,8 @@ interface DevUser {
  * Funktioniert NUR im Development-Mode mit aktiviertem Bypass.
  */
 export function DevUserSelector(): React.ReactElement {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/"
-  const { refreshUser } = useAuth()
 
   const [users, setUsers] = useState<DevUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,16 +80,17 @@ export function DevUserSelector(): React.ReactElement {
         throw new Error(errorData.error || "Fehler beim Anmelden")
       }
 
-      // WICHTIG: Explizit den Auth-State aktualisieren, damit die Navbar sofort aktualisiert wird
-      // refreshUser() lädt den neuen User und aktualisiert den Auth-Context
-      await refreshUser()
+      const data = (await response.json()) as { signInUrl?: string }
+      if (!data.signInUrl) {
+        throw new Error("Keine Sign-In-URL vom Server erhalten")
+      }
 
-      // Kurze Verzögerung, damit der Auth-State sich propagieren kann
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      // Erfolgreich eingeloggt - Redirect
-      router.push(redirectTo)
-      router.refresh()
+      // Clerk-Ticket-Flow: `/sign-in?__clerk_ticket=...` erledigt den Login
+      // und setzt Session-Cookies. refreshUser() laeuft danach automatisch
+      // im neuen Page-Load.
+      const url = new URL(data.signInUrl, window.location.origin)
+      url.searchParams.set("redirect_url", redirectTo)
+      window.location.href = url.toString()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Anmelden")
       setImpersonating(null)

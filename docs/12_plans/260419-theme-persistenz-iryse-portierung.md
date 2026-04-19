@@ -5,7 +5,7 @@
 > **Grundlage:**
 >
 > - `docs/13_assessments/260419-theme-system-ter-vs-iryse.md`
-> - Referenz-Implementierung: `B:/DEV/iryse/src/lib/themes/**` (verifiziert vorhanden)
+> - Referenz-Implementierung: `B:/DEV/iryse/src/lib/themes/`\*\* (verifiziert vorhanden)
 > - Ist-Zustand: `B:/DEV/kessel-boilerplate/src/lib/themes/**` (entspricht 1:1 der TER-Architektur)
 >   **Geschaetzter Gesamtaufwand:** Large (5–7 Entwicklertage fokussiert, inkl. Design-System-Page-Refactoring)
 >   **Branch-Strategie:** Direkt auf `main` (User-Entscheidung), mit Feature-Flag `FEATURE_NEW_THEME_SYSTEM` fuer kritische Phasen
@@ -375,7 +375,7 @@ der G2+-Schritte ableitet.
 | Feld                | Wert                                                                         |
 | ------------------- | ---------------------------------------------------------------------------- |
 | **Was**             | Slider-States (Hue-Shift, Sat-Mult, Chart-Hue-Spacing etc.) initialisieren   |
-|                     | aus CSS-Variablen `--meta-*` statt localStorage. Bei Save werden diese als   |
+|                     | aus CSS-Variablen `--meta-`\* statt localStorage. Bei Save werden diese als  |
 |                     | Meta-Tokens mit persistiert                                                  |
 | **Wo**              | In den aus G2 extrahierten Sliders-Komponenten + `theme-editor-context.tsx`  |
 | **Abhaengigkeiten** | D1, G2                                                                       |
@@ -551,36 +551,36 @@ Weil User direkt auf `main` arbeiten will: Flag `NEXT_PUBLIC_FEATURE_NEW_THEME`:
 
 ### 7.1 Funktional
 
-- [ ] Admin kann Theme im Theme-Manager wechseln, Non-Admin sieht Read-Only
-- [ ] Admin-Save auf Design-System-Page persistiert alle Tokens inkl. Dark-Mode
-- [ ] Slider-States (inkl. Meta-Tokens) bleiben nach Reload erhalten
-- [ ] Multi-Admin: Aenderung in Tab A wird in Tab B in < 3s sichtbar
-- [ ] Kein FOUC bei Hard-Reload
-- [ ] Non-Admin kann keine Theme-Mutationen aufrufen (API-seitig geprueft)
-- [ ] `/benutzer-menue/theme` existiert nicht mehr, keine 404-Links in Navigation
-- [ ] Design-System-Page hat Docs-Mode (oder bewusst als Folge-Plan aufgeschoben)
+- Admin kann Theme im Theme-Manager wechseln, Non-Admin sieht Read-Only
+- Admin-Save auf Design-System-Page persistiert alle Tokens inkl. Dark-Mode
+- Slider-States (inkl. Meta-Tokens) bleiben nach Reload erhalten
+- Multi-Admin: Aenderung in Tab A wird in Tab B in < 3s sichtbar
+- Kein FOUC bei Hard-Reload
+- Non-Admin kann keine Theme-Mutationen aufrufen (API-seitig geprueft)
+- `/benutzer-menue/theme` existiert nicht mehr, keine 404-Links in Navigation
+- Design-System-Page hat Docs-Mode (oder bewusst als Folge-Plan aufgeschoben)
 
 ### 7.2 Technisch
 
-- [ ] Alle A-Files existieren und sind getypt (`pnpm tsc --noEmit` gruen)
-- [ ] `rg "localStorage.*theme" src/` liefert nur `next-themes`-Treffer
-- [ ] `rg "useState.*theme" src/lib/themes/` liefert 0 Treffer
-- [ ] `src/app/(shell)/benutzer-menue/theme/` existiert nicht mehr
-- [ ] `src/app/api/user/theme/route.ts` existiert nicht mehr
-- [ ] `rg "update_user_theme_state" src/` liefert nur Modulbinding-Defaults
-- [ ] `unstable_cache`-Keys sind getaggt + `revalidateTag` wird im Save-Pfad aufgerufen
-- [ ] Alle 4 Residual-Bugs (E1–E5) haben einen Test der ohne Fix failt
-- [ ] Design-System-Page-Hauptdatei < 300 LOC (User-Rule)
-- [ ] Jede extrahierte Komponente < 300 LOC
-- [ ] Feature-Flag `NEXT_PUBLIC_FEATURE_NEW_THEME` ist im Code **nicht mehr vorhanden**
+- Alle A-Files existieren und sind getypt (`pnpm tsc --noEmit` gruen)
+- `rg "localStorage.*theme" src/` liefert nur `next-themes`-Treffer
+- `rg "useState.*theme" src/lib/themes/` liefert 0 Treffer
+- `src/app/(shell)/benutzer-menue/theme/` existiert nicht mehr
+- `src/app/api/user/theme/route.ts` existiert nicht mehr
+- `rg "update_user_theme_state" src/` liefert nur Modulbinding-Defaults
+- `unstable_cache`-Keys sind getaggt + `revalidateTag` wird im Save-Pfad aufgerufen
+- Alle 4 Residual-Bugs (E1–E5) haben einen Test der ohne Fix failt
+- Design-System-Page-Hauptdatei < 300 LOC (User-Rule)
+- Jede extrahierte Komponente < 300 LOC
+- Feature-Flag `NEXT_PUBLIC_FEATURE_NEW_THEME` ist im Code **nicht mehr vorhanden**
 
 ### 7.3 Qualitaet
 
-- [ ] Unit-Test-Coverage fuer `css.ts` + `theme-save-merge.ts` > 80%
-- [ ] E2E-Suite gruen in CI (`pnpm test:e2e`)
-- [ ] ADR in `docs/02_architecture/theme-architecture.md` beschrieben
-- [ ] Eintrag in `README.md` (Tech-Stack-Abschnitt) aktualisiert
-- [ ] Gap-Analyse F5 liefert keine offenen High/Critical-Punkte
+- Unit-Test-Coverage fuer `css.ts` + `theme-save-merge.ts` > 80%
+- E2E-Suite gruen in CI (`pnpm test:e2e`)
+- ADR in `docs/02_architecture/theme-architecture.md` beschrieben
+- Eintrag in `README.md` (Tech-Stack-Abschnitt) aktualisiert
+- Gap-Analyse F5 liefert keine offenen High/Critical-Punkte
 
 ---
 

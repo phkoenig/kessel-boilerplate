@@ -3,8 +3,13 @@ import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
 // 1. Server-Schema definieren UND EXPORTIEREN
+//    Supabase-bezogene Vars sind seit Plan H1 alle optional — der
+//    Boilerplate-Kern laeuft ohne Supabase. Nur die optionalen
+//    Beispiel-Features (Bug-Report, Feature-Wishlist, Datenquellen)
+//    benoetigen sie.
 export const serverSchema = z.object({
-  SERVICE_ROLE_KEY: z.string().min(1),
+  SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   FAL_API_KEY: z.string().optional(),
   // Clerk — Pflicht fuer Boilerplate 3.0 (Single-Tenant Identity)
@@ -14,8 +19,8 @@ export const serverSchema = z.object({
 
 // 2. Client-Schema definieren UND EXPORTIEREN
 export const clientSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   NEXT_PUBLIC_TENANT_SLUG: z.string().optional(),
   NEXT_PUBLIC_APP_NAME: z.string().optional(),
@@ -46,6 +51,7 @@ export const env = createEnv({
     NEXT_PUBLIC_SPACETIMEDB_DATABASE: process.env.NEXT_PUBLIC_SPACETIMEDB_DATABASE,
     NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: process.env.NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER,
     SERVICE_ROLE_KEY: process.env.SERVICE_ROLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     FAL_API_KEY: process.env.FAL_API_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
