@@ -308,9 +308,7 @@ export default function ThemeManagementPage(): React.ReactElement {
                   <Users className="text-primary mt-1 size-4 shrink-0" />
                   <div>
                     <div className="font-medium">App-weit (global)</div>
-                    <div className="text-muted-foreground text-sm">
-                      Ein Theme für alle Nutzer. Nur Administratoren dürfen es ändern.
-                    </div>
+                    <div className="text-muted-foreground text-sm">Ein Theme für alle Nutzer.</div>
                   </div>
                 </Label>
                 <Label
