@@ -1,3 +1,6 @@
+import fs from "node:fs"
+import path from "node:path"
+
 import { DbConnection } from "@/lib/spacetime/module-bindings"
 
 const DEFAULT_SPACETIME_URI = "wss://maincloud.spacetimedb.com"
@@ -13,6 +16,48 @@ const getSpacetimeUri = (): string =>
 const getSpacetimeDatabase = (): string =>
   process.env.NEXT_PUBLIC_SPACETIMEDB_DATABASE?.trim() || DEFAULT_SPACETIME_DATABASE
 
+/**
+ * Persistiert das beim ersten Connect von Spacetime vergebene Identity-Token
+ * in einer lokalen Datei (dev) bzw. laedt es von dort, damit der Next.js-Server
+ * ueber Restarts hinweg dieselbe Spacetime-Identity behaelt. Ohne diese
+ * Persistenz bekaeme jeder Server-Start eine neue anonyme Identity, die nicht
+ * in `service_identity` registriert ist – und alle mutierenden Reducer
+ * failen mit `unauthorized: mutating reducer requires registered service
+ * identity`.
+ *
+ * In Production sollte stattdessen `BOILERPLATE_SPACETIME_AUTH_TOKEN` via
+ * Env-Var (1Password) gesetzt sein.
+ */
+const getTokenFilePath = (): string => path.join(process.cwd(), ".spacetime-auth-token")
+
+const loadPersistedToken = (): string | undefined => {
+  const envToken = process.env.BOILERPLATE_SPACETIME_AUTH_TOKEN?.trim()
+  if (envToken) {
+    return envToken
+  }
+  try {
+    const file = getTokenFilePath()
+    if (fs.existsSync(file)) {
+      const token = fs.readFileSync(file, "utf8").trim()
+      return token || undefined
+    }
+  } catch (err) {
+    console.warn("[spacetime] failed to load auth token:", err)
+  }
+  return undefined
+}
+
+const persistToken = (token: string | undefined): void => {
+  if (!token || process.env.BOILERPLATE_SPACETIME_AUTH_TOKEN) {
+    return
+  }
+  try {
+    fs.writeFileSync(getTokenFilePath(), token, { encoding: "utf8" })
+  } catch (err) {
+    console.warn("[spacetime] failed to persist auth token:", err)
+  }
+}
+
 const createConnection = (): Promise<DbConnection> =>
   new Promise((resolve, reject) => {
     let settled = false
@@ -26,12 +71,23 @@ const createConnection = (): Promise<DbConnection> =>
     }, CONNECTION_TIMEOUT_MS)
 
     try {
-      DbConnection.builder()
+      const persistedToken = loadPersistedToken()
+      const builder = DbConnection.builder()
         .withUri(getSpacetimeUri())
         .withDatabaseName(getSpacetimeDatabase())
-        .onConnect((connection) => {
+
+      if (persistedToken) {
+        builder.withToken(persistedToken)
+      }
+
+      builder
+        .onConnect((connection, _identity, token) => {
           if (settled) {
             return
+          }
+
+          if (!persistedToken && token) {
+            persistToken(token)
           }
 
           settled = true
@@ -84,7 +140,15 @@ export const getSpacetimeServerConnection = async (): Promise<DbConnection> => {
           registrationSecret && registrationSecret.length > 0 ? registrationSecret : undefined,
       })
     } catch (err) {
-      console.warn("[spacetime] registerServiceIdentity failed (non-fatal):", err)
+      console.warn(
+        "[spacetime] registerServiceIdentity failed. Falls alle mutierenden " +
+          "Reducer mit 'unauthorized: mutating reducer requires registered " +
+          "service identity' abbrechen, die Tabelle einmal zuruecksetzen:\n" +
+          '  spacetime sql kessel-boilerplate-core-dev "DELETE FROM service_identity"\n' +
+          "und danach den Dev-Server neu starten (Token bleibt via " +
+          ".spacetime-auth-token erhalten).",
+        err
+      )
     }
   }
 

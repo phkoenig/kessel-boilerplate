@@ -9,6 +9,9 @@
 # Auto-generated files
 src/config/version.ts
 
+# Spacetime Service Identity Token (dev-local)
+.spacetime-auth-token
+
 # Next.js
 .next/
 out/
