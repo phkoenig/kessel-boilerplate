@@ -282,6 +282,7 @@ export async function fetchThemeSnapshot(
 export async function updateEffectiveThemeSelection(updates: {
   theme?: string
   colorScheme?: ThemeColorScheme
+  themeScope?: "global" | "per_user"
 }): Promise<{ success: boolean; snapshot?: ThemeSnapshot; error?: string }> {
   try {
     const res = await fetch("/api/user/theme", {

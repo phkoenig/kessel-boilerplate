@@ -87,6 +87,8 @@ const mapAppSettings = (
         iconUrl?: string
         iconVariantsJson?: string
         iconProvider?: string
+        themeScope?: string
+        globalThemeId?: string
       }
     | undefined
 ): CoreAppSettings | null => {
@@ -112,6 +114,10 @@ const mapAppSettings = (
     }
   }
 
+  const rawThemeScope = value.themeScope?.trim() ?? ""
+  const themeScope: "global" | "per_user" = rawThemeScope === "per_user" ? "per_user" : "global"
+  const rawGlobalThemeId = value.globalThemeId?.trim() ?? ""
+
   return {
     tenantSlug: value.tenantSlug,
     appName: value.appName ?? null,
@@ -119,6 +125,8 @@ const mapAppSettings = (
     iconUrl: value.iconUrl ?? null,
     iconVariants,
     iconProvider: value.iconProvider ?? null,
+    themeScope,
+    globalThemeId: rawGlobalThemeId.length > 0 ? rawGlobalThemeId : null,
   }
 }
 
@@ -566,6 +574,8 @@ export const createSpacetimeCoreStore = (): CoreStore => ({
       iconUrl: input.iconUrl ?? undefined,
       iconVariantsJson: input.iconVariants ? JSON.stringify(input.iconVariants) : undefined,
       iconProvider: input.iconProvider ?? undefined,
+      themeScope: input.themeScope ?? undefined,
+      globalThemeId: input.globalThemeId ?? undefined,
     })
 
     return this.getAppSettings(tenantSlug)

@@ -4,6 +4,8 @@ export interface AppSettingsRowLike {
   iconUrl?: string | undefined
   iconVariantsJson?: string | undefined
   iconProvider?: string | undefined
+  themeScope?: string | undefined
+  globalThemeId?: string | undefined
 }
 
 export interface AppSettingsUpdateInput {
@@ -12,6 +14,8 @@ export interface AppSettingsUpdateInput {
   iconUrl?: string | undefined
   iconVariantsJson?: string | undefined
   iconProvider?: string | undefined
+  themeScope?: string | undefined
+  globalThemeId?: string | undefined
 }
 
 const normalizeOptionalString = (value: string | undefined): string | undefined => {
@@ -48,5 +52,13 @@ export const mergeAppSettingsUpdate = (
       input.iconProvider === undefined
         ? existingSettings.iconProvider
         : normalizeOptionalString(input.iconProvider),
+    themeScope:
+      input.themeScope === undefined
+        ? existingSettings.themeScope
+        : normalizeOptionalString(input.themeScope),
+    globalThemeId:
+      input.globalThemeId === undefined
+        ? existingSettings.globalThemeId
+        : normalizeOptionalString(input.globalThemeId),
   }
 }

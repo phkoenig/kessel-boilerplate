@@ -17,4 +17,6 @@ export default {
   iconUrl: __t.option(__t.string()),
   iconVariantsJson: __t.option(__t.string()),
   iconProvider: __t.option(__t.string()),
+  themeScope: __t.option(__t.string()),
+  globalThemeId: __t.option(__t.string()),
 }

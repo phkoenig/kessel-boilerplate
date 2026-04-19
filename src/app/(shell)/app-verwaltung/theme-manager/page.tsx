@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { PageContent, PageHeader } from "@/components/shell"
 import { useExplorer } from "@/components/shell"
-import { Palette, Sun, Moon, Edit, Trash2 } from "lucide-react"
+import { Palette, Sun, Moon, Edit, Trash2, Users, User } from "lucide-react"
 import { useTheme as useColorMode } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { AddButton } from "@/components/ui/add-button"
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -52,7 +53,15 @@ import { AIInteractable } from "@/components/ai/AIInteractable"
  * Rundungen und Schatten. Ermöglicht Theme-Verwaltung und Light/Dark Mode.
  */
 export default function ThemeManagementPage(): React.ReactElement {
-  const { theme: currentThemeId, setTheme, themes: contextThemes, refreshThemes } = useTheme()
+  const {
+    theme: currentThemeId,
+    setTheme,
+    themes: contextThemes,
+    refreshThemes,
+    themeScope,
+    isAdmin,
+    setThemeScope,
+  } = useTheme()
   const { theme: colorMode, setTheme: setColorMode, resolvedTheme } = useColorMode()
   const { setOpen: setExplorerOpen } = useExplorer()
 
@@ -72,6 +81,21 @@ export default function ThemeManagementPage(): React.ReactElement {
   const [importName, setImportName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [isScopePending, setIsScopePending] = useState(false)
+  const [scopeError, setScopeError] = useState<string | null>(null)
+
+  const handleChangeThemeScope = async (next: "global" | "per_user"): Promise<void> => {
+    if (next === themeScope || isScopePending) return
+    setIsScopePending(true)
+    setScopeError(null)
+    try {
+      await setThemeScope(next)
+    } catch (err) {
+      setScopeError(err instanceof Error ? err.message : "Theme-Scope konnte nicht gesetzt werden.")
+    } finally {
+      setIsScopePending(false)
+    }
+  }
 
   // Synchronisiere mit Context-Themes
   useEffect(() => {
@@ -246,6 +270,79 @@ export default function ThemeManagementPage(): React.ReactElement {
       </div>
 
       <div className="space-y-8">
+        {/* Theme-Scope (Admin-only) */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="size-5" />
+                Theme-Geltungsbereich
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4 text-sm">
+                Bestimme, ob das Theme für die gesamte App gilt oder jeder Nutzer sein eigenes
+                wählen darf. Der Dark-/Light-Modus bleibt unabhängig davon eine persönliche
+                Einstellung.
+              </p>
+              <RadioGroup
+                value={themeScope}
+                onValueChange={(value) => handleChangeThemeScope(value as "global" | "per_user")}
+                disabled={isScopePending}
+                className="grid gap-2 md:grid-cols-2"
+                aria-label="Theme-Geltungsbereich"
+                data-ai-exempt="true"
+              >
+                <Label
+                  htmlFor="theme-scope-global"
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded-lg border p-4 transition-colors",
+                    "hover:bg-accent/40",
+                    themeScope === "global"
+                      ? "border-primary bg-accent/30"
+                      : "border-border bg-transparent",
+                    isScopePending && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <RadioGroupItem value="global" id="theme-scope-global" className="mt-1" />
+                  <Users className="text-primary mt-1 size-4 shrink-0" />
+                  <div>
+                    <div className="font-medium">App-weit (global)</div>
+                    <div className="text-muted-foreground text-sm">
+                      Ein Theme für alle Nutzer. Nur Administratoren dürfen es ändern.
+                    </div>
+                  </div>
+                </Label>
+                <Label
+                  htmlFor="theme-scope-per-user"
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded-lg border p-4 transition-colors",
+                    "hover:bg-accent/40",
+                    themeScope === "per_user"
+                      ? "border-primary bg-accent/30"
+                      : "border-border bg-transparent",
+                    isScopePending && "pointer-events-none opacity-50"
+                  )}
+                >
+                  <RadioGroupItem value="per_user" id="theme-scope-per-user" className="mt-1" />
+                  <User className="text-primary mt-1 size-4 shrink-0" />
+                  <div>
+                    <div className="font-medium">Pro Nutzer</div>
+                    <div className="text-muted-foreground text-sm">
+                      Jeder Nutzer wählt sein eigenes Theme.
+                    </div>
+                  </div>
+                </Label>
+              </RadioGroup>
+              {scopeError && (
+                <p className="text-destructive mt-4 text-sm" role="alert">
+                  {scopeError}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Theme-Verwaltung */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

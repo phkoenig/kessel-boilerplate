@@ -5,11 +5,11 @@
 > **Grundlage:**
 >
 > - `docs/13_assessments/260419-theme-system-ter-vs-iryse.md`
-> - Referenz-Implementierung: `B:/DEV/iryse/src/lib/themes/`\*\* (verifiziert vorhanden)
-> - Ist-Zustand: `B:/DEV/kessel-boilerplate/src/lib/themes/**` (entspricht 1:1 der TER-Architektur)
+> - Referenz-Implementierung: `B:/DEV/iryse/src/lib/themes/` (verifiziert vorhanden)
+> - Ist-Zustand: `B:/DEV/kessel-boilerplate/src/lib/themes/`** (entspricht 1:1 der TER-Architektur)
 >   **Geschaetzter Gesamtaufwand:** Large (5–7 Entwicklertage fokussiert, inkl. Design-System-Page-Refactoring)
 >   **Branch-Strategie:** Direkt auf `main` (User-Entscheidung), mit Feature-Flag `FEATURE_NEW_THEME_SYSTEM` fuer kritische Phasen
->   **Status:** Approved — Bereit zum Start
+>   **Status:\*\* Approved — Bereit zum Start
 
 ---
 
@@ -375,7 +375,7 @@ der G2+-Schritte ableitet.
 | Feld                | Wert                                                                         |
 | ------------------- | ---------------------------------------------------------------------------- |
 | **Was**             | Slider-States (Hue-Shift, Sat-Mult, Chart-Hue-Spacing etc.) initialisieren   |
-|                     | aus CSS-Variablen `--meta-`\* statt localStorage. Bei Save werden diese als  |
+|                     | aus CSS-Variablen `--meta-` statt localStorage. Bei Save werden diese als    |
 |                     | Meta-Tokens mit persistiert                                                  |
 | **Wo**              | In den aus G2 extrahierten Sliders-Komponenten + `theme-editor-context.tsx`  |
 | **Abhaengigkeiten** | D1, G2                                                                       |

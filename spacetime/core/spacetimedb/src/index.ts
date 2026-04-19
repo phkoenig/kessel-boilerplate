@@ -69,6 +69,8 @@ const appSettingsValue = t.object("AppSettingsValue", {
   iconUrl: t.string().optional(),
   iconVariantsJson: t.string().optional(),
   iconProvider: t.string().optional(),
+  themeScope: t.string().optional(),
+  globalThemeId: t.string().optional(),
 })
 
 const themeRegistryValue = t.object("ThemeRegistryValue", {
@@ -397,6 +399,8 @@ export const get_app_settings = boilerplateCoreSchema.procedure(
         iconUrl: settingsRow.iconUrl,
         iconVariantsJson: settingsRow.iconVariantsJson,
         iconProvider: settingsRow.iconProvider,
+        themeScope: settingsRow.themeScope,
+        globalThemeId: settingsRow.globalThemeId,
       }
     })
 )
@@ -985,8 +989,22 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
     iconUrl: t.string().optional(),
     iconVariantsJson: t.string().optional(),
     iconProvider: t.string().optional(),
+    themeScope: t.string().optional(),
+    globalThemeId: t.string().optional(),
   },
-  (ctx, { tenantSlug, appName, appDescription, iconUrl, iconVariantsJson, iconProvider }) => {
+  (
+    ctx,
+    {
+      tenantSlug,
+      appName,
+      appDescription,
+      iconUrl,
+      iconVariantsJson,
+      iconProvider,
+      themeScope,
+      globalThemeId,
+    }
+  ) => {
     assertRegisteredServiceIdentity(ctx)
     const existingSettings = ctx.db.appSetting.tenantSlug.find(tenantSlug)
     if (existingSettings) {
@@ -996,11 +1014,15 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
         iconUrl,
         iconVariantsJson,
         iconProvider,
+        themeScope,
+        globalThemeId,
       })
 
       ctx.db.appSetting.id.update({
         ...existingSettings,
         ...mergedSettings,
+        themeScope: mergedSettings.themeScope ?? existingSettings.themeScope ?? "",
+        globalThemeId: mergedSettings.globalThemeId ?? existingSettings.globalThemeId ?? "",
         updatedAt: ctx.timestamp,
       })
       return
@@ -1014,6 +1036,8 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
       iconUrl: normalizeOptionalString(iconUrl),
       iconVariantsJson: normalizeOptionalString(iconVariantsJson),
       iconProvider: normalizeOptionalString(iconProvider),
+      themeScope: normalizeOptionalString(themeScope) ?? "",
+      globalThemeId: normalizeOptionalString(globalThemeId) ?? "",
       updatedAt: ctx.timestamp,
     })
   }

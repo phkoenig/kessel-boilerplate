@@ -29,6 +29,8 @@ export const AppSetting = __t.object("AppSetting", {
   iconVariantsJson: __t.option(__t.string()),
   iconProvider: __t.option(__t.string()),
   updatedAt: __t.timestamp(),
+  themeScope: __t.string(),
+  globalThemeId: __t.string(),
 })
 export type AppSetting = __Infer<typeof AppSetting>
 
@@ -39,6 +41,8 @@ export const AppSettingsValue = __t.object("AppSettingsValue", {
   iconUrl: __t.option(__t.string()),
   iconVariantsJson: __t.option(__t.string()),
   iconProvider: __t.option(__t.string()),
+  themeScope: __t.option(__t.string()),
+  globalThemeId: __t.option(__t.string()),
 })
 export type AppSettingsValue = __Infer<typeof AppSettingsValue>
 

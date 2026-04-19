@@ -35,6 +35,7 @@ const initialSnapshot: ThemeStoreSnapshot = {
   isAdmin: false,
   isAuthenticated: false,
   usingAdminTheme: false,
+  themeScope: "global",
   isLoading: true,
   error: null,
 }
@@ -105,6 +106,19 @@ export async function setThemeStoreTheme(themeId: string): Promise<void> {
   const result = await updateEffectiveThemeSelection({ theme: themeId })
   if (!result.success || !result.snapshot) {
     throw new Error(result.error ?? "Theme konnte nicht gesetzt werden.")
+  }
+
+  applyThemeSnapshot(result.snapshot)
+}
+
+/**
+ * Admin-Operation: Setzt den App-weiten Theme-Scope.
+ * `"global"` = ein Theme fuer alle, `"per_user"` = jeder User waehlt selbst.
+ */
+export async function setThemeStoreThemeScope(scope: "global" | "per_user"): Promise<void> {
+  const result = await updateEffectiveThemeSelection({ themeScope: scope })
+  if (!result.success || !result.snapshot) {
+    throw new Error(result.error ?? "Theme-Scope konnte nicht gespeichert werden.")
   }
 
   applyThemeSnapshot(result.snapshot)

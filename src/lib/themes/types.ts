@@ -33,6 +33,16 @@ export interface ThemeContextValue {
   setCornerStyle: (style: CornerStyle) => void
   supportsSquircle: boolean
   refreshThemeCSS: () => Promise<boolean>
+  /**
+   * Effektiver App-Theme-Scope.
+   * `"global"` = App-weit gleiches Theme fuer alle User.
+   * `"per_user"` = jeder User waehlt sein eigenes Theme.
+   */
+  themeScope: "global" | "per_user"
+  /** Ist der aktuelle User Admin (darf u.a. den Theme-Scope umschalten)? */
+  isAdmin: boolean
+  /** Setzt den App-weiten Theme-Scope (admin-only). */
+  setThemeScope: (scope: "global" | "per_user") => Promise<void>
 }
 
 /**
@@ -64,4 +74,9 @@ export interface ThemeSnapshot {
   isAuthenticated: boolean
   /** Zeigt der User gerade das Admin-Theme (statt eigene Auswahl)? */
   usingAdminTheme: boolean
+  /**
+   * Effektiver Theme-Scope der App. `"global"` = ein Theme fuer alle User,
+   * `"per_user"` = jeder User waehlt sein eigenes Theme. Default ist `"global"`.
+   */
+  themeScope: "global" | "per_user"
 }

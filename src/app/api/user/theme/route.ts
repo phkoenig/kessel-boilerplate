@@ -12,8 +12,11 @@
  */
 
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user"
-import { isAdminRole } from "@/lib/auth/provisioning-role"
+import { getTenantSlug } from "@/lib/branding"
 import { getCoreStore } from "@/lib/core"
+import { invalidateAppSettingsCache } from "@/lib/core/server-cache"
+// isAdminRole wird nicht mehr benoetigt: Sync auf alle Admin-Profile entfaellt,
+// da das globale Theme jetzt direkt in app_settings.globalThemeId liegt.
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { apiError } from "@/lib/api/errors"
@@ -26,10 +29,12 @@ const PutSchema = z
   .object({
     theme: z.string().trim().min(1).max(100).optional(),
     colorScheme: z.enum(["dark", "light", "system"]).optional(),
+    themeScope: z.enum(["global", "per_user"]).optional(),
   })
-  .refine((v) => v.theme !== undefined || v.colorScheme !== undefined, {
-    message: "Keine Daten zum Aktualisieren",
-  })
+  .refine(
+    (v) => v.theme !== undefined || v.colorScheme !== undefined || v.themeScope !== undefined,
+    { message: "Keine Daten zum Aktualisieren" }
+  )
 
 /**
  * GET /api/user/theme
@@ -75,39 +80,49 @@ export async function PUT(request: Request) {
 
     const parsed = await parseJsonBody(request, PutSchema)
     if (!parsed.ok) return parsed.response
-    const { theme, colorScheme } = parsed.data
-
-    // Theme-ID ist global + admin-only. Color-Scheme (Dark/Light/System) ist eine
-    // individuelle User-Praeferenz und fuer alle erlaubt — sie wird nur im eigenen
-    // Profil gespeichert und nicht auf andere Admins synchronisiert.
-    if (theme !== undefined && !user.isAdmin) {
-      return apiError("FORBIDDEN", "Nur Administratoren duerfen das App-Theme aendern", 403)
-    }
+    const { theme, colorScheme, themeScope: nextThemeScope } = parsed.data
 
     const coreStore = getCoreStore()
+    const tenantSlug = getTenantSlug()
+    const appSettings = await coreStore.getAppSettings(tenantSlug)
 
-    // Admin-only Global-Theme: auf alle Admin-Profile synchronisieren, damit der
-    // Snapshot unabhaengig von der DB-Iterationsreihenfolge konsistent bleibt.
-    // WICHTIG: listUsers() kann den aktuellen Admin aus Timing-/Sync-Gruenden fehlen —
-    // ohne Eintraege schlaegt die Persistenz fehl (leeres Promise.all). Daher immer
-    // die Clerk-ID des eingeloggten Admins in die Sync-Menge aufnehmen.
-    if (theme !== undefined) {
-      const allUsers = await coreStore.listUsers()
-      const adminClerkIds = new Set(
-        allUsers.filter((u) => isAdminRole(u.role)).map((u) => u.clerkUserId)
-      )
-      if (user.isAdmin) {
-        adminClerkIds.add(user.clerkUserId)
+    // Theme-Scope-Switch: nur Admins. Wird ZUERST verarbeitet, damit ein
+    // gleichzeitiges theme-Update bereits gegen den neuen Scope geprueft wird.
+    if (nextThemeScope !== undefined) {
+      if (!user.isAdmin) {
+        return apiError("FORBIDDEN", "Nur Administratoren duerfen den Theme-Scope aendern", 403)
       }
-      await Promise.all(
-        [...adminClerkIds].map((clerkUserId) =>
-          coreStore.updateUserThemeState(clerkUserId, { theme })
-        )
-      )
+      if (appSettings?.themeScope !== nextThemeScope) {
+        await coreStore.upsertAppSettings(tenantSlug, { themeScope: nextThemeScope })
+        invalidateAppSettingsCache(tenantSlug)
+      }
     }
 
-    // Color-Scheme ist eine persoenliche Praeferenz und wird NIE auf andere
-    // Admin-Profile synchronisiert — immer nur ins eigene Profil schreiben.
+    const effectiveScope: "global" | "per_user" =
+      nextThemeScope ?? (appSettings?.themeScope === "per_user" ? "per_user" : "global")
+    const themeScope = effectiveScope
+
+    // Im global-Modus ist Theme-Aenderung admin-only und schreibt nach
+    // app_settings.globalThemeId. Im per_user-Modus darf jeder eingeloggte
+    // User sein eigenes Theme aendern; gespeichert wird im UserThemeState.
+    if (theme !== undefined) {
+      if (themeScope === "global") {
+        if (!user.isAdmin) {
+          return apiError(
+            "FORBIDDEN",
+            "Nur Administratoren duerfen das App-weite Theme aendern",
+            403
+          )
+        }
+        await coreStore.upsertAppSettings(tenantSlug, { globalThemeId: theme })
+        invalidateAppSettingsCache(tenantSlug)
+      } else {
+        await coreStore.updateUserThemeState(user.clerkUserId, { theme })
+      }
+    }
+
+    // Color-Scheme bleibt IMMER eine persoenliche User-Praeferenz, unabhaengig
+    // vom Theme-Scope. Wird nur im eigenen Profil gespeichert.
     if (colorScheme !== undefined) {
       await coreStore.updateUserThemeState(user.clerkUserId, { colorScheme })
     }
@@ -117,6 +132,7 @@ export async function PUT(request: Request) {
         profileId: user.profileId,
         theme: theme ?? null,
         colorScheme: colorScheme ?? null,
+        themeScope: nextThemeScope ?? null,
       })
     } catch (emitErr) {
       console.warn("[User Theme API] Realtime-Emit optional fehlgeschlagen:", emitErr)

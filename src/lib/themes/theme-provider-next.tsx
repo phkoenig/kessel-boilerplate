@@ -22,6 +22,7 @@ import {
   setThemeStoreColorScheme,
   setThemeStoreCornerStyle,
   setThemeStoreTheme,
+  setThemeStoreThemeScope,
   useThemeStoreSnapshot,
 } from "@/lib/themes/theme-store"
 import { applyActiveThemeCss } from "@/lib/themes/apply-active-theme-css"
@@ -143,6 +144,10 @@ function CustomNextThemeProvider({
     setThemeStoreCornerStyle(style)
   }, [])
 
+  const setThemeScope = useCallback(async (scope: "global" | "per_user"): Promise<void> => {
+    await setThemeStoreThemeScope(scope)
+  }, [])
+
   const refreshThemes = useCallback(async (): Promise<ThemeMeta[]> => {
     await refreshThemeStore()
     return themesForContext
@@ -168,6 +173,9 @@ function CustomNextThemeProvider({
     setCornerStyle,
     supportsSquircle,
     refreshThemeCSS,
+    themeScope: snapshot.themeScope,
+    isAdmin: snapshot.isAdmin,
+    setThemeScope,
   }
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>

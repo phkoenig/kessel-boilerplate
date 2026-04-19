@@ -140,6 +140,16 @@ export interface CoreAppSettings {
    * Der Generator/Provider, der das aktive Icon erzeugt hat.
    */
   iconProvider?: string | null
+  /**
+   * Theme-Scope: "global" (App-weit, gleich fuer alle User) oder "per_user"
+   * (jeder User waehlt sein eigenes Theme). Default ist "global".
+   */
+  themeScope?: "global" | "per_user" | null
+  /**
+   * Bei themeScope === "global": die Theme-ID, die fuer alle User gilt.
+   * Wird ignoriert bei "per_user".
+   */
+  globalThemeId?: string | null
 }
 
 /**

@@ -114,6 +114,12 @@ export const appSetting = table(
     iconVariantsJson: t.string().optional(),
     iconProvider: t.string().optional(),
     updatedAt: t.timestamp(),
+    // Theme-Scope: "global" (Default, gleich fuer alle User) oder "per_user".
+    // globalThemeId greift nur bei themeScope="global". Siehe Plan „Theme-Scope-Switch".
+    // Beide Felder ans Ende fuer Spacetime-Schema-Migration ohne Manual-Step.
+    // Leerer String = nicht gesetzt (wir interpretieren das im TS-Code).
+    themeScope: t.string().default("global"),
+    globalThemeId: t.string().default("kessel-default"),
   }
 )
 
