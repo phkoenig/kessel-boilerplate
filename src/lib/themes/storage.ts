@@ -11,6 +11,7 @@
 
 import { createClient } from "@/utils/supabase/client"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
+import type { ThemeColorScheme, ThemeSnapshot } from "@/lib/themes/types"
 
 /**
  * Theme-Metadaten aus der Datenbank.
@@ -218,4 +219,89 @@ export async function fetchDynamicThemeCSSUrls(): Promise<Array<{ id: string; ur
       id: theme.id,
       url: getThemeCSSUrl(theme.id),
     }))
+}
+
+// ============================================================================
+// Neues Theme-System (aus iryse portiert)
+// ============================================================================
+
+let themeSnapshotCache: ThemeSnapshot | null = null
+let themeSnapshotPromise: Promise<ThemeSnapshot> | null = null
+
+/**
+ * Laedt den vom Server berechneten Theme-Snapshot (GET /api/user/theme).
+ *
+ * Deduplicated und cacht das Ergebnis fuer den aktuellen Page-Load. `forceRefresh=true`
+ * umgeht den Cache und laedt neu (nach Save/Import).
+ */
+export async function fetchThemeSnapshot(
+  options: { forceRefresh?: boolean } = {}
+): Promise<ThemeSnapshot> {
+  if (!options.forceRefresh && themeSnapshotCache) {
+    return themeSnapshotCache
+  }
+
+  if (!options.forceRefresh && themeSnapshotPromise) {
+    return themeSnapshotPromise
+  }
+
+  const request = (async (): Promise<ThemeSnapshot> => {
+    const response = await fetch("/api/user/theme", {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+
+    if (!response.ok) {
+      throw new Error("Theme-Snapshot konnte nicht geladen werden.")
+    }
+
+    const snapshot = (await response.json()) as ThemeSnapshot
+    themeSnapshotCache = snapshot
+    return snapshot
+  })().finally(() => {
+    themeSnapshotPromise = null
+  })
+
+  themeSnapshotPromise = request
+  return request
+}
+
+/**
+ * Admin-Operation: Setzt App-weites Theme und/oder Color-Scheme (PUT /api/user/theme).
+ *
+ * Server synchronisiert auf alle Admin-Profile und broadcastet via Realtime.
+ * Liefert den aktualisierten Snapshot zurueck.
+ */
+export async function updateEffectiveThemeSelection(updates: {
+  theme?: string
+  colorScheme?: ThemeColorScheme
+}): Promise<{ success: boolean; snapshot?: ThemeSnapshot; error?: string }> {
+  try {
+    const res = await fetch("/api/user/theme", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      return { success: false, error: data.error ?? "Fehler beim Aktualisieren des Themes" }
+    }
+
+    const snapshot = data as ThemeSnapshot & { success?: boolean }
+    themeSnapshotCache = snapshot
+    return { success: true, snapshot }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unbekannter Fehler",
+    }
+  }
+}
+
+/**
+ * Invalidiert den Snapshot-Cache (nach Save/Import/Delete).
+ */
+export function invalidateThemeSnapshotCache(): void {
+  themeSnapshotCache = null
+  themeSnapshotPromise = null
 }
