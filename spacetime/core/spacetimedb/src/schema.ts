@@ -230,6 +230,53 @@ export const invalidationEvent = table(
   }
 )
 
+/**
+ * Plan C-1 Stufe 2: Service-Identity-Allowlist.
+ *
+ * Enthaelt die SpacetimeDB-Identities, die zum Aufruf mutierender Reducer
+ * berechtigt sind. Bootstrap-Regel: Wenn die Tabelle leer ist, darf der
+ * erste anonymere Caller sich eintragen (nur relevant direkt nach einem
+ * frischen Publish). Danach koennen nur bereits registrierte Identities
+ * weitere Eintraege anlegen.
+ *
+ * Aktivierung der Guards erfolgt als gestaffelter Go-Live-Schritt
+ * (siehe `docs/03_features/security-auth-hardening.plan.md` §C-1 Stufe 2).
+ */
+export const serviceIdentity = table(
+  {
+    public: false,
+    indexes: [{ accessor: "serviceIdentityIdentity", algorithm: "btree", columns: ["identity"] }],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    identity: t.identity(),
+    label: t.string(),
+    createdAt: t.timestamp(),
+  }
+)
+
+/**
+ * Plan H-10: Audit-Log fuer sensible Admin-Aktionen.
+ */
+export const coreAuditLog = table(
+  {
+    public: false,
+    indexes: [
+      { accessor: "coreAuditLogActor", algorithm: "btree", columns: ["actorClerkUserId"] },
+      { accessor: "coreAuditLogAction", algorithm: "btree", columns: ["action"] },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    actorClerkUserId: t.string(),
+    action: t.string(),
+    targetType: t.string(),
+    targetId: t.string().optional(),
+    detailsJson: t.string().optional(),
+    createdAt: t.timestamp(),
+  }
+)
+
 export const webhookEventLog = table(
   {
     public: false,
@@ -249,6 +296,7 @@ export const boilerplateCoreSchema = schema({
   chatMessage,
   chatSession,
   chatSessionAlias,
+  coreAuditLog,
   coreNavigation,
   coreRole,
   coreUser,
@@ -256,6 +304,7 @@ export const boilerplateCoreSchema = schema({
   invalidationEvent,
   membership,
   modulePermission,
+  serviceIdentity,
   tenant,
   themeRegistry,
   webhookEventLog,

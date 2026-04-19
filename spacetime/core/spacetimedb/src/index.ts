@@ -1239,6 +1239,67 @@ export const publish_invalidation = boilerplateCoreSchema.reducer(
   }
 )
 
+/**
+ * Plan C-1 Stufe 2: Registriert die aktuelle `ctx.sender`-Identity als
+ * berechtigte Service-Identity (Next.js-API-Server).
+ *
+ * Bootstrap: Wenn die Tabelle leer ist, darf der erste Caller sich selbst
+ * eintragen. Danach muessen bestehende Service-Identities neue hinzufuegen.
+ * Idempotent.
+ */
+export const register_service_identity = boilerplateCoreSchema.reducer(
+  { label: t.string() },
+  (ctx, { label }) => {
+    const existing = [...ctx.db.serviceIdentity.iter()]
+    const alreadyRegistered = existing.some(
+      (row) => row.identity.toHexString() === ctx.sender.toHexString()
+    )
+    if (alreadyRegistered) {
+      return
+    }
+
+    const callerIsService = existing.some(
+      (row) => row.identity.toHexString() === ctx.sender.toHexString()
+    )
+
+    if (existing.length > 0 && !callerIsService) {
+      throw new SenderError("register_service_identity: caller is not an existing service identity")
+    }
+
+    ctx.db.serviceIdentity.insert({
+      id: 0n,
+      identity: ctx.sender,
+      label,
+      createdAt: ctx.timestamp,
+    })
+  }
+)
+
+/**
+ * Plan H-10: Schreibt einen Audit-Log-Eintrag.
+ * Wird von Admin-Routen nach erfolgreicher sensitiver Aktion aufgerufen.
+ */
+export const record_audit_event = boilerplateCoreSchema.reducer(
+  {
+    actorClerkUserId: t.string(),
+    action: t.string(),
+    targetType: t.string(),
+    targetId: t.string().optional(),
+    detailsJson: t.string().optional(),
+  },
+  (ctx, { actorClerkUserId, action, targetType, targetId, detailsJson }) => {
+    ctx.db.coreAuditLog.insert({
+      id: 0n,
+      actorClerkUserId,
+      action,
+      targetType,
+      targetId: normalizeOptionalString(targetId),
+      detailsJson: normalizeOptionalString(detailsJson),
+      createdAt: ctx.timestamp,
+    })
+  }
+)
+
 export const log_webhook_event = boilerplateCoreSchema.reducer(
   {
     externalEventId: t.string(),
