@@ -80,3 +80,57 @@ describe("resolveBoilerplateProvisioningRole mit Allowlist", () => {
     expect(role).toBe("admin")
   })
 })
+
+describe("resolveBoilerplateProvisioningRole mit mode-Parameter (H-5)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("sync-mode fuehrt KEIN Bootstrap-Admin durch", async () => {
+    vi.stubEnv("BOILERPLATE_ADMIN_EMAILS", "")
+    const store = fakeCoreStore([])
+    const role = await resolveBoilerplateProvisioningRole(store, null, "first@example.com", {
+      mode: "sync",
+    })
+    expect(role).toBe("user")
+  })
+
+  it("initial-mode fuehrt weiterhin Bootstrap-Admin durch", async () => {
+    vi.stubEnv("BOILERPLATE_ADMIN_EMAILS", "")
+    const store = fakeCoreStore([])
+    const role = await resolveBoilerplateProvisioningRole(store, null, "first@example.com", {
+      mode: "initial",
+    })
+    expect(role).toBe("admin")
+  })
+
+  it("sync-mode respektiert Allowlist (User aus Allowlist wird admin)", async () => {
+    vi.stubEnv("BOILERPLATE_ADMIN_EMAILS", "me@example.com")
+    const store = fakeCoreStore([{ role: "admin" }, { role: "user" }])
+    const role = await resolveBoilerplateProvisioningRole(store, "user", "me@example.com", {
+      mode: "sync",
+    })
+    expect(role).toBe("admin")
+  })
+
+  it("sync-mode respektiert Admin-Downgrade-Blocker: existing admin bleibt admin", async () => {
+    vi.stubEnv("BOILERPLATE_ADMIN_EMAILS", "")
+    const store = fakeCoreStore([{ role: "admin" }])
+    const role = await resolveBoilerplateProvisioningRole(
+      store,
+      "admin",
+      "ex-allowlist@example.com",
+      {
+        mode: "sync",
+      }
+    )
+    expect(role).toBe("admin")
+  })
+
+  it("Default-mode ist 'initial' (Rueckwaertskompatibilitaet)", async () => {
+    vi.stubEnv("BOILERPLATE_ADMIN_EMAILS", "")
+    const store = fakeCoreStore([])
+    const role = await resolveBoilerplateProvisioningRole(store, null, "anyone@example.com")
+    expect(role).toBe("admin")
+  })
+})

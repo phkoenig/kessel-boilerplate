@@ -1,8 +1,16 @@
+// AUTH: admin
 import { clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 import { createServiceClient } from "@/utils/supabase/service"
+
+const DeleteUserSchema = z.object({
+  clerkUserId: z.string().min(1).max(200),
+})
 
 /**
  * POST /api/admin/delete-user
@@ -15,12 +23,11 @@ export async function POST(request: Request) {
     if (userOrErr instanceof Response) return userOrErr
     const adminUser = userOrErr
 
-    // Request Body lesen
-    const { clerkUserId } = (await request.json()) as { clerkUserId?: string }
-
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "clerkUserId erforderlich" }, { status: 400 })
+    const parsed = DeleteUserSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return apiError("INVALID_PAYLOAD", "Ungueltige Eingabe", 400, parsed.error.issues)
     }
+    const { clerkUserId } = parsed.data
 
     // Verhindere Selbstlöschung
     if (clerkUserId === adminUser.clerkUserId) {
@@ -53,6 +60,10 @@ export async function POST(request: Request) {
 
     const clerk = await clerkClient()
     await clerk.users.deleteUser(clerkUserId)
+
+    await recordAudit(adminUser.clerkUserId, "user.deleted", "user", clerkUserId, {
+      email: existingProfile?.email ?? null,
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,3 +1,4 @@
+// AUTH: public (bewusst oeffentlich - Dokumentations-Content)
 import { NextResponse } from "next/server"
 
 import { loadPublicWikiContent } from "@/lib/ai-chat/wiki-content"
@@ -7,7 +8,9 @@ export const dynamic = "force-dynamic"
 /**
  * API Route: Public Wiki Content
  *
- * Liefert die öffentliche, read-only Wiki-Dokumentation als Markdown.
+ * Liefert die oeffentliche, read-only Wiki-Dokumentation als Markdown.
+ * Auth: bewusst oeffentlich (Plan H-9) - dient als Public-Info-Endpoint
+ * und darf im unauth Wiki-Viewer angezeigt werden. Nur Read-Only.
  */
 export async function GET() {
   try {

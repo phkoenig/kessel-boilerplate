@@ -43,6 +43,8 @@ import DeleteThemeRegistryReducer from "./delete_theme_registry_reducer"
 import DeleteUserByClerkIdReducer from "./delete_user_by_clerk_id_reducer"
 import LogWebhookEventReducer from "./log_webhook_event_reducer"
 import PublishInvalidationReducer from "./publish_invalidation_reducer"
+import RecordAuditEventReducer from "./record_audit_event_reducer"
+import RegisterServiceIdentityReducer from "./register_service_identity_reducer"
 import UpdateUserProfileSettingsReducer from "./update_user_profile_settings_reducer"
 import UpdateUserThemeStateReducer from "./update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "./upsert_app_settings_reducer"
@@ -114,6 +116,8 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_user_by_clerk_id", DeleteUserByClerkIdReducer),
   __reducerSchema("log_webhook_event", LogWebhookEventReducer),
   __reducerSchema("publish_invalidation", PublishInvalidationReducer),
+  __reducerSchema("record_audit_event", RecordAuditEventReducer),
+  __reducerSchema("register_service_identity", RegisterServiceIdentityReducer),
   __reducerSchema("update_user_profile_settings", UpdateUserProfileSettingsReducer),
   __reducerSchema("update_user_theme_state", UpdateUserThemeStateReducer),
   __reducerSchema("upsert_app_settings", UpsertAppSettingsReducer),

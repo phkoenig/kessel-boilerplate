@@ -681,4 +681,17 @@ export interface CoreStore {
    * @returns Das Wiki-Dokument oder `null`, falls keines existiert.
    */
   getWikiDocument: (slug: string) => Promise<CoreWikiDocument | null>
+  /**
+   * Schreibt einen Audit-Log-Eintrag (Plan H-10).
+   *
+   * @param input - Actor, Action und optionales Target/Details.
+   * @returns `true`, wenn der Reducer ohne Fehler ausgefuehrt wurde.
+   */
+  recordAuditEvent: (input: {
+    actorClerkUserId: string
+    action: string
+    targetType: string
+    targetId?: string | null
+    detailsJson?: string | null
+  }) => Promise<boolean>
 }

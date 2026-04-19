@@ -96,7 +96,9 @@ async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | n
 
   const coreStore = getCoreStore()
   const effectiveEmail = email || "unknown@clerk.local"
-  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
+  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail, {
+    mode: "initial",
+  })
 
   return coreStore.upsertUserFromClerk({
     clerkUserId,
@@ -132,7 +134,8 @@ export async function GET() {
     const resolvedRole = await resolveBoilerplateProvisioningRole(
       coreStore,
       profile.role,
-      profile.email
+      profile.email,
+      { mode: "sync" }
     )
     if (resolvedRole !== profile.role) {
       const reprovisioned = await coreStore.upsertUserFromClerk({
@@ -191,22 +194,10 @@ export async function PUT(request: Request) {
       existingProfile = provisioned
     }
 
-    const mappedRole = await resolveBoilerplateProvisioningRole(
-      coreStore,
-      existingProfile?.role ?? null,
-      effectiveEmail ?? existingProfile?.email ?? null
-    )
-    const shouldReprovisionRole = mappedRole && existingProfile?.role !== mappedRole
-    if (shouldReprovisionRole && existingProfile) {
-      await coreStore.upsertUserFromClerk({
-        clerkUserId: userId,
-        email: effectiveEmail ?? existingProfile.email ?? "unknown@clerk.local",
-        displayName: existingProfile.displayName ?? effectiveEmail?.split("@")[0] ?? "User",
-        avatarUrl: existingProfile.avatarUrl ?? null,
-        role: mappedRole,
-        tenantId: existingProfile.tenantId ?? null,
-      })
-    }
+    // Rollen-Reprovisioning wird NICHT hier ausgeloest (siehe Plan M-12).
+    // Allowlist-Sync passiert beim Login in `getAuthenticatedUser`
+    // und beim Clerk-Webhook; Profil-Settings duerfen nicht stillschweigend
+    // Rollen aendern.
 
     const themeChanged =
       typeof updateData.selected_theme === "string" ||

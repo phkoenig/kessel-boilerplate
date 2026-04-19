@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import {
   createContext,
   useContext,
@@ -216,6 +217,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
     return () => clearTimeout(timeoutId)
   }, [loadPermissions])
+
+  // Permission-Cache-Invalidierung bei Logout (Plan M-7):
+  // Sobald der Auth-State auf "nicht mehr angemeldet" kippt, wird der globale
+  // Cache invalidiert und der lokale State auf die Fallback-Permissions
+  // zurueckgesetzt. Verhindert, dass beim User-Wechsel im selben Tab alte
+  // Permissions des Vorgaenger-Users sichtbar bleiben.
+  const prevAuthRef = React.useRef<boolean>(isAuthenticated)
+  useEffect(() => {
+    if (authLoading) return
+    if (prevAuthRef.current && !isAuthenticated) {
+      permissionsCache = null
+      permissionsRequest = null
+      setPermissions(fallbackPermissions)
+    }
+    prevAuthRef.current = isAuthenticated
+  }, [authLoading, isAuthenticated, fallbackPermissions])
 
   /**
    * Prüft ob ein Modul 'alwaysVisible' ist (kann nicht über Rollen deaktiviert werden)

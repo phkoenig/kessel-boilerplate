@@ -1,5 +1,7 @@
+// AUTH: admin
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 
 /**
@@ -53,6 +55,8 @@ export async function POST(request: Request) {
       console.error("Fehler beim Passwort-Reset:", updateError)
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
+
+    await recordAudit(userOrErr.clerkUserId, "user.password_reset", "user", userId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

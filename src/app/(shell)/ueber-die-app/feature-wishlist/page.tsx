@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/components/auth"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,7 +82,7 @@ function formatDateTime(dateString: string): string {
  */
 export default function FeaturesPage(): React.ReactElement {
   const { user, role } = useAuth()
-  const isAdmin = role === "admin" || role === "super-user"
+  const isAdmin = isAdminRole(role)
 
   const [features, setFeatures] = useState<Feature[]>([])
   const [isLoading, setIsLoading] = useState(false)

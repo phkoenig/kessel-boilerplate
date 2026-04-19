@@ -5,6 +5,7 @@ const DEFAULT_SPACETIME_DATABASE = "kessel-boilerplate-core-dev"
 const CONNECTION_TIMEOUT_MS = 10_000
 
 let connectionPromise: Promise<DbConnection> | null = null
+let serviceRegistrationAttempted = false
 
 const getSpacetimeUri = (): string =>
   process.env.NEXT_PUBLIC_SPACETIMEDB_URI?.trim() || DEFAULT_SPACETIME_URI
@@ -66,5 +67,21 @@ export const getSpacetimeServerConnection = async (): Promise<DbConnection> => {
     })
   }
 
-  return connectionPromise
+  const connection = await connectionPromise
+
+  // Identity-Auth (Plan C-1 Stufe 2):
+  // Beim ersten erfolgreichen Connect versucht der Next.js-Server, sich als
+  // Service-Identity zu registrieren. Das ist idempotent im Reducer abgebildet
+  // und fuehrt bei bereits registrierten Identitaeten zu einem stillen No-Op.
+  if (!serviceRegistrationAttempted) {
+    serviceRegistrationAttempted = true
+    try {
+      const label = process.env.BOILERPLATE_SERVICE_LABEL || "nextjs-server"
+      await connection.reducers.registerServiceIdentity({ label })
+    } catch (err) {
+      console.warn("[spacetime] registerServiceIdentity failed (non-fatal):", err)
+    }
+  }
+
+  return connection
 }

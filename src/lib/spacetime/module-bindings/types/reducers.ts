@@ -14,6 +14,8 @@ import DeleteThemeRegistryReducer from "../delete_theme_registry_reducer"
 import DeleteUserByClerkIdReducer from "../delete_user_by_clerk_id_reducer"
 import LogWebhookEventReducer from "../log_webhook_event_reducer"
 import PublishInvalidationReducer from "../publish_invalidation_reducer"
+import RecordAuditEventReducer from "../record_audit_event_reducer"
+import RegisterServiceIdentityReducer from "../register_service_identity_reducer"
 import UpdateUserProfileSettingsReducer from "../update_user_profile_settings_reducer"
 import UpdateUserThemeStateReducer from "../update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "../upsert_app_settings_reducer"
@@ -35,6 +37,8 @@ export type DeleteThemeRegistryParams = __Infer<typeof DeleteThemeRegistryReduce
 export type DeleteUserByClerkIdParams = __Infer<typeof DeleteUserByClerkIdReducer>
 export type LogWebhookEventParams = __Infer<typeof LogWebhookEventReducer>
 export type PublishInvalidationParams = __Infer<typeof PublishInvalidationReducer>
+export type RecordAuditEventParams = __Infer<typeof RecordAuditEventReducer>
+export type RegisterServiceIdentityParams = __Infer<typeof RegisterServiceIdentityReducer>
 export type UpdateUserProfileSettingsParams = __Infer<typeof UpdateUserProfileSettingsReducer>
 export type UpdateUserThemeStateParams = __Infer<typeof UpdateUserThemeStateReducer>
 export type UpsertAppSettingsParams = __Infer<typeof UpsertAppSettingsReducer>

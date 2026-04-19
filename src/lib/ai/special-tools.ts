@@ -18,6 +18,7 @@ import { clerkClient } from "@clerk/nextjs/server"
 import type { ToolExecutionContext } from "./tool-executor"
 import { generateThemeTools } from "./theme-tools"
 import { getCoreStore } from "@/lib/core"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 /**
  * Prüft ob der aktuelle User Admin oder Superuser ist.
@@ -30,7 +31,7 @@ async function isAdmin(userId: string): Promise<boolean> {
       return false
     }
 
-    return user.role === "admin" || user.role === "superuser" || user.role === "super-user"
+    return isAdminRole(user.role)
   } catch (error) {
     console.error("[SpecialTools] Error checking admin status:", error)
     return false

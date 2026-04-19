@@ -45,6 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/components/auth"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,7 +90,7 @@ function formatDateTime(dateString: string): string {
  */
 export default function BugsPage(): React.ReactElement {
   const { user, role } = useAuth()
-  const isAdmin = role === "admin" || role === "super-user"
+  const isAdmin = isAdminRole(role)
 
   const [bugs, setBugs] = useState<BugReport[]>([])
   const [isLoading, setIsLoading] = useState(false)

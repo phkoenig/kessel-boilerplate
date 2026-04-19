@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useAuth, usePermissions } from "@/components/auth"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import { PageContent, PageHeader } from "@/components/shell"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -219,7 +220,7 @@ export default function RolesPage(): React.ReactElement {
   }, [isLoading, permissions])
 
   useEffect(() => {
-    if (role === "admin" || role === "super-user") {
+    if (isAdminRole(role)) {
       void loadPermissions(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPermissions wird absichtlich über role/navigation-Änderungen getriggert

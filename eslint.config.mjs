@@ -15,6 +15,7 @@ import requireAiWrapper from "./eslint/rules/require-ai-wrapper.js"
 import navigationRouteConsistency from "./eslint/rules/navigation-route-consistency.js"
 import noRawNavHref from "./eslint/rules/no-raw-nav-href.js"
 import noHardcodedPageTitle from "./eslint/rules/no-hardcoded-page-title.js"
+import noSpacetimeReducersInClient from "./eslint/rules/no-spacetime-reducers-in-client.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -38,6 +39,7 @@ const localPlugin = {
     "navigation-route-consistency": navigationRouteConsistency,
     "no-raw-nav-href": noRawNavHref,
     "no-hardcoded-page-title": noHardcodedPageTitle,
+    "no-spacetime-reducers-in-client": noSpacetimeReducersInClient,
   },
 }
 
@@ -155,6 +157,16 @@ const eslintConfig = defineConfig([
     rules: {
       // AI-Wrapper ist PFLICHT - alle interaktiven Komponenten müssen KI-steuerbar sein
       "local/require-ai-wrapper": "error",
+    },
+  },
+  // C-1: Verbietet Reducer-Bindings in Client-Code (Security-Hardening)
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      "local/no-spacetime-reducers-in-client": "error",
     },
   },
   // Navigation Route Consistency: nur Shell (sonst false positives z. B. Root-Layout, APIs).

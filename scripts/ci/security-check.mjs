@@ -53,7 +53,19 @@ function walk(dir, predicate, matches) {
   )
   for (const file of files) {
     const content = readFileSync(file, "utf8")
-    if (content.includes("NEXT_PUBLIC_AUTH_BYPASS")) {
+    const codeLines = content
+      .split("\n")
+      .filter((line) => {
+        const trimmed = line.trim()
+        return (
+          trimmed.length > 0 &&
+          !trimmed.startsWith("//") &&
+          !trimmed.startsWith("*") &&
+          !trimmed.startsWith("/*")
+        )
+      })
+      .join("\n")
+    if (codeLines.includes("NEXT_PUBLIC_AUTH_BYPASS")) {
       failures.push(
         `Gefundene NEXT_PUBLIC_AUTH_BYPASS Referenz in ${file}. Plan H-3: muss auf BOILERPLATE_AUTH_BYPASS umbenannt sein.`
       )

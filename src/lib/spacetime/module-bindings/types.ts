@@ -82,6 +82,17 @@ export const ChatSessionAlias = __t.object("ChatSessionAlias", {
 })
 export type ChatSessionAlias = __Infer<typeof ChatSessionAlias>
 
+export const CoreAuditLog = __t.object("CoreAuditLog", {
+  id: __t.u64(),
+  actorClerkUserId: __t.string(),
+  action: __t.string(),
+  targetType: __t.string(),
+  targetId: __t.option(__t.string()),
+  detailsJson: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+})
+export type CoreAuditLog = __Infer<typeof CoreAuditLog>
+
 export const CoreNavigation = __t.object("CoreNavigation", {
   id: __t.u64(),
   navId: __t.string(),
@@ -223,6 +234,14 @@ export const RoleDefinitionValue = __t.object("RoleDefinitionValue", {
   isSystem: __t.bool(),
 })
 export type RoleDefinitionValue = __Infer<typeof RoleDefinitionValue>
+
+export const ServiceIdentity = __t.object("ServiceIdentity", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  label: __t.string(),
+  createdAt: __t.timestamp(),
+})
+export type ServiceIdentity = __Infer<typeof ServiceIdentity>
 
 export const Tenant = __t.object("Tenant", {
   id: __t.u64(),

@@ -692,4 +692,16 @@ export const createSpacetimeCoreStore = (): CoreStore => ({
     const result = await connection.procedures.getWikiDocument({ slug })
     return mapWikiDocument(result)
   },
+
+  async recordAuditEvent(input) {
+    const connection = await getSpacetimeServerConnection()
+    await connection.reducers.recordAuditEvent({
+      actorClerkUserId: input.actorClerkUserId,
+      action: input.action,
+      targetType: input.targetType,
+      targetId: input.targetId ?? undefined,
+      detailsJson: input.detailsJson ?? undefined,
+    })
+    return true
+  },
 })

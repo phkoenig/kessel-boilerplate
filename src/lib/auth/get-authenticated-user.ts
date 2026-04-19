@@ -13,15 +13,15 @@ import { resolveBoilerplateProvisioningRole, isAdminRole } from "@/lib/auth/prov
 import { getCoreStore } from "@/lib/core"
 
 export interface AuthenticatedUser {
-  /** Clerk User ID (`user_xxx`) — fuer Anzeige/API-Responses */
+  /** Clerk User ID (`user_xxx`) */
   clerkUserId: string
-  /** Profil-UUID im Core — fuer tenant_id, FKs */
+  /** Profil-UUID im Core */
   profileId: string
   /** Rollen-Name (`admin`, `user`, `superuser`) */
   role: string
   /** Schnell-Check fuer Admin-Routen */
   isAdmin: boolean
-  /** Single-Tenant: immer `null` (keine Clerk Organizations im Boilerplate) */
+  /** Single-Tenant: immer `null` */
   activeOrgId: null
   /** Tenant aus Core-Profil */
   tenantId: string | null
@@ -38,12 +38,56 @@ export interface AuthenticatedUser {
   }
 }
 
+const UNKNOWN_EMAIL_PLACEHOLDER = "unknown@clerk.local"
+
+/**
+ * Extrahiert eine Email aus Clerk Session Claims. Robust gegen verschiedene
+ * Namen, die via JWT-Templates gesetzt sein koennen.
+ */
 function getEmailFromClaims(claims: unknown): string | null {
   if (!claims || typeof claims !== "object") return null
   const r = claims as Record<string, unknown>
-  if (typeof r.email === "string" && r.email.length > 0) return r.email
-  if (typeof r.primary_email === "string" && r.primary_email.length > 0) return r.primary_email
+  const candidates = [
+    r.email,
+    r.primary_email,
+    r.primary_email_address,
+    r.emailAddress,
+    r.email_address,
+    r.preferred_username,
+  ]
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.includes("@")) {
+      return candidate
+    }
+  }
   return null
+}
+
+/**
+ * Laedt die Email direkt aus der Clerk Backend API.
+ * Fallback, wenn der Session-Claim keinen `email`-Eintrag enthaelt.
+ */
+async function fetchEmailFromClerk(clerkUserId: string): Promise<{
+  email: string | null
+  displayName: string | null
+  avatarUrl: string | null
+}> {
+  try {
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(clerkUserId)
+    const email =
+      clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+        ?.emailAddress ??
+      clerkUser.emailAddresses[0]?.emailAddress ??
+      null
+    const displayName =
+      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+      email?.split("@")[0] ||
+      null
+    return { email, displayName, avatarUrl: clerkUser.imageUrl ?? null }
+  } catch {
+    return { email: null, displayName: null, avatarUrl: null }
+  }
 }
 
 async function autoProvisionProfile(
@@ -51,34 +95,21 @@ async function autoProvisionProfile(
   sessionClaims: unknown,
   tenantId: string | null
 ) {
-  let email = getEmailFromClaims(sessionClaims) ?? ""
-  let displayName = email.split("@")[0] || "User"
-  let avatarUrl: string | null = null
+  const claimEmail = getEmailFromClaims(sessionClaims)
+  const clerkData = await fetchEmailFromClerk(clerkUserId)
 
-  try {
-    const client = await clerkClient()
-    const clerkUser = await client.users.getUser(clerkUserId)
-    email =
-      clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-        ?.emailAddress ??
-      clerkUser.emailAddresses[0]?.emailAddress ??
-      email
-    displayName =
-      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-      email.split("@")[0] ||
-      "User"
-    avatarUrl = clerkUser.imageUrl ?? null
-  } catch {
-    // Clerk-Server nicht verfuegbar - mit Claims weitermachen
-  }
+  const email = clerkData.email ?? claimEmail ?? UNKNOWN_EMAIL_PLACEHOLDER
+  const displayName = clerkData.displayName ?? email.split("@")[0] ?? "User"
+  const avatarUrl = clerkData.avatarUrl
 
   const coreStore = getCoreStore()
-  const effectiveEmail = email || "unknown@clerk.local"
-  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
+  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, email, {
+    mode: "initial",
+  })
 
   return coreStore.upsertUserFromClerk({
     clerkUserId,
-    email: effectiveEmail,
+    email,
     displayName,
     avatarUrl,
     role: mappedRole,
@@ -87,8 +118,34 @@ async function autoProvisionProfile(
 }
 
 /**
+ * Repariert ein Profil mit `unknown@clerk.local`-Email, falls Clerk jetzt
+ * die richtige Adresse liefert. Idempotent, schreibt nur bei Aenderung.
+ */
+async function repairUnknownEmail(
+  clerkUserId: string,
+  profile: Awaited<ReturnType<ReturnType<typeof getCoreStore>["getUserByClerkId"]>>
+) {
+  if (!profile) return profile
+  if (profile.email && profile.email !== UNKNOWN_EMAIL_PLACEHOLDER) return profile
+
+  const clerkData = await fetchEmailFromClerk(clerkUserId)
+  if (!clerkData.email) return profile
+
+  const coreStore = getCoreStore()
+  const updated = await coreStore.upsertUserFromClerk({
+    clerkUserId,
+    email: clerkData.email,
+    displayName: profile.displayName ?? clerkData.displayName ?? clerkData.email.split("@")[0],
+    avatarUrl: profile.avatarUrl ?? clerkData.avatarUrl,
+    role: profile.role,
+    tenantId: profile.tenantId ?? null,
+  })
+  return updated ?? profile
+}
+
+/**
  * Holt den eingeloggten User mit Profil aus dem Core-Store.
- * Gibt `null` zurueck wenn nicht eingeloggt oder Profil nicht provisionierbar ist.
+ * Gibt `null` zurueck wenn nicht eingeloggt oder Profil nicht provisionierbar.
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const { userId, sessionClaims } = await auth()
@@ -102,12 +159,15 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     const provisioned = await autoProvisionProfile(userId, sessionClaims, null)
     if (!provisioned) return null
     profile = provisioned
+  } else {
+    profile = (await repairUnknownEmail(userId, profile)) ?? profile
   }
 
   const resolvedRole = await resolveBoilerplateProvisioningRole(
     coreStore,
     profile.role,
-    profile.email
+    profile.email,
+    { mode: "sync" }
   )
   if (resolvedRole && resolvedRole !== profile.role) {
     const reprovisioned = await coreStore.upsertUserFromClerk({

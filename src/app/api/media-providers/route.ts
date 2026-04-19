@@ -1,17 +1,19 @@
+// AUTH: authenticated
 /**
  * API Route: Available Media Providers
  *
- * Gibt verfügbare Media-Provider zurück (für Frontend-Dropdown)
+ * Gibt verfügbare Media-Provider zurück (für Frontend-Dropdown).
+ * Auth: authentifiziert (Plan H-9) - Provider-Liste ist nicht oeffentlich.
  */
 
+import { requireAuth } from "@/lib/auth/guards"
 import { getAvailableProviders } from "@/lib/media"
 import { NextResponse } from "next/server"
 
-/**
- * GET Handler für verfügbare Provider
- */
 export async function GET(): Promise<NextResponse> {
   try {
+    const userOrErr = await requireAuth()
+    if (userOrErr instanceof Response) return userOrErr as NextResponse
     const providers = getAvailableProviders()
 
     return NextResponse.json({

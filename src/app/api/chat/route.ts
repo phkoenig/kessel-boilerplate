@@ -385,7 +385,7 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-    const body = parsed.data as ChatRequestBody
+    const body = parsed.data as unknown as ChatRequestBody
     const {
       messages,
       sessionId,

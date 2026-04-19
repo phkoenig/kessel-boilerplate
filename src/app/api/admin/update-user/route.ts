@@ -1,7 +1,18 @@
+// AUTH: admin
 import { clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+
+const UpdateUserSchema = z.object({
+  clerkUserId: z.string().min(1).max(200),
+  email: z.string().email().max(320).optional(),
+  displayName: z.string().max(200).nullable().optional(),
+  role: z.string().max(64).optional(),
+})
 
 const splitDisplayName = (
   value: string | null | undefined
@@ -28,21 +39,11 @@ export async function POST(request: Request) {
     const userOrErr = await requireAdmin()
     if (userOrErr instanceof Response) return userOrErr
 
-    const { clerkUserId, email, displayName, role } = (await request.json()) as {
-      clerkUserId?: string
-      email?: string
-      displayName?: string | null
-      role?: string
+    const parsed = UpdateUserSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return apiError("INVALID_PAYLOAD", "Ungueltige Eingabe", 400, parsed.error.issues)
     }
-
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "clerkUserId ist erforderlich" }, { status: 400 })
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (email !== undefined && !emailRegex.test(email)) {
-      return NextResponse.json({ error: "Ungültige E-Mail-Adresse" }, { status: 400 })
-    }
+    const { clerkUserId, email, displayName, role } = parsed.data
 
     const coreStore = getCoreStore()
     const existingProfile = await coreStore.getUserByClerkId(clerkUserId)
@@ -96,6 +97,26 @@ export async function POST(request: Request) {
       role: nextRole,
       tenantId: existingProfile.tenantId,
     })
+
+    const detailChanges: Record<string, unknown> = {}
+    if (nextEmail !== existingProfile.email) {
+      detailChanges.email = { before: existingProfile.email, after: nextEmail }
+    }
+    if (nextRole !== existingProfile.role) {
+      detailChanges.role = { before: existingProfile.role, after: nextRole }
+    }
+    if (displayName !== undefined && nextDisplayName !== existingProfile.displayName) {
+      detailChanges.displayName = { before: existingProfile.displayName, after: nextDisplayName }
+    }
+    if (Object.keys(detailChanges).length > 0) {
+      await recordAudit(
+        userOrErr.clerkUserId,
+        nextRole !== existingProfile.role ? "user.role_changed" : "user.updated",
+        "user",
+        clerkUserId,
+        detailChanges
+      )
+    }
 
     return NextResponse.json({ success: true, user: updatedProfile })
   } catch (error) {

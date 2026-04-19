@@ -1,7 +1,18 @@
+// AUTH: admin
 import { clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+
+const CreateUserSchema = z.object({
+  email: z.string().email().max(320),
+  password: z.string().min(8).max(200),
+  displayName: z.string().max(200).optional().nullable(),
+  role: z.string().max(64).optional(),
+})
 
 const splitDisplayName = (
   value: string | null | undefined
@@ -30,25 +41,11 @@ export async function POST(request: Request) {
     const userOrErr = await requireAdmin()
     if (userOrErr instanceof Response) return userOrErr
 
-    // Request Body lesen
-    const { email, password, displayName, role } = await request.json()
-
-    if (!email || !password) {
-      return NextResponse.json({ error: "E-Mail und Passwort sind erforderlich" }, { status: 400 })
+    const parsed = CreateUserSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return apiError("INVALID_PAYLOAD", "Ungueltige Eingabe", 400, parsed.error.issues)
     }
-
-    // E-Mail-Validierung
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Ungültige E-Mail-Adresse" }, { status: 400 })
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Passwort muss mindestens 8 Zeichen haben" },
-        { status: 400 }
-      )
-    }
+    const { email, password, displayName, role } = parsed.data
 
     const normalizedDisplayName = displayName?.trim() || email.split("@")[0] || "User"
     const nameParts = splitDisplayName(normalizedDisplayName)
@@ -73,6 +70,11 @@ export async function POST(request: Request) {
       avatarUrl: newUser.imageUrl ?? null,
       role: role || "user",
       tenantId: null,
+    })
+
+    await recordAudit(userOrErr.clerkUserId, "user.created", "user", newUser.id, {
+      email: primaryEmail,
+      role: role || "user",
     })
 
     return NextResponse.json({

@@ -11,6 +11,7 @@ import { verifyWebhook } from "@clerk/nextjs/webhooks"
 import { type NextRequest, NextResponse } from "next/server"
 import { resolveBoilerplateProvisioningRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
+import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 
 interface ClerkUserData {
   id: string
@@ -57,11 +58,31 @@ export async function POST(request: NextRequest) {
     const evt = await verifyWebhook(request)
     const coreStore = getCoreStore()
 
+    // Webhook-Idempotenz (Plan M-11):
+    // Svix liefert eine stabile `svix-id` pro Zustellung. Wir protokollieren
+    // das Event im Core (DB-seitig idempotent: nur erster Insert pro
+    // externalEventId gewinnt). Bei doppelten Zustellungen gewinnen die
+    // darunter liegenden Upserts ohnehin (idempotent), so dass ein
+    // Fruehabbruch optional ist.
+    const svixId = request.headers.get("svix-id") ?? `clerk-${Date.now()}`
+    try {
+      const connection = await getSpacetimeServerConnection()
+      await connection.reducers.logWebhookEvent({
+        externalEventId: svixId,
+        source: "clerk",
+        payloadJson: JSON.stringify({ type: evt.type }),
+      })
+    } catch (logErr) {
+      console.warn("[webhooks/clerk] logWebhookEvent failed (non-fatal):", logErr)
+    }
+
     if (evt.type === "user.created") {
       const data = evt.data as ClerkUserData
       const email = getPrimaryEmail(data)
       const effectiveEmail = email || "unknown@clerk.local"
-      const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
+      const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail, {
+        mode: "initial",
+      })
 
       const profile = await coreStore.upsertUserFromClerk({
         clerkUserId: data.id,
@@ -81,7 +102,8 @@ export async function POST(request: NextRequest) {
       const mappedRole = await resolveBoilerplateProvisioningRole(
         coreStore,
         existingProfile?.role ?? null,
-        effectiveEmail
+        effectiveEmail,
+        { mode: "sync" }
       )
 
       const profile = await coreStore.upsertUserFromClerk({

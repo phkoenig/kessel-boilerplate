@@ -7,7 +7,7 @@
  * Spacetime an weitere Tabs/Clients propagiert wird.
  */
 
-import { DbConnection, tables } from "@/lib/spacetime/module-bindings"
+import { DbConnection, tables } from "@/lib/spacetime/client-bindings"
 import type { RealtimeAdapter, RealtimeEvent, RealtimeSubscription } from "./types"
 
 type Listener<T> = (event: RealtimeEvent<T>) => void

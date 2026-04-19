@@ -1,19 +1,22 @@
+// AUTH: dev-only (hart gegen Production geblockt via Modul-Guard + next.config redirect)
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 
 /**
- * API-Route: User-Impersonation für Development
+ * Dev-Route: User-Impersonation (Magic-Link → Session).
  *
- * WICHTIG: Diese Route funktioniert NUR in Development-Mode mit aktiviertem Bypass.
- * Erstellt eine echte Supabase-Session für den gewählten User.
- *
- * Verwendet Magic Link Token für sichere Session-Erstellung.
+ * Strikt Dev-only. Plan H-3. Siehe `dev/users/route.ts` fuer Details.
  */
+if (process.env.NODE_ENV === "production") {
+  throw new Error(
+    "[security] Dev-Route /api/dev/impersonate darf nicht in Production existieren. Siehe Plan H-3."
+  )
+}
+
 export async function POST(request: NextRequest) {
-  // Doppelte Absicherung: Nur in Development mit aktiviertem Bypass
   const isDev = process.env.NODE_ENV === "development"
-  const bypassEnabled = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true"
+  const bypassEnabled = process.env.BOILERPLATE_AUTH_BYPASS === "true"
 
   if (!isDev || !bypassEnabled) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })

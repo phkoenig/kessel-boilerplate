@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import { PageContent } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -249,7 +250,7 @@ export default function UsersPage(): React.ReactElement {
   }
 
   useEffect(() => {
-    if (role === "admin" || role === "super-user") {
+    if (isAdminRole(role)) {
       setIsLoading(true)
       Promise.all([loadRoles(), loadUsers(), loadMembershipData()]).then(
         ([roles, , membershipData]) => {

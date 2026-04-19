@@ -51,7 +51,7 @@ const combinedSchema = z.object({
 })
 
 const LOCAL_DEV_DEFAULTS = {
-  NEXT_PUBLIC_AUTH_BYPASS: "true",
+  BOILERPLATE_AUTH_BYPASS: "true",
   NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: "spacetime",
 }
 
