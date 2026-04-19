@@ -101,3 +101,4 @@ Der **Boilerplate-Kern ist ab sofort DB-agnostisch**:
   [`ADR-001-clerk-organizations-tenant-source.md`](./ADR-001-clerk-organizations-tenant-source.md),
   [`ADR-002-boilerplate-3-0-system-boundaries.md`](./ADR-002-boilerplate-3-0-system-boundaries.md)
 - Migrations-Guide: [`docs/04_knowledge/migrations-supabase-to-spacetime.md`](../04_knowledge/migrations-supabase-to-spacetime.md)
+- Spacetime-Generate-Eigenheiten: [`docs/04_knowledge/spacetime-module-generate.md`](../04_knowledge/spacetime-module-generate.md) — private Tabellen werden nicht als Client-Bindings exportiert; Zugriff nur ueber Procedures.

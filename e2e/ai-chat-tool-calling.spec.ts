@@ -125,6 +125,6 @@ test.describe("Admin UI für AI Datasources", () => {
     await firstSwitch.click()
 
     // Assert: Switch sollte umgeschaltet sein
-    await expect(firstSwitch).toHaveProperty("checked", !initialState)
+    await expect(firstSwitch).toHaveJSProperty("checked", !initialState)
   })
 })

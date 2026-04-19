@@ -137,10 +137,11 @@ export default function FeaturesPage(): React.ReactElement {
       void votesError
 
       // Lade User-Votes (welche Features hat der User gevotet?)
+      const currentUserId = user.clerkUserId ?? user.id
       const { data: userVotesData } = await supabase
         .from("feature_votes")
         .select("feature_id")
-        .eq("user_id", user.id)
+        .eq("user_id", currentUserId)
 
       const userVotedFeatureIds = new Set((userVotesData || []).map((v) => v.feature_id))
 
@@ -210,7 +211,7 @@ export default function FeaturesPage(): React.ReactElement {
         .insert({
           title: newFeatureTitle.trim(),
           description: newFeatureDescription.trim() || null,
-          proposer_id: user.id,
+          proposer_id: user.clerkUserId ?? user.id,
         })
         .select()
         .single()
@@ -249,6 +250,7 @@ export default function FeaturesPage(): React.ReactElement {
     const feature = features.find((f) => f.id === featureId)
     if (!feature) return
 
+    const currentUserId = user.clerkUserId ?? user.id
     try {
       if (feature.hasVoted) {
         // Unvote: Vote löschen
@@ -256,7 +258,7 @@ export default function FeaturesPage(): React.ReactElement {
           .from("feature_votes")
           .delete()
           .eq("feature_id", featureId)
-          .eq("user_id", user.id)
+          .eq("user_id", currentUserId)
 
         if (deleteError) {
           throw new Error(deleteError.message)
@@ -272,7 +274,7 @@ export default function FeaturesPage(): React.ReactElement {
         // Vote: Vote hinzufügen
         const { error: insertError } = await supabase.from("feature_votes").insert({
           feature_id: featureId,
-          user_id: user.id,
+          user_id: currentUserId,
         })
 
         if (insertError) {

@@ -10,6 +10,7 @@ Diese Ebene beschreibt _wie_ das System aufgebaut ist. Sie dokumentiert die tech
 
 - **Architecture Decision Records**: [`ADR-001-clerk-organizations-tenant-source.md`](ADR-001-clerk-organizations-tenant-source.md) – Clerk Organizations = Tenant Source of Truth
 - **Architecture Decision Records**: [`ADR-002-boilerplate-3-0-system-boundaries.md`](ADR-002-boilerplate-3-0-system-boundaries.md) – Clerk = Identity, Spacetime = Core, Supabase = App DB/Storage, 1Password = Secrets
+- **Architecture Decision Records**: [`ADR-003-db-agnostic-boilerplate-core.md`](ADR-003-db-agnostic-boilerplate-core.md) – DB-agnostischer Boilerplate-Kern (Storage-Abstraktion, Identity-Quelle Clerk, Supabase optional). Hinweis: Der Implementierungsplan `docs/12_plans/260419-boilerplate-db-agnostik.md` referenziert diesen ADR aus historischen Gruenden teilweise als „ADR-001" — die verbindliche Nummer ist **003**.
 - **Hard-Cutover Guardrails**: [`boilerplate-3-0-hard-cutover-guardrails.md`](boilerplate-3-0-hard-cutover-guardrails.md) – verbotene Legacy-Muster, Suchlisten und finale 3.0-Grenzen
 - **Datenbank-Architektur**: Boilerplate 3.0 trennt Boilerplate-Core (`Spacetime`) von App-DB und Storage (`Supabase`)
 - **Technische Referenz**: Siehe `README.md` → "Tech Stack" und "Projektstruktur"

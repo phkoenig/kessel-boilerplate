@@ -47,6 +47,47 @@ const loadPersistedToken = (): string | undefined => {
   return undefined
 }
 
+/**
+ * Normalisiert Fehler aus dem Spacetime-WebSocket-Layer. Die `onConnectError`-
+ * Callbacks liefern je nach Transport entweder einen `Error`, ein DOM-artiges
+ * `ErrorEvent` oder einen Plain-Objekt-Wrapper wie `{ type: "error" }`.
+ * `String(value)` fiele in diesen Faellen auf `"[object Object]"` zurueck, was
+ * in der Konsole wertlos ist. Wir serialisieren daher kontrolliert und ziehen
+ * wenn moeglich `message`, `reason`, `code` oder `type` heraus.
+ */
+const toConnectionError = (value: unknown, fallbackMessage: string): Error => {
+  if (value instanceof Error) {
+    return value
+  }
+  if (typeof value === "string") {
+    return new Error(value)
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>
+    const pieces: string[] = []
+    for (const key of ["message", "reason", "error", "type", "code"]) {
+      const entry = record[key]
+      if (typeof entry === "string" && entry.length > 0) {
+        pieces.push(`${key}=${entry}`)
+      } else if (typeof entry === "number") {
+        pieces.push(`${key}=${String(entry)}`)
+      }
+    }
+    if (pieces.length === 0) {
+      try {
+        pieces.push(JSON.stringify(value))
+      } catch {
+        // circular / non-serializable — nichts tun
+      }
+    }
+    const detail = pieces.length > 0 ? ` (${pieces.join(", ")})` : ""
+    const err = new Error(`${fallbackMessage}${detail}`)
+    ;(err as Error & { cause?: unknown }).cause = value
+    return err
+  }
+  return new Error(`${fallbackMessage} (${String(value)})`)
+}
+
 const persistToken = (token: string | undefined): void => {
   if (!token || process.env.BOILERPLATE_SPACETIME_AUTH_TOKEN) {
     return
@@ -101,12 +142,12 @@ const createConnection = (): Promise<DbConnection> =>
 
           settled = true
           clearTimeout(timeoutId)
-          reject(error instanceof Error ? error : new Error(String(error)))
+          reject(toConnectionError(error, "SpacetimeDB connection error"))
         })
         .build()
     } catch (error) {
       clearTimeout(timeoutId)
-      reject(error instanceof Error ? error : new Error(String(error)))
+      reject(toConnectionError(error, "SpacetimeDB connection error"))
     }
   })
 

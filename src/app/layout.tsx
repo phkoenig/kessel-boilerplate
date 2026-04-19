@@ -5,6 +5,7 @@ import { cache } from "react"
 
 import "./globals.css"
 import { ThemeProvider } from "@/lib/themes"
+import { ensureDefaultBlobAsset } from "@/lib/themes/seed-default"
 import { getEffectiveThemeSnapshot } from "@/lib/themes/snapshot"
 import { getTenantSlug, resolveAppBranding } from "@/lib/branding"
 import { ClientProviders } from "@/components/providers/ClientProviders"
@@ -44,8 +45,19 @@ const inter = Inter({
  */
 const fontVariables = inter.variable
 
+/**
+ * Laedt die App-Metadaten aus dem Spacetime-Core. Wenn die Verbindung zur
+ * Core-DB waehrend des ersten Requests scheitert (z.B. Cold-Start, transient
+ * WS-Fehler), bleibt das Layout render-faehig und faellt auf Default-Branding
+ * zurueck. Der Fehler wird geloggt, damit er im Serverlog sichtbar ist.
+ */
 async function loadAppMetadata() {
-  return getCoreStore().getAppSettings(getTenantSlug())
+  try {
+    return await getCoreStore().getAppSettings(getTenantSlug())
+  } catch (err) {
+    console.error("[layout] loadAppMetadata fehlgeschlagen, nutze Default-Branding:", err)
+    return null
+  }
 }
 
 const loadCachedAppMetadata = cache(loadAppMetadata)
@@ -95,8 +107,16 @@ async function getDefaultThemeCSS(): Promise<string> {
       "theme_css",
       getTenantStoragePath(`${defaultThemeId}.css`)
     )
-    if (!asset) return ""
-    return blobStorageDecode(asset.data)
+    if (asset) {
+      return blobStorageDecode(asset.data)
+    }
+    // Bootstrap: auf leerer Installation einmalig aus src/themes/defaults seeden.
+    await ensureDefaultBlobAsset()
+    const bootstrapped = await getBlobStorage().get(
+      "theme_css",
+      getTenantStoragePath(`${defaultThemeId}.css`)
+    )
+    return bootstrapped ? blobStorageDecode(bootstrapped.data) : ""
   } catch {
     return ""
   }

@@ -6,6 +6,7 @@
 import React from "react"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
+import "@testing-library/jest-dom/vitest"
 import { DetailDrawer } from "../DetailDrawer"
 import { ShellProvider, useDetailDrawer } from "../shell-context"
 

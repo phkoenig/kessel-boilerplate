@@ -521,7 +521,8 @@ Beispiel-Routen bekommen `requiresSupabase: true`. Die Shell blendet sie aus, we
 
 ### K1. ADR
 
-**Datei (neu):** `docs/02_architecture/ADR-001-db-agnostic-boilerplate-core.md`
+**Datei (final):** `docs/02_architecture/ADR-003-db-agnostic-boilerplate-core.md`
+(Im Planungsstand hiess der ADR noch `ADR-001`; da die Nummer 001 bereits durch den Clerk-Organizations-ADR belegt ist, wurde beim Anlegen auf **ADR-003** gezogen. Der Alias ist im Architecture-Index dokumentiert.)
 
 Inhalt: Kontext (Supabase-Kopplung im Kern), Entscheidung (Spacetime-Inline-Blob-Storage + Clerk-Only für Identity), Alternativen (S3, Supabase behalten), Konsequenzen.
 

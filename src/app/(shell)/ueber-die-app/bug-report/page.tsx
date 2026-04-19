@@ -199,7 +199,9 @@ export default function BugsPage(): React.ReactElement {
           description: newBugDescription.trim() || null,
           severity: newBugSeverity,
           browser_info: newBugBrowserInfo.trim() || null,
-          reporter_id: user.id,
+          // Clerk-User-ID ist die stabile Referenz (Text). Falls in legacy-Daten
+          // nur die Core-ID vorliegt, bleibt `user.id` als Fallback.
+          reporter_id: user.clerkUserId ?? user.id,
         })
         .select()
         .single()

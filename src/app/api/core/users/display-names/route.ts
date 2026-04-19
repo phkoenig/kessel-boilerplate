@@ -18,11 +18,19 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const users = await getCoreStore().listUsers()
-    const names = Object.fromEntries(
-      users
-        .filter((entry) => ids.includes(entry.id))
-        .map((entry) => [entry.id, entry.displayName || entry.email || "Unbekannt"])
-    )
+    const idSet = new Set(ids)
+    // Wir matchen sowohl auf die persistente Core-ID als auch auf die Clerk-ID,
+    // damit Beispiel-Features wie Bug-Report (speichert clerkUserId) und
+    // Admin-Views (nutzen Core-ID) dasselbe Endpoint verwenden koennen.
+    const entries: [string, string][] = []
+    for (const entry of users) {
+      const label = entry.displayName || entry.email || "Unbekannt"
+      if (idSet.has(entry.id)) entries.push([entry.id, label])
+      if (entry.clerkUserId && idSet.has(entry.clerkUserId)) {
+        entries.push([entry.clerkUserId, label])
+      }
+    }
+    const names = Object.fromEntries(entries)
 
     return NextResponse.json({ names })
   } catch (error) {

@@ -39,7 +39,11 @@ describe("mergeAppSettingsUpdate", () => {
       }
     )
 
-    expect(result.iconUrl).toBeNull()
+    // normalizeOptionalString reduziert leere / whitespace-only Strings auf
+    // `undefined` (SpacetimeDB-optional-string-Konvention). Fuer den Konsumenten
+    // ist das semantisch identisch mit "geloescht" – die Row speichert das Feld
+    // einfach nicht.
+    expect(result.iconUrl).toBeUndefined()
     expect(result.appName).toBe("Test App Name")
     expect(result.appDescription).toBe("Bestehende Beschreibung")
   })

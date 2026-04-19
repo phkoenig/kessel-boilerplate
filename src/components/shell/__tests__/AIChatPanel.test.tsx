@@ -91,7 +91,7 @@ describe("AIChatPanel", () => {
         content: "Hi there!",
       }
 
-      const isUser = message.role === "user"
+      const isUser = (message.role as string) === "user"
 
       expect(isUser).toBe(false)
       // Assistant messages sollten normale flex-row haben
