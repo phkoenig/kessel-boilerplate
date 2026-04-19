@@ -4,7 +4,8 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { cache } from "react"
 
 import "./globals.css"
-import { ThemeProvider } from "@/lib/themes"
+import { ThemeProvider, IS_NEW_THEME_SYSTEM_ENABLED } from "@/lib/themes"
+import { getEffectiveThemeSnapshot } from "@/lib/themes/snapshot"
 import { getTenantSlug, resolveAppBranding } from "@/lib/branding"
 import { ClientProviders } from "@/components/providers/ClientProviders"
 import { getCoreStore } from "@/lib/core"
@@ -110,6 +111,16 @@ export default async function RootLayout({
   // Lade Default-Theme CSS serverseitig
   const defaultThemeCSS = await getCachedDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
+
+  // iryse: Server-Snapshot nur holen, wenn der neue Pfad aktiv ist
+  const themeSnapshot = IS_NEW_THEME_SYSTEM_ENABLED
+    ? await getEffectiveThemeSnapshot().catch((err) => {
+        console.error("[layout] getEffectiveThemeSnapshot fehlgeschlagen:", err)
+        return null
+      })
+    : null
+  const initialThemeId = themeSnapshot?.activeThemeId ?? defaultThemeId
+  const initialCornerStyle = themeSnapshot?.cornerStyle ?? "rounded"
   const appMetadata = await loadCachedAppMetadata()
   const appBranding = resolveAppBranding(
     appMetadata
@@ -126,7 +137,13 @@ export default async function RootLayout({
   const appIconUrl = appBranding.iconUrl
 
   return (
-    <html lang="de" suppressHydrationWarning className={fontVariables} data-theme={defaultThemeId}>
+    <html
+      lang="de"
+      suppressHydrationWarning
+      className={fontVariables}
+      data-theme={initialThemeId}
+      data-corner-style={initialCornerStyle}
+    >
       <head>
         <link rel="service-desc" href="/.well-known/ai-index.json" />
         <link rel="alternate" type="text/plain" href="/llms.txt" />
@@ -139,13 +156,28 @@ export default async function RootLayout({
           </>
         )}
         {/*
-          FOUC Prevention: Inline-Script setzt data-theme BEVOR React hydrated.
-          Das stellt sicher, dass die CSS-Selektoren sofort greifen.
-          Verwendet NEXT_PUBLIC_DEFAULT_THEME als Fallback statt hardcoded 'default'.
+          FOUC Prevention:
+          - Im Legacy-Pfad liest das Script das Theme aus localStorage.
+          - Im neuen Pfad ist initialThemeId bereits das serverseitig ermittelte
+            Admin-Theme; das Script raeumt nur noch die alten tweakcn-Keys weg
+            (Plan F3 Legacy-Cleanup).
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
+            __html: IS_NEW_THEME_SYSTEM_ENABLED
+              ? `
+              (function() {
+                try {
+                  var cornerStyle = localStorage.getItem('corner-style');
+                  if (cornerStyle === 'rounded' || cornerStyle === 'squircle') {
+                    document.documentElement.setAttribute('data-corner-style', cornerStyle);
+                  }
+                  // Legacy-Cleanup: alte Keys der per-User-Persistenz entfernen.
+                  localStorage.removeItem('tweakcn-theme');
+                } catch (e) {}
+              })();
+            `
+              : `
               (function() {
                 var defaultTheme = '${defaultThemeId}';
                 var theme = localStorage.getItem('tweakcn-theme') || defaultTheme;
@@ -154,9 +186,21 @@ export default async function RootLayout({
             `,
           }}
         />
-        {/* Theme CSS Override - überschreibt die Fallback-Werte in globals.css */}
+        {/* Default-Theme CSS (Fallback). */}
         {defaultThemeCSS && (
           <style id="default-theme-css" dangerouslySetInnerHTML={{ __html: defaultThemeCSS }} />
+        )}
+        {/*
+          Aktives Theme-CSS (neuer Pfad): direkt vom Server-Snapshot gerendert.
+          Verhindert FOUC beim Hard-Reload, weil das richtige Theme vor dem ersten
+          Paint angewendet wird. ThemeProvider-Next uebernimmt danach per
+          applyActiveThemeCss() die weiteren Updates.
+        */}
+        {IS_NEW_THEME_SYSTEM_ENABLED && themeSnapshot?.cssText && (
+          <style
+            id="active-theme-css"
+            dangerouslySetInnerHTML={{ __html: themeSnapshot.cssText }}
+          />
         )}
       </head>
       <body className="antialiased">
@@ -168,7 +212,7 @@ export default async function RootLayout({
           signUpForceRedirectUrl="/"
           afterSignOutUrl="/login"
         >
-          <ThemeProvider defaultTheme={defaultThemeId}>
+          <ThemeProvider defaultTheme={defaultThemeId} initialSnapshot={themeSnapshot}>
             <ClientProviders>{children}</ClientProviders>
           </ThemeProvider>
         </ClerkProvider>
