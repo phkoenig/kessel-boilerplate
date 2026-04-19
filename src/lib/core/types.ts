@@ -694,4 +694,21 @@ export interface CoreStore {
     targetId?: string | null
     detailsJson?: string | null
   }) => Promise<boolean>
+  /**
+   * Liest die juengsten Audit-Log-Eintraege (Admin-UI, Plan H-10).
+   *
+   * @param limit - Max. Zeilen (1–500, Default 100).
+   */
+  listAuditLogRecent: (limit?: number) => Promise<CoreAuditLogEntry[]>
+}
+
+/** Ein Eintrag aus `core_audit_log` (Lesen fuer Admin-Audit-Seite). */
+export interface CoreAuditLogEntry {
+  id: string
+  actorClerkUserId: string
+  action: string
+  targetType: string
+  targetId: string | null
+  detailsJson: string | null
+  createdAtMicros: string
 }

@@ -2,6 +2,7 @@ import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 import type {
   CoreAdminUserRecord,
   CoreAppSettings,
+  CoreAuditLogEntry,
   CoreChatMessageRecord,
   CoreMembershipRecord,
   CoreModulePermission,
@@ -703,5 +704,23 @@ export const createSpacetimeCoreStore = (): CoreStore => ({
       detailsJson: input.detailsJson ?? undefined,
     })
     return true
+  },
+
+  async listAuditLogRecent(limit) {
+    const connection = await getSpacetimeServerConnection()
+    const rows = await connection.procedures.listAuditLogRecent({
+      limit: limit === undefined ? undefined : limit,
+    })
+    return (rows ?? []).map(
+      (row): CoreAuditLogEntry => ({
+        id: row.id,
+        actorClerkUserId: row.actorClerkUserId,
+        action: row.action,
+        targetType: row.targetType,
+        targetId: row.targetId ?? null,
+        detailsJson: row.detailsJson ?? null,
+        createdAtMicros: row.createdAtMicros,
+      })
+    )
   },
 })

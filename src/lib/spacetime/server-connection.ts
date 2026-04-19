@@ -77,7 +77,12 @@ export const getSpacetimeServerConnection = async (): Promise<DbConnection> => {
     serviceRegistrationAttempted = true
     try {
       const label = process.env.BOILERPLATE_SERVICE_LABEL || "nextjs-server"
-      await connection.reducers.registerServiceIdentity({ label })
+      const registrationSecret = process.env.BOILERPLATE_SPACETIME_SERVICE_REG_SECRET?.trim()
+      await connection.reducers.registerServiceIdentity({
+        label,
+        registrationSecret:
+          registrationSecret && registrationSecret.length > 0 ? registrationSecret : undefined,
+      })
     } catch (err) {
       console.warn("[spacetime] registerServiceIdentity failed (non-fatal):", err)
     }

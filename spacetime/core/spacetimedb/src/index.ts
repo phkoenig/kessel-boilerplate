@@ -1,6 +1,7 @@
 import { SenderError, t } from "spacetimedb/server"
 import boilerplateCoreSchema from "./schema"
 import { mergeAppSettingsUpdate } from "./app-settings"
+import { SPACETIME_SECONDARY_SERVICE_REGISTRATION_SECRET } from "./service-reg-secret"
 
 export { default } from "./schema"
 
@@ -116,6 +117,16 @@ const navigationItemValue = t.object("NavigationItemValue", {
   alwaysVisible: t.bool(),
 })
 
+const auditLogEntryValue = t.object("AuditLogEntryValue", {
+  id: t.string(),
+  actorClerkUserId: t.string(),
+  action: t.string(),
+  targetType: t.string(),
+  targetId: t.string().optional(),
+  detailsJson: t.string().optional(),
+  createdAtMicros: t.string(),
+})
+
 const normalizeOptionalString = (value?: string | null): string | undefined => {
   if (!value) {
     return undefined
@@ -131,6 +142,35 @@ const normalizeColorScheme = (value?: string | null): string => {
   }
 
   return "system"
+}
+
+type ServiceGuardCtx = {
+  sender: { toHexString: () => string }
+  db: {
+    serviceIdentity: {
+      iter: () => IterableIterator<{ identity: { toHexString: () => string } }>
+    }
+  }
+}
+
+/**
+ * Plan C-1 Stufe 2 (Hard-Enforce): mutierende Reducer duerfen nur von einer in
+ * `service_identity` registrierten Spacetime-Identity ausgefuehrt werden.
+ *
+ * Ausnahme: `register_service_identity` (eigene Bootstrap-/Secret-Logik) und
+ * `publish_invalidation` (Browser-Realtime-Fanout, kein Privilege-Escalation).
+ */
+const assertRegisteredServiceIdentity = (ctx: ServiceGuardCtx): void => {
+  const rows = [...ctx.db.serviceIdentity.iter()]
+  if (rows.length === 0) {
+    throw new SenderError(
+      "unauthorized: service_identity empty; server must call register_service_identity first"
+    )
+  }
+  const hex = ctx.sender.toHexString()
+  if (!rows.some((r) => r.identity.toHexString() === hex)) {
+    throw new SenderError("unauthorized: mutating reducer requires registered service identity")
+  }
 }
 
 export const init = boilerplateCoreSchema.init((ctx) => {
@@ -546,6 +586,32 @@ export const list_navigation_items = boilerplateCoreSchema.procedure(
     )
 )
 
+export const list_audit_log_recent = boilerplateCoreSchema.procedure(
+  { limit: t.u32().optional() },
+  t.array(auditLogEntryValue),
+  (ctx, { limit }) =>
+    ctx.withTx((tx) => {
+      const cap = Math.min(Math.max(limit ?? 100, 1), 500)
+      const rows = [...tx.db.coreAuditLog.iter()].sort((a, b) => {
+        const am = a.createdAt.microsSinceUnixEpoch
+        const bm = b.createdAt.microsSinceUnixEpoch
+        if (am === bm) {
+          return 0
+        }
+        return am > bm ? -1 : 1
+      })
+      return rows.slice(0, cap).map((row) => ({
+        id: row.id.toString(),
+        actorClerkUserId: row.actorClerkUserId,
+        action: row.action,
+        targetType: row.targetType,
+        targetId: row.targetId,
+        detailsJson: row.detailsJson,
+        createdAtMicros: row.createdAt.microsSinceUnixEpoch.toString(),
+      }))
+    })
+)
+
 export const upsert_role = boilerplateCoreSchema.reducer(
   {
     name: t.string(),
@@ -554,6 +620,7 @@ export const upsert_role = boilerplateCoreSchema.reducer(
     isSystem: t.bool().optional(),
   },
   (ctx, { name, displayName, description, isSystem }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingRole = ctx.db.coreRole.name.find(name)
 
     if (existingRole) {
@@ -581,6 +648,7 @@ export const delete_role = boilerplateCoreSchema.reducer(
     name: t.string(),
   },
   (ctx, { name }) => {
+    assertRegisteredServiceIdentity(ctx)
     if (name === "admin" || name === "user" || name === "superuser") {
       throw new SenderError(`Cannot delete system role ${name}`)
     }
@@ -623,6 +691,7 @@ export const upsert_module_permission = boilerplateCoreSchema.reducer(
     hasAccess: t.bool(),
   },
   (ctx, { moduleId, roleName, hasAccess }) => {
+    assertRegisteredServiceIdentity(ctx)
     let existingPermission = null
     for (const row of ctx.db.modulePermission.modulePermissionRoleName.filter(roleName)) {
       if (row.moduleId === moduleId) {
@@ -680,6 +749,7 @@ export const upsert_navigation_item = boilerplateCoreSchema.reducer(
       alwaysVisible,
     }
   ) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingRow = ctx.db.coreNavigation.navId.find(id)
     if (existingRow) {
       ctx.db.coreNavigation.id.update({
@@ -720,6 +790,7 @@ export const upsert_navigation_item = boilerplateCoreSchema.reducer(
 export const delete_navigation_item = boilerplateCoreSchema.reducer(
   { id: t.string() },
   (ctx, { id }) => {
+    assertRegisteredServiceIdentity(ctx)
     const row = ctx.db.coreNavigation.navId.find(id)
     if (row) {
       ctx.db.coreNavigation.id.delete(row.id)
@@ -734,6 +805,7 @@ export const upsert_tenant = boilerplateCoreSchema.reducer(
     name: t.string(),
   },
   (ctx, { clerkOrgId, slug, name }) => {
+    assertRegisteredServiceIdentity(ctx)
     const byClerkOrgId = ctx.db.tenant.clerkOrgId.find(clerkOrgId)
     if (byClerkOrgId) {
       ctx.db.tenant.id.update({
@@ -773,6 +845,7 @@ export const upsert_user_from_clerk = boilerplateCoreSchema.reducer(
     tenantId: t.string().optional(),
   },
   (ctx, { clerkUserId, email, displayName, avatarUrl, role, tenantId }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingUser = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     const resolvedTenantId = tenantId ? BigInt(tenantId) : undefined
 
@@ -811,6 +884,7 @@ export const delete_user_by_clerk_id = boilerplateCoreSchema.reducer(
     clerkUserId: t.string(),
   },
   (ctx, { clerkUserId }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingUser = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     if (!existingUser) {
       return
@@ -832,6 +906,7 @@ export const upsert_membership = boilerplateCoreSchema.reducer(
     isActive: t.bool().optional(),
   },
   (ctx, { clerkUserId, clerkOrgId, role, isActive }) => {
+    assertRegisteredServiceIdentity(ctx)
     const userRow = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     if (!userRow) {
       throw new SenderError(`Unknown core user for clerk id ${clerkUserId}`)
@@ -878,6 +953,7 @@ export const delete_membership = boilerplateCoreSchema.reducer(
     clerkOrgId: t.string(),
   },
   (ctx, { clerkUserId, clerkOrgId }) => {
+    assertRegisteredServiceIdentity(ctx)
     const userRow = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     const tenantRow = ctx.db.tenant.clerkOrgId.find(clerkOrgId)
 
@@ -911,6 +987,7 @@ export const upsert_app_settings = boilerplateCoreSchema.reducer(
     iconProvider: t.string().optional(),
   },
   (ctx, { tenantSlug, appName, appDescription, iconUrl, iconVariantsJson, iconProvider }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingSettings = ctx.db.appSetting.tenantSlug.find(tenantSlug)
     if (existingSettings) {
       const mergedSettings = mergeAppSettingsUpdate(existingSettings, {
@@ -948,6 +1025,7 @@ export const upsert_wiki_document = boilerplateCoreSchema.reducer(
     content: t.string(),
   },
   (ctx, { slug, content }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingDocument = ctx.db.wikiDocument.slug.find(slug)
     if (existingDocument) {
       ctx.db.wikiDocument.id.update({
@@ -977,6 +1055,7 @@ export const upsert_theme_registry = boilerplateCoreSchema.reducer(
     cssAssetPath: t.string().optional(),
   },
   (ctx, { themeId, name, description, dynamicFontsJson, isBuiltin, cssAssetPath }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingTheme = ctx.db.themeRegistry.themeId.find(themeId)
     if (existingTheme) {
       ctx.db.themeRegistry.id.update({
@@ -1009,6 +1088,7 @@ export const delete_theme_registry = boilerplateCoreSchema.reducer(
     themeId: t.string(),
   },
   (ctx, { themeId }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingTheme = ctx.db.themeRegistry.themeId.find(themeId)
     if (!existingTheme) {
       return
@@ -1030,6 +1110,7 @@ export const update_user_theme_state = boilerplateCoreSchema.reducer(
     canSelectTheme: t.bool().optional(),
   },
   (ctx, { clerkUserId, theme, colorScheme, canSelectTheme }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingUser = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     if (!existingUser) {
       throw new SenderError(`Unknown core user for clerk id ${clerkUserId}`)
@@ -1067,6 +1148,7 @@ export const update_user_profile_settings = boilerplateCoreSchema.reducer(
       chatbotEmojiUsage,
     }
   ) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingUser = ctx.db.coreUser.clerkUserId.find(clerkUserId)
     if (!existingUser) {
       throw new SenderError(`Unknown core user for clerk id ${clerkUserId}`)
@@ -1139,6 +1221,7 @@ export const create_chat_session = boilerplateCoreSchema.reducer(
     title: t.string().optional(),
   },
   (ctx, { sessionKey, clerkUserId, tenantSlug, title }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingAlias = ctx.db.chatSessionAlias.sessionKey.find(sessionKey)
     if (existingAlias) {
       const existingSession = ctx.db.chatSession.id.find(existingAlias.sessionId)
@@ -1197,6 +1280,7 @@ export const append_chat_message = boilerplateCoreSchema.reducer(
     toolState: t.string().optional(),
   },
   (ctx, { sessionKey, authorType, content, toolName, toolState }) => {
+    assertRegisteredServiceIdentity(ctx)
     const aliasRow = ctx.db.chatSessionAlias.sessionKey.find(sessionKey)
     if (!aliasRow) {
       throw new SenderError(`Unknown chat session alias ${sessionKey}`)
@@ -1248,8 +1332,8 @@ export const publish_invalidation = boilerplateCoreSchema.reducer(
  * Idempotent.
  */
 export const register_service_identity = boilerplateCoreSchema.reducer(
-  { label: t.string() },
-  (ctx, { label }) => {
+  { label: t.string(), registrationSecret: t.string().optional() },
+  (ctx, { label, registrationSecret }) => {
     const existing = [...ctx.db.serviceIdentity.iter()]
     const alreadyRegistered = existing.some(
       (row) => row.identity.toHexString() === ctx.sender.toHexString()
@@ -1262,7 +1346,11 @@ export const register_service_identity = boilerplateCoreSchema.reducer(
       (row) => row.identity.toHexString() === ctx.sender.toHexString()
     )
 
-    if (existing.length > 0 && !callerIsService) {
+    const secretOk =
+      SPACETIME_SECONDARY_SERVICE_REGISTRATION_SECRET.length > 0 &&
+      registrationSecret === SPACETIME_SECONDARY_SERVICE_REGISTRATION_SECRET
+
+    if (existing.length > 0 && !callerIsService && !secretOk) {
       throw new SenderError("register_service_identity: caller is not an existing service identity")
     }
 
@@ -1288,6 +1376,7 @@ export const record_audit_event = boilerplateCoreSchema.reducer(
     detailsJson: t.string().optional(),
   },
   (ctx, { actorClerkUserId, action, targetType, targetId, detailsJson }) => {
+    assertRegisteredServiceIdentity(ctx)
     ctx.db.coreAuditLog.insert({
       id: 0n,
       actorClerkUserId,
@@ -1307,6 +1396,7 @@ export const log_webhook_event = boilerplateCoreSchema.reducer(
     payloadJson: t.string(),
   },
   (ctx, { externalEventId, source, payloadJson }) => {
+    assertRegisteredServiceIdentity(ctx)
     const existingEvent = ctx.db.webhookEventLog.externalEventId.find(externalEventId)
     if (existingEvent) {
       return

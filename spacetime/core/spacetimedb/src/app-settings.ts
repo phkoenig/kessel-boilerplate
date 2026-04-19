@@ -1,9 +1,9 @@
 export interface AppSettingsRowLike {
-  appName: string | null
-  appDescription: string | null
-  iconUrl: string | null
-  iconVariantsJson: string | null
-  iconProvider: string | null
+  appName?: string | undefined
+  appDescription?: string | undefined
+  iconUrl?: string | undefined
+  iconVariantsJson?: string | undefined
+  iconProvider?: string | undefined
 }
 
 export interface AppSettingsUpdateInput {
@@ -14,13 +14,13 @@ export interface AppSettingsUpdateInput {
   iconProvider?: string | undefined
 }
 
-const normalizeOptionalString = (value: string | undefined): string | null => {
+const normalizeOptionalString = (value: string | undefined): string | undefined => {
   if (value === undefined) {
-    return null
+    return undefined
   }
 
   const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
+  return trimmed.length > 0 ? trimmed : undefined
 }
 
 export const mergeAppSettingsUpdate = (

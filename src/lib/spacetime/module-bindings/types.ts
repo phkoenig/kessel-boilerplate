@@ -42,6 +42,17 @@ export const AppSettingsValue = __t.object("AppSettingsValue", {
 })
 export type AppSettingsValue = __Infer<typeof AppSettingsValue>
 
+export const AuditLogEntryValue = __t.object("AuditLogEntryValue", {
+  id: __t.string(),
+  actorClerkUserId: __t.string(),
+  action: __t.string(),
+  targetType: __t.string(),
+  targetId: __t.option(__t.string()),
+  detailsJson: __t.option(__t.string()),
+  createdAtMicros: __t.string(),
+})
+export type AuditLogEntryValue = __Infer<typeof AuditLogEntryValue>
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sessionId: __t.u64(),

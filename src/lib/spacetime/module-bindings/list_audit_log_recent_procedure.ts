@@ -10,7 +10,9 @@ import {
   type Infer as __Infer,
 } from "spacetimedb"
 
-export default {
-  label: __t.string(),
-  registrationSecret: __t.option(__t.string()),
+import { AuditLogEntryValue } from "./types"
+
+export const params = {
+  limit: __t.option(__t.u32()),
 }
+export const returnType = __t.array(AuditLogEntryValue)

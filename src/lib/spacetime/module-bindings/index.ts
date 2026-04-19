@@ -66,6 +66,7 @@ import * as GetThemeRegistryEntryProcedure from "./get_theme_registry_entry_proc
 import * as GetUserByClerkIdProcedure from "./get_user_by_clerk_id_procedure"
 import * as GetUserThemeStateProcedure from "./get_user_theme_state_procedure"
 import * as GetWikiDocumentProcedure from "./get_wiki_document_procedure"
+import * as ListAuditLogRecentProcedure from "./list_audit_log_recent_procedure"
 import * as ListChatMessagesProcedure from "./list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "./list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "./list_module_permissions_procedure"
@@ -172,6 +173,11 @@ const proceduresSchema = __procedures(
     "get_wiki_document",
     GetWikiDocumentProcedure.params,
     GetWikiDocumentProcedure.returnType
+  ),
+  __procedureSchema(
+    "list_audit_log_recent",
+    ListAuditLogRecentProcedure.params,
+    ListAuditLogRecentProcedure.returnType
   ),
   __procedureSchema(
     "list_chat_messages",

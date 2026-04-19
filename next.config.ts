@@ -11,9 +11,8 @@ import type { NextConfig } from "next"
  * - Permissions-Policy: schaltet ungenutzte/gefaehrliche APIs (Kamera, Mikro,
  *   Geolocation, FLoC-Cohort-Tracking) hart ab.
  *
- * Die CSP startet bewusst als **Report-Only** (Plan-Vorgabe: 1 Woche
- * Monitoring). Umschaltung auf Enforce erfolgt nachdem der Report-Endpoint
- * keine unerwarteten Violations mehr liefert.
+ * CSP ist auf **Enforce** geschaltet (Plan H-8 Abschluss). Violations gehen
+ * weiterhin an `/api/csp-report` (report-uri), damit du Regressionen siehst.
  */
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -25,7 +24,7 @@ const SECURITY_HEADERS = [
     value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   },
   {
-    key: "Content-Security-Policy-Report-Only",
+    key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       // Clerk needs inline scripts + its CDN, Next.js 16 verwendet inline Hydration-Scripts.

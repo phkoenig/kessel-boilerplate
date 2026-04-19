@@ -13,6 +13,7 @@ import * as GetThemeRegistryEntryProcedure from "../get_theme_registry_entry_pro
 import * as GetUserByClerkIdProcedure from "../get_user_by_clerk_id_procedure"
 import * as GetUserThemeStateProcedure from "../get_user_theme_state_procedure"
 import * as GetWikiDocumentProcedure from "../get_wiki_document_procedure"
+import * as ListAuditLogRecentProcedure from "../list_audit_log_recent_procedure"
 import * as ListChatMessagesProcedure from "../list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "../list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "../list_module_permissions_procedure"
@@ -40,6 +41,8 @@ export type GetUserThemeStateArgs = __Infer<typeof GetUserThemeStateProcedure.pa
 export type GetUserThemeStateResult = __Infer<typeof GetUserThemeStateProcedure.returnType>
 export type GetWikiDocumentArgs = __Infer<typeof GetWikiDocumentProcedure.params>
 export type GetWikiDocumentResult = __Infer<typeof GetWikiDocumentProcedure.returnType>
+export type ListAuditLogRecentArgs = __Infer<typeof ListAuditLogRecentProcedure.params>
+export type ListAuditLogRecentResult = __Infer<typeof ListAuditLogRecentProcedure.returnType>
 export type ListChatMessagesArgs = __Infer<typeof ListChatMessagesProcedure.params>
 export type ListChatMessagesResult = __Infer<typeof ListChatMessagesProcedure.returnType>
 export type ListMembershipsArgs = __Infer<typeof ListMembershipsProcedure.params>

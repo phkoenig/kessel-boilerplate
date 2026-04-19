@@ -4,6 +4,7 @@ import type { CoreRuntimeMode, CoreStore } from "./types"
 export type {
   CoreAdminUserRecord,
   CoreAppSettings,
+  CoreAuditLogEntry,
   CoreChatMessageRecord,
   CoreMembershipRecord,
   CoreModulePermission,

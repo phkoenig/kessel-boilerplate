@@ -48,8 +48,9 @@ fuer Forensik, Compliance-Audits und Incident-Response.
 
 ## Einsicht
 
-- Programmatisch: Subscription auf `core_audit_log` (Service-Identity).
-- Admin-UI: `(shell)/app-verwaltung/audit` (geplant, im Backlog).
+- Admin-UI: `/app-verwaltung/audit` (read-only Tabelle, laedt via `GET /api/admin/audit-log`).
+- Programmatisch: Procedure `list_audit_log_recent` (wird nur vom Next.js-Server
+  mit registrierter Service-Identity aufgerufen).
 
 ## Failure-Modes
 

@@ -29,6 +29,7 @@ const ADMIN: Endpoint[] = [
   ["GET", "/api/admin/databases"],
   ["GET", "/api/admin/memberships"],
   ["GET", "/api/admin/roles"],
+  ["GET", "/api/admin/audit-log"],
   ["POST", "/api/admin/roles/permissions"],
   ["POST", "/api/admin/create-user"],
   ["POST", "/api/admin/update-user"],

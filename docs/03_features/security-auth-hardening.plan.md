@@ -25,30 +25,30 @@
 
 ## 1. Severity-Übersicht & Ampel
 
-| ID    | Titel                                                               | Severity  | Status                                    | Commit |
-| ----- | ------------------------------------------------------------------- | --------- | ----------------------------------------- | ------ |
-| C-1   | SpacetimeDB-Reducer ohne Authorization                              | CRITICAL  | ✅ done (Stufe 1+2, Hard-Enforce pending) |        |
-| C-2   | Kein Admin-Guard auf `(shell)/app-verwaltung/**` (SSR)              | CRITICAL  | ✅ done                                   |        |
-| C-3   | Clerk läuft auf Test-Instanz (`pk_test_` / `sk_test_`)              | CRITICAL  | ✅ done (Doku + ENV-Separation)           |        |
-| H-3   | `NEXT_PUBLIC_AUTH_BYPASS` + Dev-Impersonation-Endpoints             | HIGH      | ✅ done                                   |        |
-| H-4   | Admin-Allowlist greift evtl. nicht bei Google-SSO                   | HIGH      | ✅ done                                   |        |
-| H-5   | Admin-Demotion funktioniert nicht                                   | HIGH      | ✅ done                                   |        |
-| H-8   | Keine Security-HTTP-Header                                          | HIGH      | ✅ done (Report-Only → Enforce geplant)   |        |
-| H-9   | Ungeschützte Read-APIs leaken Infos                                 | HIGH      | ✅ done                                   |        |
-| H-10  | Service-Role-Client umgeht RLS; kein Audit-Log                      | HIGH      | ✅ done (Audit-Log aktiv)                 |        |
-| M-6   | Inkonsistente Role-Checks (Case-Sensitivity, fehlendes `superuser`) | MEDIUM    | ✅ done                                   |        |
-| M-7   | Permission-Cache bleibt nach Logout bestehen                        | MEDIUM    | ✅ done                                   |        |
-| M-11  | Clerk-Webhook: kein Idempotency-Schutz, Error-Leak                  | MEDIUM    | ✅ done                                   |        |
-| M-12  | `/api/user/profile` PUT triggert Admin-Re-Provisioning              | MEDIUM    | ✅ done                                   |        |
-| M-13  | Chat-API akzeptiert ungeprüftes `htmlDump` / `screenshot`           | MEDIUM    | ✅ done                                   |        |
-| L-14a | `/api/debug/save-screenshot` in Production                          | LOW       | ✅ done                                   |        |
-| L-14b | Dev-Users Session-Cookie-Fallback brüchig                           | LOW       | ✅ done (Modul-Guard)                     |        |
-| L-14c | Fehlende Zod-Validierung auf API-Payloads                           | LOW       | ✅ done                                   |        |
-| L-14d | Uneinheitliche Error-Response-Struktur                              | LOW       | ✅ done                                   |        |
-| X-1   | `pnpm security:check` CI-Gate-Script                                | HARDENING | ✅ done                                   |        |
-| X-2   | `docs/02_architecture/threat-model.md`                              | HARDENING | ✅ done                                   |        |
-| X-3   | `docs/04_knowledge/secrets-rotation.md`                             | HARDENING | ✅ done                                   |        |
-| X-4   | `e2e/security/` Penetrationstests                                   | HARDENING | ✅ done                                   |        |
+| ID    | Titel                                                               | Severity  | Status                                                 | Commit |
+| ----- | ------------------------------------------------------------------- | --------- | ------------------------------------------------------ | ------ |
+| C-1   | SpacetimeDB-Reducer ohne Authorization                              | CRITICAL  | ✅ done (Stufe 1+2 Hard-Enforce im Modul)              |        |
+| C-2   | Kein Admin-Guard auf `(shell)/app-verwaltung/**` (SSR)              | CRITICAL  | ✅ done                                                |        |
+| C-3   | Clerk läuft auf Test-Instanz (`pk_test_` / `sk_test_`)              | CRITICAL  | ✅ done (Doku + ENV-Separation)                        |        |
+| H-3   | `NEXT_PUBLIC_AUTH_BYPASS` + Dev-Impersonation-Endpoints             | HIGH      | ✅ done                                                |        |
+| H-4   | Admin-Allowlist greift evtl. nicht bei Google-SSO                   | HIGH      | ✅ done                                                |        |
+| H-5   | Admin-Demotion funktioniert nicht                                   | HIGH      | ✅ done                                                |        |
+| H-8   | Keine Security-HTTP-Header                                          | HIGH      | ✅ done (CSP Enforce aktiv)                            |        |
+| H-9   | Ungeschützte Read-APIs leaken Infos                                 | HIGH      | ✅ done                                                |        |
+| H-10  | Service-Role-Client umgeht RLS; kein Audit-Log                      | HIGH      | ✅ done (Audit-Log + Admin-UI `/app-verwaltung/audit`) |        |
+| M-6   | Inkonsistente Role-Checks (Case-Sensitivity, fehlendes `superuser`) | MEDIUM    | ✅ done                                                |        |
+| M-7   | Permission-Cache bleibt nach Logout bestehen                        | MEDIUM    | ✅ done                                                |        |
+| M-11  | Clerk-Webhook: kein Idempotency-Schutz, Error-Leak                  | MEDIUM    | ✅ done                                                |        |
+| M-12  | `/api/user/profile` PUT triggert Admin-Re-Provisioning              | MEDIUM    | ✅ done                                                |        |
+| M-13  | Chat-API akzeptiert ungeprüftes `htmlDump` / `screenshot`           | MEDIUM    | ✅ done                                                |        |
+| L-14a | `/api/debug/save-screenshot` in Production                          | LOW       | ✅ done                                                |        |
+| L-14b | Dev-Users Session-Cookie-Fallback brüchig                           | LOW       | ✅ done (Modul-Guard)                                  |        |
+| L-14c | Fehlende Zod-Validierung auf API-Payloads                           | LOW       | ✅ done                                                |        |
+| L-14d | Uneinheitliche Error-Response-Struktur                              | LOW       | ✅ done                                                |        |
+| X-1   | `pnpm security:check` CI-Gate-Script                                | HARDENING | ✅ done                                                |        |
+| X-2   | `docs/02_architecture/threat-model.md`                              | HARDENING | ✅ done                                                |        |
+| X-3   | `docs/04_knowledge/secrets-rotation.md`                             | HARDENING | ✅ done                                                |        |
+| X-4   | `e2e/security/` Penetrationstests                                   | HARDENING | ✅ done                                                |        |
 
 ---
 

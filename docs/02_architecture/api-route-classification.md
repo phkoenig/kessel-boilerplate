@@ -8,7 +8,7 @@
 
 ---
 
-## Vollständige Matrix (alle 40 Routen)
+## Vollständige Matrix (alle API-Routen)
 
 | Route                              | Auth-Level    | Guard                                   |
 | ---------------------------------- | ------------- | --------------------------------------- |
@@ -22,6 +22,7 @@
 | `/api/admin/roles/permissions`     | admin         | `requireAdmin`                          |
 | `/api/admin/update-user`           | admin         | `requireAdmin`                          |
 | `/api/admin/users`                 | admin         | `requireAdmin`                          |
+| `/api/admin/audit-log`             | admin         | `requireAdmin` (read-only Audit)        |
 | `/api/app-settings`                | authenticated | `requireAuth`                           |
 | `/api/chat`                        | authenticated | `requireAuth` + Zod + Rate-Limit        |
 | `/api/chat/history`                | authenticated | `requireAuth`                           |
