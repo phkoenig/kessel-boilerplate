@@ -31,19 +31,19 @@ Das Theme-System trennt drei Ebenen klar voneinander:
 
 ### App-Developer / Admin steuert:
 
-| Eigenschaft | Wo konfiguriert | Beispiel |
-|---|---|---|
-| Standard-Theme der App | `NEXT_PUBLIC_DEFAULT_THEME` in `.env.local` | `default`, `megasync-brand`, `fsf` |
-| Theme-CSS (Farben, Fonts) | Supabase Storage `themes/{tenant}/{id}.css` | OKLCH-Farbwerte, Radii, Shadows |
-| Theme-Metadaten | Supabase DB `themes` Tabelle | Name, Beschreibung, dynamische Fonts |
-| User darf Theme wählen? | `profiles.can_select_theme` (Boolean) | `true` = User darf, `false` = Admin-Theme |
-| Tenant-Isolation | `NEXT_PUBLIC_TENANT_SLUG` in `.env.local` | `megasync`, `companydata` |
+| Eigenschaft               | Wo konfiguriert                             | Beispiel                                  |
+| ------------------------- | ------------------------------------------- | ----------------------------------------- |
+| Standard-Theme der App    | `NEXT_PUBLIC_DEFAULT_THEME` in `.env.local` | `default`, `megasync-brand`, `fsf`        |
+| Theme-CSS (Farben, Fonts) | Supabase Storage `themes/{tenant}/{id}.css` | OKLCH-Farbwerte, Radii, Shadows           |
+| Theme-Metadaten           | Supabase DB `themes` Tabelle                | Name, Beschreibung, dynamische Fonts      |
+| User darf Theme wählen?   | `profiles.can_select_theme` (Boolean)       | `true` = User darf, `false` = Admin-Theme |
+| Tenant-Isolation          | `NEXT_PUBLIC_TENANT_SLUG` in `.env.local`   | `megasync`, `companydata`                 |
 
 ### Jeder User steuert selbst:
 
-| Eigenschaft | Wo gespeichert | Werte |
-|---|---|---|
-| Dark/Light Mode | `profiles.color_scheme` + localStorage | `dark`, `light`, `system` |
+| Eigenschaft                  | Wo gespeichert                           | Werte                             |
+| ---------------------------- | ---------------------------------------- | --------------------------------- |
+| Dark/Light Mode              | `profiles.color_scheme` + localStorage   | `dark`, `light`, `system`         |
 | Theme-Auswahl (wenn erlaubt) | `profiles.selected_theme` + localStorage | Theme-ID z.B. `fsf`, `ocean-blue` |
 
 ### Was der User NICHT steuern kann:
@@ -109,7 +109,7 @@ Jedes Theme ist eine CSS-Datei mit `data-theme`-Selektoren:
 ```css
 /* Light Mode */
 :root[data-theme="fsf"] {
-  --background: oklch(1.0000 0 0);
+  --background: oklch(1 0 0);
   --primary: oklch(0.7686 0.1647 70.0804);
   /* ... weitere Tokens */
 }
@@ -127,11 +127,11 @@ Jedes Theme ist eine CSS-Datei mit `data-theme`-Selektoren:
 Ein Inline-Script im `<head>` von `layout.tsx` setzt `data-theme` sofort:
 
 ```javascript
-(function() {
-  var defaultTheme = 'default'; // aus NEXT_PUBLIC_DEFAULT_THEME
-  var theme = localStorage.getItem('tweakcn-theme') || defaultTheme;
-  document.documentElement.setAttribute('data-theme', theme);
-})();
+;(function () {
+  var defaultTheme = "default" // aus NEXT_PUBLIC_DEFAULT_THEME
+  var theme = localStorage.getItem("tweakcn-theme") || defaultTheme
+  document.documentElement.setAttribute("data-theme", theme)
+})()
 ```
 
 ---
@@ -194,29 +194,29 @@ Theme-Wechsel → localStorage + DB (profiles.selected_theme)
 
 ## Dateien-Übersicht
 
-| Datei | Zweck |
-|---|---|
-| `src/lib/themes/theme-provider.tsx` | Zentraler Theme-Context, CSS-Loading, Fallback |
-| `src/hooks/use-theme-sync-with-user.tsx` | Brand-Theme ↔ DB Sync (selected_theme) |
-| `src/hooks/use-color-scheme-sync.tsx` | Dark/Light Mode ↔ DB Sync (color_scheme) |
-| `src/components/auth/auth-context.tsx` | Lädt User-Profil inkl. Theme-Felder |
-| `src/components/providers/ClientProviders.tsx` | Bindet beide Sync-Provider ein |
-| `src/app/layout.tsx` | SSR Default-CSS, FOUC-Prevention Script |
-| `src/app/api/themes/import/route.ts` | TweakCN CSS Import mit Tenant-Support |
-| `src/app/api/themes/list/route.ts` | Theme-Liste aus DB |
-| `src/app/api/user/theme/route.ts` | User-Theme + Color-Scheme API |
-| `src/lib/themes/storage.ts` | Storage-Service (CRUD für Themes) |
-| `src/lib/utils/tenant.ts` | Tenant-Pfad-Utilities |
+| Datei                                          | Zweck                                          |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `src/lib/themes/theme-provider.tsx`            | Zentraler Theme-Context, CSS-Loading, Fallback |
+| `src/hooks/use-theme-sync-with-user.tsx`       | Brand-Theme ↔ DB Sync (selected_theme)         |
+| `src/hooks/use-color-scheme-sync.tsx`          | Dark/Light Mode ↔ DB Sync (color_scheme)       |
+| `src/components/auth/auth-context.tsx`         | Lädt User-Profil inkl. Theme-Felder            |
+| `src/components/providers/ClientProviders.tsx` | Bindet beide Sync-Provider ein                 |
+| `src/app/layout.tsx`                           | SSR Default-CSS, FOUC-Prevention Script        |
+| `src/app/api/themes/import/route.ts`           | TweakCN CSS Import mit Tenant-Support          |
+| `src/app/api/themes/list/route.ts`             | Theme-Liste aus DB                             |
+| `src/app/api/user/theme/route.ts`              | User-Theme + Color-Scheme API                  |
+| `src/lib/themes/storage.ts`                    | Storage-Service (CRUD für Themes)              |
+| `src/lib/utils/tenant.ts`                      | Tenant-Pfad-Utilities                          |
 
 ---
 
 ## Environment-Variablen
 
-| Variable | Pflicht | Beispiel | Zweck |
-|---|---|---|---|
-| `NEXT_PUBLIC_DEFAULT_THEME` | Ja | `default` | Standard-Theme der App |
-| `NEXT_PUBLIC_TENANT_SLUG` | Nein | `megasync` | Tenant-Isolation im Storage |
-| `NEXT_PUBLIC_SUPABASE_URL` | Ja | `https://...supabase.co` | Supabase-URL für CSS-Loading |
+| Variable                    | Pflicht | Beispiel                 | Zweck                        |
+| --------------------------- | ------- | ------------------------ | ---------------------------- |
+| `NEXT_PUBLIC_DEFAULT_THEME` | Ja      | `default`                | Standard-Theme der App       |
+| `NEXT_PUBLIC_TENANT_SLUG`   | Nein    | `megasync`               | Tenant-Isolation im Storage  |
+| `NEXT_PUBLIC_SUPABASE_URL`  | Ja      | `https://...supabase.co` | Supabase-URL für CSS-Loading |
 
 ---
 
@@ -250,10 +250,10 @@ Dark Mode:  Farbe auf dunklem Hintergrund → Farbe muss HELL sein  (L ≥ 0.6)
 
 ### WCAG AA Kontrast-Regeln
 
-| Kontext | Hintergrund-L | Farb-L | Kontrast |
-|---------|---------------|--------|----------|
-| Light Mode | 1.0 (Weiß) | ≤ 0.5 | WCAG AA ✓ |
-| Dark Mode | 0.15 (Dunkel) | ≥ 0.6 | WCAG AA ✓ |
+| Kontext    | Hintergrund-L | Farb-L | Kontrast  |
+| ---------- | ------------- | ------ | --------- |
+| Light Mode | 1.0 (Weiß)    | ≤ 0.5  | WCAG AA ✓ |
+| Dark Mode  | 0.15 (Dunkel) | ≥ 0.6  | WCAG AA ✓ |
 
 ### Foreground-Strategie
 
@@ -268,21 +268,21 @@ Ausnahme: `--warning-foreground` ist in BEIDEN Modi dunkel, da Amber-Töne auch 
 
 Dark Mode benötigt leicht **höhere Chroma** (Farbsättigung), weil dunkle Hintergründe Farben visuell entsättigen:
 
-| Token | Light Chroma | Dark Chroma | Delta |
-|-------|-------------|------------|-------|
-| `--success` | 0.16 | 0.19 | +0.03 |
-| `--info` | 0.14 | 0.17 | +0.03 |
-| `--destructive` | 0.18 | 0.20 | +0.02 |
+| Token           | Light Chroma | Dark Chroma | Delta |
+| --------------- | ------------ | ----------- | ----- |
+| `--success`     | 0.16         | 0.19        | +0.03 |
+| `--info`        | 0.14         | 0.17        | +0.03 |
+| `--destructive` | 0.18         | 0.20        | +0.02 |
 
 ### Status-Token Referenz
 
-| Token | Light Mode | Dark Mode | Hue |
-|-------|------------|-----------|-----|
-| `--destructive` | `oklch(0.45 0.18 25)` | `oklch(0.6 0.2 25)` | Rot (25°) |
-| `--success` | `oklch(0.45 0.16 145)` | `oklch(0.65 0.19 145)` | Grün (145°) |
-| `--warning` | `oklch(0.55 0.16 85)` | `oklch(0.75 0.18 85)` | Amber (85°) |
-| `--info` | `oklch(0.45 0.14 240)` | `oklch(0.65 0.17 240)` | Blau (240°) |
-| `--neutral` | `oklch(0.45 0 0)` | `oklch(0.65 0 0)` | Achromatisch |
+| Token           | Light Mode             | Dark Mode              | Hue          |
+| --------------- | ---------------------- | ---------------------- | ------------ |
+| `--destructive` | `oklch(0.45 0.18 25)`  | `oklch(0.6 0.2 25)`    | Rot (25°)    |
+| `--success`     | `oklch(0.45 0.16 145)` | `oklch(0.65 0.19 145)` | Grün (145°)  |
+| `--warning`     | `oklch(0.55 0.16 85)`  | `oklch(0.75 0.18 85)`  | Amber (85°)  |
+| `--info`        | `oklch(0.45 0.14 240)` | `oklch(0.65 0.17 240)` | Blau (240°)  |
+| `--neutral`     | `oklch(0.45 0 0)`      | `oklch(0.65 0 0)`      | Achromatisch |
 
 ### TweakCN Import-Handling
 
