@@ -36,6 +36,7 @@ import {
 // Import all reducer arg schemas
 import AppendChatMessageReducer from "./append_chat_message_reducer"
 import CreateChatSessionReducer from "./create_chat_session_reducer"
+import DeleteBlobAssetReducer from "./delete_blob_asset_reducer"
 import DeleteMembershipReducer from "./delete_membership_reducer"
 import DeleteNavigationItemReducer from "./delete_navigation_item_reducer"
 import DeleteRoleReducer from "./delete_role_reducer"
@@ -48,6 +49,7 @@ import RegisterServiceIdentityReducer from "./register_service_identity_reducer"
 import UpdateUserProfileSettingsReducer from "./update_user_profile_settings_reducer"
 import UpdateUserThemeStateReducer from "./update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "./upsert_app_settings_reducer"
+import UpsertBlobAssetReducer from "./upsert_blob_asset_reducer"
 import UpsertMembershipReducer from "./upsert_membership_reducer"
 import UpsertModulePermissionReducer from "./upsert_module_permission_reducer"
 import UpsertNavigationItemReducer from "./upsert_navigation_item_reducer"
@@ -60,6 +62,7 @@ import UpsertWikiDocumentReducer from "./upsert_wiki_document_reducer"
 // Import all procedure arg schemas
 import * as GetAdminThemeProcedure from "./get_admin_theme_procedure"
 import * as GetAppSettingsProcedure from "./get_app_settings_procedure"
+import * as GetBlobAssetProcedure from "./get_blob_asset_procedure"
 import * as GetChatSessionOwnerProcedure from "./get_chat_session_owner_procedure"
 import * as GetTenantIdByClerkOrgIdProcedure from "./get_tenant_id_by_clerk_org_id_procedure"
 import * as GetThemeRegistryEntryProcedure from "./get_theme_registry_entry_procedure"
@@ -67,6 +70,7 @@ import * as GetUserByClerkIdProcedure from "./get_user_by_clerk_id_procedure"
 import * as GetUserThemeStateProcedure from "./get_user_theme_state_procedure"
 import * as GetWikiDocumentProcedure from "./get_wiki_document_procedure"
 import * as ListAuditLogRecentProcedure from "./list_audit_log_recent_procedure"
+import * as ListBlobAssetsByNamespaceProcedure from "./list_blob_assets_by_namespace_procedure"
 import * as ListChatMessagesProcedure from "./list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "./list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "./list_module_permissions_procedure"
@@ -110,6 +114,7 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("append_chat_message", AppendChatMessageReducer),
   __reducerSchema("create_chat_session", CreateChatSessionReducer),
+  __reducerSchema("delete_blob_asset", DeleteBlobAssetReducer),
   __reducerSchema("delete_membership", DeleteMembershipReducer),
   __reducerSchema("delete_navigation_item", DeleteNavigationItemReducer),
   __reducerSchema("delete_role", DeleteRoleReducer),
@@ -122,6 +127,7 @@ const reducersSchema = __reducers(
   __reducerSchema("update_user_profile_settings", UpdateUserProfileSettingsReducer),
   __reducerSchema("update_user_theme_state", UpdateUserThemeStateReducer),
   __reducerSchema("upsert_app_settings", UpsertAppSettingsReducer),
+  __reducerSchema("upsert_blob_asset", UpsertBlobAssetReducer),
   __reducerSchema("upsert_membership", UpsertMembershipReducer),
   __reducerSchema("upsert_module_permission", UpsertModulePermissionReducer),
   __reducerSchema("upsert_navigation_item", UpsertNavigationItemReducer),
@@ -143,6 +149,11 @@ const proceduresSchema = __procedures(
     "get_app_settings",
     GetAppSettingsProcedure.params,
     GetAppSettingsProcedure.returnType
+  ),
+  __procedureSchema(
+    "get_blob_asset",
+    GetBlobAssetProcedure.params,
+    GetBlobAssetProcedure.returnType
   ),
   __procedureSchema(
     "get_chat_session_owner",
@@ -178,6 +189,11 @@ const proceduresSchema = __procedures(
     "list_audit_log_recent",
     ListAuditLogRecentProcedure.params,
     ListAuditLogRecentProcedure.returnType
+  ),
+  __procedureSchema(
+    "list_blob_assets_by_namespace",
+    ListBlobAssetsByNamespaceProcedure.params,
+    ListBlobAssetsByNamespaceProcedure.returnType
   ),
   __procedureSchema(
     "list_chat_messages",

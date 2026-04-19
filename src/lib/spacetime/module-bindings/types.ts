@@ -53,6 +53,39 @@ export const AuditLogEntryValue = __t.object("AuditLogEntryValue", {
 })
 export type AuditLogEntryValue = __Infer<typeof AuditLogEntryValue>
 
+export const BlobAsset = __t.object("BlobAsset", {
+  id: __t.u64(),
+  namespace: __t.string(),
+  key: __t.string(),
+  contentType: __t.string(),
+  data: __t.byteArray(),
+  sizeBytes: __t.u32(),
+  updatedAt: __t.timestamp(),
+  updatedByClerkUserId: __t.option(__t.string()),
+})
+export type BlobAsset = __Infer<typeof BlobAsset>
+
+export const BlobAssetMetaValue = __t.object("BlobAssetMetaValue", {
+  namespace: __t.string(),
+  key: __t.string(),
+  contentType: __t.string(),
+  sizeBytes: __t.u32(),
+  updatedAtMicros: __t.string(),
+  updatedByClerkUserId: __t.option(__t.string()),
+})
+export type BlobAssetMetaValue = __Infer<typeof BlobAssetMetaValue>
+
+export const BlobAssetValue = __t.object("BlobAssetValue", {
+  namespace: __t.string(),
+  key: __t.string(),
+  contentType: __t.string(),
+  data: __t.byteArray(),
+  sizeBytes: __t.u32(),
+  updatedAtMicros: __t.string(),
+  updatedByClerkUserId: __t.option(__t.string()),
+})
+export type BlobAssetValue = __Infer<typeof BlobAssetValue>
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sessionId: __t.u64(),

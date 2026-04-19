@@ -7,6 +7,7 @@ import { type Infer as __Infer } from "spacetimedb"
 // Import all reducer arg schemas
 import AppendChatMessageReducer from "../append_chat_message_reducer"
 import CreateChatSessionReducer from "../create_chat_session_reducer"
+import DeleteBlobAssetReducer from "../delete_blob_asset_reducer"
 import DeleteMembershipReducer from "../delete_membership_reducer"
 import DeleteNavigationItemReducer from "../delete_navigation_item_reducer"
 import DeleteRoleReducer from "../delete_role_reducer"
@@ -19,6 +20,7 @@ import RegisterServiceIdentityReducer from "../register_service_identity_reducer
 import UpdateUserProfileSettingsReducer from "../update_user_profile_settings_reducer"
 import UpdateUserThemeStateReducer from "../update_user_theme_state_reducer"
 import UpsertAppSettingsReducer from "../upsert_app_settings_reducer"
+import UpsertBlobAssetReducer from "../upsert_blob_asset_reducer"
 import UpsertMembershipReducer from "../upsert_membership_reducer"
 import UpsertModulePermissionReducer from "../upsert_module_permission_reducer"
 import UpsertNavigationItemReducer from "../upsert_navigation_item_reducer"
@@ -30,6 +32,7 @@ import UpsertWikiDocumentReducer from "../upsert_wiki_document_reducer"
 
 export type AppendChatMessageParams = __Infer<typeof AppendChatMessageReducer>
 export type CreateChatSessionParams = __Infer<typeof CreateChatSessionReducer>
+export type DeleteBlobAssetParams = __Infer<typeof DeleteBlobAssetReducer>
 export type DeleteMembershipParams = __Infer<typeof DeleteMembershipReducer>
 export type DeleteNavigationItemParams = __Infer<typeof DeleteNavigationItemReducer>
 export type DeleteRoleParams = __Infer<typeof DeleteRoleReducer>
@@ -42,6 +45,7 @@ export type RegisterServiceIdentityParams = __Infer<typeof RegisterServiceIdenti
 export type UpdateUserProfileSettingsParams = __Infer<typeof UpdateUserProfileSettingsReducer>
 export type UpdateUserThemeStateParams = __Infer<typeof UpdateUserThemeStateReducer>
 export type UpsertAppSettingsParams = __Infer<typeof UpsertAppSettingsReducer>
+export type UpsertBlobAssetParams = __Infer<typeof UpsertBlobAssetReducer>
 export type UpsertMembershipParams = __Infer<typeof UpsertMembershipReducer>
 export type UpsertModulePermissionParams = __Infer<typeof UpsertModulePermissionReducer>
 export type UpsertNavigationItemParams = __Infer<typeof UpsertNavigationItemReducer>

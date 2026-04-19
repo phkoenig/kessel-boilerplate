@@ -7,6 +7,7 @@ import { type Infer as __Infer } from "spacetimedb"
 // Import all procedure arg schemas
 import * as GetAdminThemeProcedure from "../get_admin_theme_procedure"
 import * as GetAppSettingsProcedure from "../get_app_settings_procedure"
+import * as GetBlobAssetProcedure from "../get_blob_asset_procedure"
 import * as GetChatSessionOwnerProcedure from "../get_chat_session_owner_procedure"
 import * as GetTenantIdByClerkOrgIdProcedure from "../get_tenant_id_by_clerk_org_id_procedure"
 import * as GetThemeRegistryEntryProcedure from "../get_theme_registry_entry_procedure"
@@ -14,6 +15,7 @@ import * as GetUserByClerkIdProcedure from "../get_user_by_clerk_id_procedure"
 import * as GetUserThemeStateProcedure from "../get_user_theme_state_procedure"
 import * as GetWikiDocumentProcedure from "../get_wiki_document_procedure"
 import * as ListAuditLogRecentProcedure from "../list_audit_log_recent_procedure"
+import * as ListBlobAssetsByNamespaceProcedure from "../list_blob_assets_by_namespace_procedure"
 import * as ListChatMessagesProcedure from "../list_chat_messages_procedure"
 import * as ListMembershipsProcedure from "../list_memberships_procedure"
 import * as ListModulePermissionsProcedure from "../list_module_permissions_procedure"
@@ -27,6 +29,8 @@ export type GetAdminThemeArgs = __Infer<typeof GetAdminThemeProcedure.params>
 export type GetAdminThemeResult = __Infer<typeof GetAdminThemeProcedure.returnType>
 export type GetAppSettingsArgs = __Infer<typeof GetAppSettingsProcedure.params>
 export type GetAppSettingsResult = __Infer<typeof GetAppSettingsProcedure.returnType>
+export type GetBlobAssetArgs = __Infer<typeof GetBlobAssetProcedure.params>
+export type GetBlobAssetResult = __Infer<typeof GetBlobAssetProcedure.returnType>
 export type GetChatSessionOwnerArgs = __Infer<typeof GetChatSessionOwnerProcedure.params>
 export type GetChatSessionOwnerResult = __Infer<typeof GetChatSessionOwnerProcedure.returnType>
 export type GetTenantIdByClerkOrgIdArgs = __Infer<typeof GetTenantIdByClerkOrgIdProcedure.params>
@@ -43,6 +47,12 @@ export type GetWikiDocumentArgs = __Infer<typeof GetWikiDocumentProcedure.params
 export type GetWikiDocumentResult = __Infer<typeof GetWikiDocumentProcedure.returnType>
 export type ListAuditLogRecentArgs = __Infer<typeof ListAuditLogRecentProcedure.params>
 export type ListAuditLogRecentResult = __Infer<typeof ListAuditLogRecentProcedure.returnType>
+export type ListBlobAssetsByNamespaceArgs = __Infer<
+  typeof ListBlobAssetsByNamespaceProcedure.params
+>
+export type ListBlobAssetsByNamespaceResult = __Infer<
+  typeof ListBlobAssetsByNamespaceProcedure.returnType
+>
 export type ListChatMessagesArgs = __Infer<typeof ListChatMessagesProcedure.params>
 export type ListChatMessagesResult = __Infer<typeof ListChatMessagesProcedure.returnType>
 export type ListMembershipsArgs = __Infer<typeof ListMembershipsProcedure.params>
