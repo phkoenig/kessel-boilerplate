@@ -12,6 +12,16 @@ let permissionsCache: { mode: string; permissions: ModulePermissions; expiresAt:
   null
 
 /**
+ * Invalidiert den serverseitigen Permissions-Cache. Wird von Routen aufgerufen,
+ * die `module_permissions` schreiben (z. B. `/api/admin/roles/permissions`),
+ * damit die Rollen-Seite nach dem Speichern sofort den frischen Wert sieht und
+ * nicht 60 s lang den alten Cache.
+ */
+export function invalidateModulePermissionsCache(): void {
+  permissionsCache = null
+}
+
+/**
  * Liefert die zentrale Permissions-Matrix aus dem Boilerplate-Core.
  * Der Client greift damit nicht mehr direkt auf Legacy-Tabellen zu und
  * kann spaeter ohne weitere API-Aenderungen auf Spacetime-Core-Reads

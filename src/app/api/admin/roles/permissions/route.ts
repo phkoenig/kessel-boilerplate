@@ -6,6 +6,7 @@ import { parseJsonBody } from "@/lib/api/parse-body"
 import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+import { invalidateModulePermissionsCache } from "@/app/api/core/permissions/route"
 
 const PermissionSchema = z.object({
   moduleId: z.string().trim().min(1).max(128),
@@ -38,6 +39,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         })
       )
     )
+
+    invalidateModulePermissionsCache()
 
     await recordAudit(userOrError.clerkUserId, "permission.changed", "module_permission", null, {
       count: permissions.length,
