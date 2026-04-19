@@ -33,6 +33,39 @@ interface Permission {
 }
 
 /**
+ * Sortiert Permissions in Depth-First-Reihenfolge (Parent -> eigene Kinder -> naechster Parent).
+ * Ohne das rendert eine flache DB-Reihenfolge alle Parents zuerst und alle Kinder danach,
+ * was optisch so wirkt, als gehoerten alle Sub-Module zum letzten Parent.
+ * Geschwister behalten ihre urspruengliche Reihenfolge.
+ */
+function sortPermissionsDepthFirst(perms: Permission[]): Permission[] {
+  const byId = new Map(perms.map((p) => [p.moduleId, p]))
+  const childrenOf = new Map<string, Permission[]>()
+  const roots: Permission[] = []
+
+  for (const perm of perms) {
+    const parentIsInList = perm.parentId && byId.has(perm.parentId)
+    if (parentIsInList) {
+      const siblings = childrenOf.get(perm.parentId as string) ?? []
+      siblings.push(perm)
+      childrenOf.set(perm.parentId as string, siblings)
+    } else {
+      roots.push(perm)
+    }
+  }
+
+  const result: Permission[] = []
+  const visit = (node: Permission) => {
+    result.push(node)
+    for (const child of childrenOf.get(node.moduleId) ?? []) {
+      visit(child)
+    }
+  }
+  roots.forEach(visit)
+  return result
+}
+
+/**
  * Rollen-Verwaltungsseite (nur für Admins)
  *
  * Features:
@@ -427,8 +460,10 @@ export default function RolesPage(): React.ReactElement {
                 descendants.forEach((descId) => sectionModuleIds.add(descId))
               })
 
-              // Filtere Permissions
-              return permissions.filter((perm) => sectionModuleIds.has(perm.moduleId))
+              // Filtere Permissions und sortiere sie baumartig (Parent -> Kinder -> naechster Parent),
+              // damit die Einrueckung visuell zur Hierarchie passt.
+              const filtered = permissions.filter((perm) => sectionModuleIds.has(perm.moduleId))
+              return sortPermissionsDepthFirst(filtered)
             }
 
             const renderPermissionsTable = (sectionPerms: Permission[]) => {
@@ -475,13 +510,16 @@ export default function RolesPage(): React.ReactElement {
                           </TableCell>
                           {roles.map((r) => {
                             const isSaving = savingModuleId === perm.moduleId
-                            const isAdmin = isAdminRole(r.name)
+                            // Nur die LITERALE Admin-Rolle ist gesperrt. Superuser (auch wenn
+                            // er intern via isAdminRole wie Admin behandelt wird) soll vom Admin
+                            // konfigurierbar bleiben — sonst kann man die Tabelle fuer Superuser
+                            // nicht pflegen. Daher hier bewusst Literal-Vergleich.
+                            // eslint-disable-next-line local/no-raw-role-comparison -- UI-Lock darf nur die literale admin-Rolle treffen
+                            const isLockedAdmin = r.name === "admin"
                             const isAlwaysVisible = perm.alwaysVisible === true
-                            // Admin-Spalte und alwaysVisible Items sind IMMER gesperrt
-                            const isDisabled = isAlwaysVisible || isAdmin || isSaving
+                            const isDisabled = isAlwaysVisible || isLockedAdmin || isSaving
                             const hasAccess = perm.roleAccess.get(r.name) ?? false
-                            // alwaysVisible Items sind immer aktiv (checked)
-                            const isChecked = isAdmin || isAlwaysVisible ? true : hasAccess
+                            const isChecked = isLockedAdmin || isAlwaysVisible ? true : hasAccess
 
                             return (
                               <TableCell key={r.id} className="text-center">
@@ -490,13 +528,14 @@ export default function RolesPage(): React.ReactElement {
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div
-                                          className={isAdmin || isAlwaysVisible ? "opacity-40" : ""}
+                                          className={
+                                            isLockedAdmin || isAlwaysVisible ? "opacity-40" : ""
+                                          }
                                         >
                                           <Checkbox
                                             checked={isChecked}
                                             onCheckedChange={(checked) => {
-                                              // Admin-Spalte und alwaysVisible dürfen NIEMALS geändert werden
-                                              if (!isAdmin && !isAlwaysVisible) {
+                                              if (!isLockedAdmin && !isAlwaysVisible) {
                                                 handlePermissionChange(
                                                   perm.moduleId,
                                                   r.name,
@@ -506,19 +545,19 @@ export default function RolesPage(): React.ReactElement {
                                             }}
                                             disabled={isDisabled}
                                             className={
-                                              isAdmin || isAlwaysVisible
+                                              isLockedAdmin || isAlwaysVisible
                                                 ? "pointer-events-none cursor-not-allowed"
                                                 : ""
                                             }
                                           />
                                         </div>
                                       </TooltipTrigger>
-                                      {isAdmin && (
+                                      {isLockedAdmin && (
                                         <TooltipContent>
                                           <p>Admin hat immer Vollzugriff (nicht änderbar)</p>
                                         </TooltipContent>
                                       )}
-                                      {isAlwaysVisible && !isAdmin && (
+                                      {isAlwaysVisible && !isLockedAdmin && (
                                         <TooltipContent>
                                           <p>Dieser Punkt ist immer sichtbar (nicht änderbar)</p>
                                         </TooltipContent>

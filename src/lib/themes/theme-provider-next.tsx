@@ -102,11 +102,17 @@ function CustomNextThemeProvider({
     })
   }, [snapshot.activeThemeId, snapshot.themes])
 
-  // ColorMode aus Snapshot an next-themes pushen (nur wenn Admin-Wahl abweicht).
+  // ColorMode aus Snapshot an next-themes pushen, aber NUR wenn der Snapshot
+  // tatsaechlich einen neuen Wert liefert (z.B. via Realtime-Broadcast aus einem
+  // anderen Tab). Ohne diese Abgrenzung wuerde ein lokaler Switch-Click sofort
+  // vom (noch nicht refresh'ten) Snapshot-Wert zurueckgerollt werden.
+  const lastSnapshotColorScheme = useRef(snapshot.colorScheme)
   useEffect(() => {
-    if (!snapshot.colorScheme) return
-    if (snapshot.colorScheme === colorModeValue) return
-    setNextTheme(snapshot.colorScheme)
+    if (snapshot.colorScheme === lastSnapshotColorScheme.current) return
+    lastSnapshotColorScheme.current = snapshot.colorScheme
+    if (snapshot.colorScheme && snapshot.colorScheme !== colorModeValue) {
+      setNextTheme(snapshot.colorScheme)
+    }
   }, [snapshot.colorScheme, colorModeValue, setNextTheme])
 
   const themesForContext: ThemeMeta[] = useMemo(() => snapshot.themes, [snapshot.themes])
