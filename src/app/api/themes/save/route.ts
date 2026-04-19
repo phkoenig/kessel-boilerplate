@@ -8,6 +8,7 @@ import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { createServiceClient } from "@/utils/supabase/service"
 import { emitRealtimeEvent } from "@/lib/realtime"
+import { verifyStoredThemeCss } from "@/lib/themes/verify-storage"
 
 const MAX_CSS_BYTES = 512 * 1024
 const SaveSchema = z.object({
@@ -57,11 +58,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })
     }
 
-    const { data: verifyBlob, error: verifyError } = await supabase.storage
-      .from("themes")
-      .download(storagePath)
-    const verifiedText = verifyBlob ? await verifyBlob.text() : null
-    if (verifyError || verifiedText !== cssContent) {
+    const verification = await verifyStoredThemeCss(supabase, storagePath, cssContent)
+    if (!verification.ok) {
       await supabase.storage
         .from("themes")
         .remove([storagePath])
@@ -69,7 +67,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return apiError(
         "STORAGE_VERIFY_FAILED",
         "Theme-Persistenz-Verifikation fehlgeschlagen — Save wurde zurueckgerollt",
-        500
+        500,
+        { message: verification.reason }
       )
     }
 
