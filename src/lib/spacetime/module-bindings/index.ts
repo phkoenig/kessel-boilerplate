@@ -81,12 +81,281 @@ import * as ListThemeRegistryProcedure from "./list_theme_registry_procedure"
 import * as ListUsersProcedure from "./list_users_procedure"
 
 // Import all table schema definitions
+import AppSettingRow from "./app_setting_table"
+import BlobAssetRow from "./blob_asset_table"
+import ChatMessageRow from "./chat_message_table"
+import ChatSessionRow from "./chat_session_table"
+import ChatSessionAliasRow from "./chat_session_alias_table"
+import CoreAuditLogRow from "./core_audit_log_table"
+import CoreNavigationRow from "./core_navigation_table"
+import CoreRoleRow from "./core_role_table"
+import CoreUserRow from "./core_user_table"
+import CoreUserPreferenceRow from "./core_user_preference_table"
 import InvalidationEventRow from "./invalidation_event_table"
+import MembershipRow from "./membership_table"
+import ModulePermissionRow from "./module_permission_table"
+import ServiceIdentityRow from "./service_identity_table"
+import TenantRow from "./tenant_table"
+import ThemeRegistryRow from "./theme_registry_table"
+import WebhookEventLogRow from "./webhook_event_log_table"
+import WikiDocumentRow from "./wiki_document_table"
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  appSetting: __table(
+    {
+      name: "app_setting",
+      indexes: [
+        { accessor: "id", name: "app_setting_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "tenantSlug",
+          name: "app_setting_tenant_slug_idx_btree",
+          algorithm: "btree",
+          columns: ["tenantSlug"],
+        },
+      ],
+      constraints: [
+        { name: "app_setting_id_key", constraint: "unique", columns: ["id"] },
+        { name: "app_setting_tenant_slug_key", constraint: "unique", columns: ["tenantSlug"] },
+      ],
+    },
+    AppSettingRow
+  ),
+  blobAsset: __table(
+    {
+      name: "blob_asset",
+      indexes: [
+        { accessor: "id", name: "blob_asset_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        { accessor: "key", name: "blob_asset_key_idx_btree", algorithm: "btree", columns: ["key"] },
+        {
+          accessor: "blobAssetNamespace",
+          name: "blob_asset_namespace_idx_btree",
+          algorithm: "btree",
+          columns: ["namespace"],
+        },
+      ],
+      constraints: [
+        { name: "blob_asset_id_key", constraint: "unique", columns: ["id"] },
+        { name: "blob_asset_key_key", constraint: "unique", columns: ["key"] },
+      ],
+    },
+    BlobAssetRow
+  ),
+  chatMessage: __table(
+    {
+      name: "chat_message",
+      indexes: [
+        { accessor: "id", name: "chat_message_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "chatMessageSessionId",
+          name: "chat_message_session_id_idx_btree",
+          algorithm: "btree",
+          columns: ["sessionId"],
+        },
+      ],
+      constraints: [{ name: "chat_message_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    ChatMessageRow
+  ),
+  chatSession: __table(
+    {
+      name: "chat_session",
+      indexes: [
+        {
+          accessor: "chatSessionClerkUserId",
+          name: "chat_session_clerk_user_id_idx_btree",
+          algorithm: "btree",
+          columns: ["clerkUserId"],
+        },
+        { accessor: "id", name: "chat_session_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "chatSessionTenantSlug",
+          name: "chat_session_tenant_slug_idx_btree",
+          algorithm: "btree",
+          columns: ["tenantSlug"],
+        },
+      ],
+      constraints: [{ name: "chat_session_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    ChatSessionRow
+  ),
+  chatSessionAlias: __table(
+    {
+      name: "chat_session_alias",
+      indexes: [
+        {
+          accessor: "id",
+          name: "chat_session_alias_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "sessionKey",
+          name: "chat_session_alias_session_key_idx_btree",
+          algorithm: "btree",
+          columns: ["sessionKey"],
+        },
+      ],
+      constraints: [
+        { name: "chat_session_alias_id_key", constraint: "unique", columns: ["id"] },
+        {
+          name: "chat_session_alias_session_key_key",
+          constraint: "unique",
+          columns: ["sessionKey"],
+        },
+      ],
+    },
+    ChatSessionAliasRow
+  ),
+  coreAuditLog: __table(
+    {
+      name: "core_audit_log",
+      indexes: [
+        {
+          accessor: "coreAuditLogAction",
+          name: "core_audit_log_action_idx_btree",
+          algorithm: "btree",
+          columns: ["action"],
+        },
+        {
+          accessor: "coreAuditLogActor",
+          name: "core_audit_log_actor_clerk_user_id_idx_btree",
+          algorithm: "btree",
+          columns: ["actorClerkUserId"],
+        },
+        {
+          accessor: "id",
+          name: "core_audit_log_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+      ],
+      constraints: [{ name: "core_audit_log_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    CoreAuditLogRow
+  ),
+  coreNavigation: __table(
+    {
+      name: "core_navigation",
+      indexes: [
+        {
+          accessor: "coreNavigationHref",
+          name: "core_navigation_href_idx_btree",
+          algorithm: "btree",
+          columns: ["href"],
+        },
+        {
+          accessor: "id",
+          name: "core_navigation_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "navId",
+          name: "core_navigation_nav_id_idx_btree",
+          algorithm: "btree",
+          columns: ["navId"],
+        },
+        {
+          accessor: "coreNavigationParentNavId",
+          name: "core_navigation_parent_nav_id_idx_btree",
+          algorithm: "btree",
+          columns: ["parentNavId"],
+        },
+        {
+          accessor: "coreNavigationScope",
+          name: "core_navigation_scope_idx_btree",
+          algorithm: "btree",
+          columns: ["scope"],
+        },
+      ],
+      constraints: [
+        { name: "core_navigation_id_key", constraint: "unique", columns: ["id"] },
+        { name: "core_navigation_nav_id_key", constraint: "unique", columns: ["navId"] },
+      ],
+    },
+    CoreNavigationRow
+  ),
+  coreRole: __table(
+    {
+      name: "core_role",
+      indexes: [
+        { accessor: "id", name: "core_role_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "name",
+          name: "core_role_name_idx_btree",
+          algorithm: "btree",
+          columns: ["name"],
+        },
+      ],
+      constraints: [
+        { name: "core_role_id_key", constraint: "unique", columns: ["id"] },
+        { name: "core_role_name_key", constraint: "unique", columns: ["name"] },
+      ],
+    },
+    CoreRoleRow
+  ),
+  coreUser: __table(
+    {
+      name: "core_user",
+      indexes: [
+        {
+          accessor: "clerkUserId",
+          name: "core_user_clerk_user_id_idx_btree",
+          algorithm: "btree",
+          columns: ["clerkUserId"],
+        },
+        { accessor: "id", name: "core_user_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "coreUserRole",
+          name: "core_user_role_idx_btree",
+          algorithm: "btree",
+          columns: ["role"],
+        },
+        {
+          accessor: "coreUserTenantId",
+          name: "core_user_tenant_id_idx_btree",
+          algorithm: "btree",
+          columns: ["tenantId"],
+        },
+      ],
+      constraints: [
+        { name: "core_user_clerk_user_id_key", constraint: "unique", columns: ["clerkUserId"] },
+        { name: "core_user_id_key", constraint: "unique", columns: ["id"] },
+      ],
+    },
+    CoreUserRow
+  ),
+  coreUserPreference: __table(
+    {
+      name: "core_user_preference",
+      indexes: [
+        {
+          accessor: "clerkUserId",
+          name: "core_user_preference_clerk_user_id_idx_btree",
+          algorithm: "btree",
+          columns: ["clerkUserId"],
+        },
+        {
+          accessor: "id",
+          name: "core_user_preference_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+      ],
+      constraints: [
+        {
+          name: "core_user_preference_clerk_user_id_key",
+          constraint: "unique",
+          columns: ["clerkUserId"],
+        },
+        { name: "core_user_preference_id_key", constraint: "unique", columns: ["id"] },
+      ],
+    },
+    CoreUserPreferenceRow
+  ),
   invalidationEvent: __table(
     {
       name: "invalidation_event",
@@ -107,6 +376,180 @@ const tablesSchema = __schema({
       constraints: [{ name: "invalidation_event_id_key", constraint: "unique", columns: ["id"] }],
     },
     InvalidationEventRow
+  ),
+  membership: __table(
+    {
+      name: "membership",
+      indexes: [
+        { accessor: "id", name: "membership_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "membershipTenantId",
+          name: "membership_tenant_id_idx_btree",
+          algorithm: "btree",
+          columns: ["tenantId"],
+        },
+        {
+          accessor: "membershipUserId",
+          name: "membership_user_id_idx_btree",
+          algorithm: "btree",
+          columns: ["userId"],
+        },
+      ],
+      constraints: [{ name: "membership_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    MembershipRow
+  ),
+  modulePermission: __table(
+    {
+      name: "module_permission",
+      indexes: [
+        {
+          accessor: "id",
+          name: "module_permission_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "modulePermissionModuleId",
+          name: "module_permission_module_id_idx_btree",
+          algorithm: "btree",
+          columns: ["moduleId"],
+        },
+        {
+          accessor: "modulePermissionRoleName",
+          name: "module_permission_role_name_idx_btree",
+          algorithm: "btree",
+          columns: ["roleName"],
+        },
+      ],
+      constraints: [{ name: "module_permission_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    ModulePermissionRow
+  ),
+  serviceIdentity: __table(
+    {
+      name: "service_identity",
+      indexes: [
+        {
+          accessor: "id",
+          name: "service_identity_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "serviceIdentityIdentity",
+          name: "service_identity_identity_idx_btree",
+          algorithm: "btree",
+          columns: ["identity"],
+        },
+      ],
+      constraints: [{ name: "service_identity_id_key", constraint: "unique", columns: ["id"] }],
+    },
+    ServiceIdentityRow
+  ),
+  tenant: __table(
+    {
+      name: "tenant",
+      indexes: [
+        {
+          accessor: "clerkOrgId",
+          name: "tenant_clerk_org_id_idx_btree",
+          algorithm: "btree",
+          columns: ["clerkOrgId"],
+        },
+        { accessor: "id", name: "tenant_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "tenantName",
+          name: "tenant_name_idx_btree",
+          algorithm: "btree",
+          columns: ["name"],
+        },
+        { accessor: "slug", name: "tenant_slug_idx_btree", algorithm: "btree", columns: ["slug"] },
+      ],
+      constraints: [
+        { name: "tenant_clerk_org_id_key", constraint: "unique", columns: ["clerkOrgId"] },
+        { name: "tenant_id_key", constraint: "unique", columns: ["id"] },
+        { name: "tenant_slug_key", constraint: "unique", columns: ["slug"] },
+      ],
+    },
+    TenantRow
+  ),
+  themeRegistry: __table(
+    {
+      name: "theme_registry",
+      indexes: [
+        {
+          accessor: "id",
+          name: "theme_registry_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "themeId",
+          name: "theme_registry_theme_id_idx_btree",
+          algorithm: "btree",
+          columns: ["themeId"],
+        },
+      ],
+      constraints: [
+        { name: "theme_registry_id_key", constraint: "unique", columns: ["id"] },
+        { name: "theme_registry_theme_id_key", constraint: "unique", columns: ["themeId"] },
+      ],
+    },
+    ThemeRegistryRow
+  ),
+  webhookEventLog: __table(
+    {
+      name: "webhook_event_log",
+      indexes: [
+        {
+          accessor: "externalEventId",
+          name: "webhook_event_log_external_event_id_idx_btree",
+          algorithm: "btree",
+          columns: ["externalEventId"],
+        },
+        {
+          accessor: "id",
+          name: "webhook_event_log_id_idx_btree",
+          algorithm: "btree",
+          columns: ["id"],
+        },
+        {
+          accessor: "webhookEventLogSource",
+          name: "webhook_event_log_source_idx_btree",
+          algorithm: "btree",
+          columns: ["source"],
+        },
+      ],
+      constraints: [
+        {
+          name: "webhook_event_log_external_event_id_key",
+          constraint: "unique",
+          columns: ["externalEventId"],
+        },
+        { name: "webhook_event_log_id_key", constraint: "unique", columns: ["id"] },
+      ],
+    },
+    WebhookEventLogRow
+  ),
+  wikiDocument: __table(
+    {
+      name: "wiki_document",
+      indexes: [
+        { accessor: "id", name: "wiki_document_id_idx_btree", algorithm: "btree", columns: ["id"] },
+        {
+          accessor: "slug",
+          name: "wiki_document_slug_idx_btree",
+          algorithm: "btree",
+          columns: ["slug"],
+        },
+      ],
+      constraints: [
+        { name: "wiki_document_id_key", constraint: "unique", columns: ["id"] },
+        { name: "wiki_document_slug_key", constraint: "unique", columns: ["slug"] },
+      ],
+    },
+    WikiDocumentRow
   ),
 })
 

@@ -36,6 +36,7 @@
     "test:e2e:ui": "playwright test --ui",
     "validate:themes": "tsx scripts/validate-themes.ts",
     "validate:ai": "tsx scripts/validate-ai-manifest.ts",
+    "migrate:supabase-to-spacetime": "tsx scripts/migrate-supabase-to-spacetime.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

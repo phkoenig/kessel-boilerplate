@@ -14,6 +14,8 @@ import DeleteRoleReducer from "../delete_role_reducer"
 import DeleteThemeRegistryReducer from "../delete_theme_registry_reducer"
 import DeleteUserByClerkIdReducer from "../delete_user_by_clerk_id_reducer"
 import LogWebhookEventReducer from "../log_webhook_event_reducer"
+import OnConnectReducer from "../on_connect_reducer"
+import OnDisconnectReducer from "../on_disconnect_reducer"
 import PublishInvalidationReducer from "../publish_invalidation_reducer"
 import RecordAuditEventReducer from "../record_audit_event_reducer"
 import RegisterServiceIdentityReducer from "../register_service_identity_reducer"
@@ -39,6 +41,8 @@ export type DeleteRoleParams = __Infer<typeof DeleteRoleReducer>
 export type DeleteThemeRegistryParams = __Infer<typeof DeleteThemeRegistryReducer>
 export type DeleteUserByClerkIdParams = __Infer<typeof DeleteUserByClerkIdReducer>
 export type LogWebhookEventParams = __Infer<typeof LogWebhookEventReducer>
+export type OnConnectParams = __Infer<typeof OnConnectReducer>
+export type OnDisconnectParams = __Infer<typeof OnDisconnectReducer>
 export type PublishInvalidationParams = __Infer<typeof PublishInvalidationReducer>
 export type RecordAuditEventParams = __Infer<typeof RecordAuditEventReducer>
 export type RegisterServiceIdentityParams = __Infer<typeof RegisterServiceIdentityReducer>
