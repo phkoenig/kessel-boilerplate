@@ -9,8 +9,8 @@ import { getEffectiveThemeSnapshot } from "@/lib/themes/snapshot"
 import { getTenantSlug, resolveAppBranding } from "@/lib/branding"
 import { ClientProviders } from "@/components/providers/ClientProviders"
 import { getCoreStore } from "@/lib/core"
+import { blobStorageDecode, getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createServiceClient } from "@/utils/supabase/service"
 import { env } from "@/env.mjs"
 
 /** CI / `SKIP_ENV_VALIDATION`: verhindert statisches Pre-Rendering von Shell-Seiten, die Supabase im Modulgraph erwarten. */
@@ -75,28 +75,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Lädt das Default-Theme CSS von Supabase Storage.
- * Dies geschieht serverseitig, damit das CSS beim ersten Render verfügbar ist.
+ * Laedt das Default-Theme-CSS ueber die BlobStorage-Abstraktion.
+ * Dies geschieht serverseitig, damit das CSS beim ersten Render verfuegbar ist.
  *
- * Das CSS wird für 1 Stunde gecacht (revalidate: 3600).
- * Falls die Datei nicht existiert, werden die Fallback-Werte aus globals.css verwendet.
+ * Falls die Datei nicht existiert, werden die Fallback-Werte aus globals.css
+ * verwendet.
  */
 async function getDefaultThemeCSS(): Promise<string> {
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
 
   try {
-    const supabase = createServiceClient()
-    const { data, error } = await supabase.storage
-      .from("themes")
-      .download(getTenantStoragePath(`${defaultThemeId}.css`))
-
-    if (error || !data) {
-      return ""
-    }
-
-    return await data.text()
+    const asset = await getBlobStorage().get(
+      "theme_css",
+      getTenantStoragePath(`${defaultThemeId}.css`)
+    )
+    if (!asset) return ""
+    return blobStorageDecode(asset.data)
   } catch {
-    // Netzwerk-Fehler sind nicht kritisch - Fallback-Werte werden verwendet
     return ""
   }
 }

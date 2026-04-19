@@ -9,10 +9,10 @@
 import { NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { createMediaService } from "@/lib/media"
+import { getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
-import { createServiceClient } from "@/utils/supabase/service"
 
 // Timeout erhöhen für Image-Generierung (kann länger dauern)
 export const maxDuration = 60
@@ -70,9 +70,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       return userOrError as NextResponse
     }
 
-    const supabase = createServiceClient()
+    const blobStorage = getBlobStorage()
 
-    // 3. Request Body parsen
     const body: GenerateIconRequest = await req.json()
     const { appName, description, prompt, variants = 1, provider = "openrouter", model } = body
     const tenantSlug = getTenantSlug()
@@ -105,39 +104,32 @@ export async function POST(req: Request): Promise<NextResponse> {
     for (let i = 0; i < generatedImages.length; i++) {
       const image = generatedImages[i]
 
-      // Dateiendung basierend auf MIME-Type bestimmen
       const isSvg = image.mimeType === "image/svg+xml"
       const fileExtension = isSvg ? "svg" : "png"
       const filename = `icon-${timestamp}-${i + 1}.${fileExtension}`
       const filePath = getTenantStoragePath(filename)
 
-      // Base64 zu Buffer konvertieren
       const buffer = base64ToBuffer(image.base64)
 
-      // Upload zu Supabase Storage mit korrektem MIME-Type
-      const { error: uploadError } = await supabase.storage
-        .from("app-icons")
-        .upload(filePath, buffer, {
+      try {
+        await blobStorage.put("app_icon", filePath, {
           contentType: image.mimeType,
-          upsert: true,
+          data: new Uint8Array(buffer),
+          updatedByClerkUserId: userOrError.clerkUserId,
         })
-
-      if (uploadError) {
-        console.error(`Error uploading icon variant ${i + 1}:`, uploadError)
+      } catch (err) {
+        console.error(`Error uploading icon variant ${i + 1}:`, err)
         uploadFailures.push(
-          uploadError.message || `Upload von Variante ${i + 1} nach ${filePath} fehlgeschlagen`
+          err instanceof Error
+            ? err.message
+            : `Upload von Variante ${i + 1} nach ${filePath} fehlgeschlagen`
         )
         continue
       }
 
-      // Public URL generieren
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("app-icons").getPublicUrl(filePath)
-
       uploadedImages.push({
-        url: publicUrl,
-        base64: image.base64, // Für Preview im Frontend
+        url: blobStorage.getPublicUrl("app_icon", filePath),
+        base64: image.base64,
       })
     }
 
