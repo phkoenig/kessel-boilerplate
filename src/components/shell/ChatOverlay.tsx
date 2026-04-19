@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useChatOverlay } from "./shell-context"
 import { AIChatPanel } from "./AIChatPanel"
+import { useAuth, usePermissions } from "@/components/auth"
+import { AI_CHATBOT_FEATURE_ID } from "@/lib/features/feature-modules"
 
 /**
  * ChatOverlay Komponente
@@ -19,7 +21,14 @@ import { AIChatPanel } from "./AIChatPanel"
  */
 export function ChatOverlay(): React.ReactElement | null {
   const { isOpen, setOpen } = useChatOverlay()
+  const { role } = useAuth()
+  const { canAccess, isLoaded: permissionsLoaded } = usePermissions()
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Defense in depth: Auch wenn der Keyboard-Shortcut das Overlay oeffnet,
+  // wird es hier verlaessich ausgeblendet, sobald die Rolle keinen Zugriff
+  // auf das Feature "ai-chatbot" hat.
+  const hasChatAccess = permissionsLoaded && canAccess(AI_CHATBOT_FEATURE_ID, role)
 
   // Escape-Key zum Schließen. Der Overlay soll bei Navigationen
   // und anderen Shell-Interaktionen offen bleiben, damit der Chat
@@ -41,6 +50,7 @@ export function ChatOverlay(): React.ReactElement | null {
   }, [isOpen, setOpen])
 
   if (!isOpen) return null
+  if (!hasChatAccess) return null
 
   return (
     <>

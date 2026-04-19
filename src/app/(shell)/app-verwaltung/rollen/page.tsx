@@ -22,6 +22,7 @@ import { useNavigation } from "@/lib/navigation"
 import { RoleManagement, type Role } from "./_components/RoleManagement"
 import { useCurrentNavItem } from "@/lib/navigation/use-current-nav-item"
 import type { CoreNavigationRecord } from "@/lib/core"
+import { FEATURE_MODULES } from "@/lib/features/feature-modules"
 
 // Berechtigungstyp
 interface Permission {
@@ -111,6 +112,23 @@ export default function RolesPage(): React.ReactElement {
         parentId: record.parentId ?? undefined,
         roleAccess,
         alwaysVisible: record.alwaysVisible,
+      })
+    })
+
+    // Synthetische Feature-Module (z. B. KI-Chatbot) in die Matrix einreihen.
+    // parentId = "features" sorgt dafuer, dass sie in der dedizierten Features-
+    // Card erscheinen (siehe unten).
+    FEATURE_MODULES.forEach((feature) => {
+      const roleAccess = new Map<string, boolean>()
+      availableRoles.forEach((r) => {
+        const hasAccess = isAdminRole(r.name) ? true : (feature.defaultAccess[r.name] ?? false)
+        roleAccess.set(r.name, hasAccess)
+      })
+      perms.push({
+        moduleId: feature.id,
+        moduleName: feature.label,
+        parentId: "features",
+        roleAccess,
       })
     })
 
@@ -576,6 +594,11 @@ export default function RolesPage(): React.ReactElement {
               )
             }
 
+            // Permissions fuer die synthetische "Features"-Section (z. B. KI-Chatbot).
+            // Diese Module leben nicht in der Navigation, sollen aber trotzdem
+            // pro Rolle schaltbar sein (siehe `src/lib/features/feature-modules.ts`).
+            const featurePerms = permissions.filter((p) => p.parentId === "features")
+
             // Dynamisch alle Sidebar-Sections aus Navigation-Provider rendern
             return (
               <>
@@ -600,6 +623,19 @@ export default function RolesPage(): React.ReactElement {
                     </Card>
                   )
                 })}
+
+                {featurePerms.length > 0 && (
+                  <Card key="features">
+                    <CardHeader>
+                      <CardTitle>FEATURES</CardTitle>
+                      <p className="text-muted-foreground text-sm">
+                        Globale Features, die kein eigenes Modul in der Navigation haben. Abschalten
+                        spart z. B. LLM-Token-Kosten.
+                      </p>
+                    </CardHeader>
+                    <CardContent>{renderPermissionsTable(featurePerms)}</CardContent>
+                  </Card>
+                )}
               </>
             )
           })()}

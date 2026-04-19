@@ -23,9 +23,36 @@ import { generateUIActionTool, type UIAction } from "@/lib/ai/special-tools"
 import { loadWikiContent } from "@/lib/ai-chat/wiki-content"
 import { getCoreStore } from "@/lib/core"
 import { requireAuth } from "@/lib/auth/guards"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
 import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
+import { AI_CHATBOT_FEATURE_ID, FEATURE_MODULES } from "@/lib/features/feature-modules"
+
+/**
+ * Serverseitiger Feature-Gate fuer Rollen.
+ *
+ * Liest die `module_permissions`-Matrix aus dem Core-Store. Faellt auf die
+ * `defaultAccess`-Werte des Feature-Moduls zurueck, solange der Admin noch
+ * keine abweichende Einstellung gespeichert hat. Bei einem Fehler beim Laden
+ * wird aus Sicherheitsgruenden `false` zurueckgegeben (fail-closed, damit
+ * keine Tokens verbrannt werden).
+ */
+async function isFeatureAllowedForRole(featureId: string, roleName: string): Promise<boolean> {
+  const feature = FEATURE_MODULES.find((f) => f.id === featureId)
+  const fallback = feature?.defaultAccess[roleName] ?? false
+
+  try {
+    const { getCoreStore } = await import("@/lib/core")
+    const rows = await getCoreStore().listModulePermissions()
+    const match = rows.find((r) => r.moduleId === featureId && r.roleName === roleName)
+    if (!match) return fallback
+    return match.hasAccess === true
+  } catch (err) {
+    console.warn("[Chat API] Feature-Permission konnte nicht geladen werden — deaktiviert:", err)
+    return false
+  }
+}
 
 // Streaming-Timeout erhoehen
 export const maxDuration = 60
@@ -356,6 +383,20 @@ export async function POST(req: Request) {
     const userOrErr = await requireAuth()
     if (userOrErr instanceof Response) return userOrErr
     const user = userOrErr
+
+    // 1b. Rollen-Gate: Feature-Modul "ai-chatbot" muss fuer die Rolle
+    // freigeschaltet sein. Admins bekommen immer Zugriff. Dieser Check
+    // steht bewusst VOR jeder kostenpflichtigen LLM-Operation, damit
+    // deaktivierte Rollen keine Tokens verbrennen koennen.
+    if (!isAdminRole(user.role)) {
+      const allowed = await isFeatureAllowedForRole(AI_CHATBOT_FEATURE_ID, user.role)
+      if (!allowed) {
+        return Response.json(
+          { error: "KI-Chatbot ist fuer deine Rolle deaktiviert.", code: "FEATURE_DISABLED" },
+          { status: 403 }
+        )
+      }
+    }
 
     // 2. Prüfe Environment Variable
     if (!process.env.OPENROUTER_API_KEY) {

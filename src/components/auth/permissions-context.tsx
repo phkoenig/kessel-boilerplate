@@ -15,6 +15,7 @@ import { useAuth } from "./auth-context"
 import { useNavigation } from "@/lib/navigation"
 import type { CoreNavigationRecord } from "@/lib/core"
 import { isAdminRole } from "@/lib/auth/provisioning-role"
+import { FEATURE_MODULES } from "@/lib/features/feature-modules"
 
 /** Permission für ein Modul - jetzt mit dynamischen Rollen */
 interface ModulePermission {
@@ -96,6 +97,24 @@ function generateFallbackPermissions(
       moduleId: item.id,
       roleAccess,
     })
+  })
+
+  // Feature-Module (z. B. KI-Chatbot) als Fallback aufnehmen. Der tatsaechliche
+  // Zustand kommt weiterhin aus `module_permissions`; diese Eintraege sind nur
+  // relevant, solange der Admin noch keine abweichende Einstellung gesetzt hat.
+  FEATURE_MODULES.forEach((feature) => {
+    const roleAccess = new Map<string, boolean>()
+    roleAccess.set("admin", feature.defaultAccess.admin ?? true)
+    roleAccess.set("user", feature.defaultAccess.user ?? false)
+    roleAccess.set(
+      "superuser",
+      feature.defaultAccess.superuser ?? feature.defaultAccess.admin ?? true
+    )
+    roleAccess.set(
+      "super-user",
+      feature.defaultAccess["super-user"] ?? feature.defaultAccess.admin ?? true
+    )
+    perms.set(feature.id, { moduleId: feature.id, roleAccess })
   })
 
   return perms

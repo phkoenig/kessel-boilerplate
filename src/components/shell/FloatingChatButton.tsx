@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { useChatOverlay } from "./shell-context"
-import { useAuth } from "@/components/auth"
+import { useAuth, usePermissions } from "@/components/auth"
 import { AIInteractable } from "@/components/ai/AIInteractable"
+import { AI_CHATBOT_FEATURE_ID } from "@/lib/features/feature-modules"
 
 /**
  * FloatingChatButton Komponente (FAB)
@@ -19,9 +20,18 @@ import { AIInteractable } from "@/components/ai/AIInteractable"
  * <FloatingChatButton />
  * ```
  */
-export function FloatingChatButton(): React.ReactElement {
+export function FloatingChatButton(): React.ReactElement | null {
   const { isOpen, toggle } = useChatOverlay()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const { canAccess, isLoaded } = usePermissions()
+
+  // Rollen-Gate: Der KI-Chatbot kann pro Rolle deaktiviert werden, um
+  // LLM-Token-Kosten zu begrenzen (Feature-Modul "ai-chatbot" in der
+  // Rollen-Matrix). Admins haben via `canAccess` immer Zugriff.
+  // Vor dem Permission-Load nichts rendern, damit der Button nicht kurz
+  // aufblitzt, falls die Rolle letztlich keinen Zugriff hat.
+  if (!isLoaded) return null
+  if (!canAccess(AI_CHATBOT_FEATURE_ID, role)) return null
 
   // Chatbot-Avatar Seed: Gespeicherter Seed oder Fallback
   const chatbotAvatarSeed = user?.chatbotAvatarSeed || user?.email || "default"
