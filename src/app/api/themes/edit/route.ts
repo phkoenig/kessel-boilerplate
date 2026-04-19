@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createClient } from "@/utils/supabase/server"
+import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
+import { emitRealtimeEvent } from "@/lib/realtime"
 
 /**
  * API-Route zum Bearbeiten eines Themes.
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     let cssAssetPath = existingTheme.cssAssetPath
     if (typeof lightCSS === "string" && typeof darkCSS === "string") {
-      const supabase = await createClient()
+      const supabase = createServiceClient()
       const storagePath = getTenantStoragePath(`${themeId}.css`)
       const cssContent = `/* Theme: ${nextName} */\n\n/* Light Mode */\n${lightCSS}\n\n/* Dark Mode */\n${darkCSS}`
       const { error: storageError } = await supabase.storage
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Aktualisierung fehlgeschlagen" }, { status: 500 })
     }
 
+    emitRealtimeEvent("themes:updated", "db-modified", {})
     return NextResponse.json({
       success: true,
       theme: {

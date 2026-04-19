@@ -1,4 +1,6 @@
+// AUTH: authenticated
 import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 import { ensureThemeRegistryBootstrapped } from "@/lib/themes/registry-bootstrap"
 
@@ -19,6 +21,8 @@ interface ThemeMeta {
  */
 export async function GET() {
   try {
+    const userOrErr = await requireAuth()
+    if (userOrErr instanceof Response) return userOrErr as NextResponse
     await ensureThemeRegistryBootstrapped()
     const themes = await getCoreStore().listThemeRegistry()
     const themeMetas: ThemeMeta[] = themes.map((theme) => ({

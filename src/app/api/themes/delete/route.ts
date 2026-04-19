@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createClient } from "@/utils/supabase/server"
+import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
+import { emitRealtimeEvent } from "@/lib/realtime"
 
 /**
  * API-Route zum Löschen eines Themes.
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const dynamicFontsToCheck = theme.dynamicFonts
 
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const storagePath = theme.cssAssetPath ?? getTenantStoragePath(`${themeId}.css`)
     const { error: storageError } = await supabase.storage.from("themes").remove([storagePath])
 
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       response.message += `. ${unusedFonts.length} nicht mehr verwendete Font(s) identifiziert: ${unusedFonts.join(", ")}`
     }
 
+    emitRealtimeEvent("themes:updated", "db-modified", {})
     return NextResponse.json(response)
   } catch (error) {
     console.error("Fehler beim Löschen des Themes:", error)

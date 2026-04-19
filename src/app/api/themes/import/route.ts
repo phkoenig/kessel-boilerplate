@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCoreStore } from "@/lib/core"
-import { createClient } from "@/utils/supabase/server"
+import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
+import { emitRealtimeEvent } from "@/lib/realtime"
 
 /**
  * Import-Statistiken für detailliertes Feedback.
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const coreStore = getCoreStore()
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
     // Parse CSS und extrahiere Variablen, verwende den übergebenen Namen
     const themeData = parseTweakCNCSS(css, name.trim())
@@ -253,6 +254,7 @@ export async function POST(request: NextRequest) {
       response.fontConversions = conversions
     }
 
+    emitRealtimeEvent("themes:updated", "db-modified", {})
     return NextResponse.json(response)
   } catch (error) {
     console.error("Fehler beim Importieren des Themes:", error)

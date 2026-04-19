@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createClient } from "@/utils/supabase/server"
+import { createServiceClient } from "@/utils/supabase/service"
+import { emitRealtimeEvent } from "@/lib/realtime"
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const userOrError = await requireAdmin()
@@ -49,7 +50,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const storagePath = getTenantStoragePath(`${themeId}.css`)
     const cssContent = `/* Theme: ${name} */\n\n/* Light Mode */\n${body.lightCSS}\n\n/* Dark Mode */\n${body.darkCSS}`
 
-    const supabase = await createClient()
+    // Clerk-Auth liefert kein Supabase-JWT (nur anon) -> Storage-RLS blockiert INSERT.
+    // Nach requireAdmin: Service-Role nur serverseitig fuer diesen Bucket.
+    const supabase = createServiceClient()
     const { error: storageError } = await supabase.storage
       .from("themes")
       .upload(storagePath, cssContent, {
@@ -76,10 +79,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
 
     if (!saved) {
-      await supabase.storage.from("themes").remove([storagePath])
+      await supabase.storage
+        .from("themes")
+        .remove([storagePath])
+        .catch(() => {})
       return NextResponse.json({ error: "Metadaten-Speicherung fehlgeschlagen" }, { status: 500 })
     }
 
+    emitRealtimeEvent("themes:updated", "db-modified", {})
     return NextResponse.json({
       success: true,
       theme: {

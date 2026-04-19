@@ -12,7 +12,9 @@
  * Provider: OpenRouter
  */
 
+// AUTH: authenticated
 import { streamText, stepCountIs, type ModelMessage, type ImagePart, type TextPart } from "ai"
+import { z } from "zod"
 import { openrouter } from "@/lib/ai/openrouter-provider"
 import { detectToolNeedWithAI, type RouterDecision } from "@/lib/ai/model-router"
 import { generateAllTools } from "@/lib/ai/tool-registry"
@@ -25,8 +27,57 @@ import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
 import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 
-// Streaming-Timeout erhöhen
+// Streaming-Timeout erhoehen
 export const maxDuration = 60
+
+// Chat-API Harden (Plan M-13):
+// - Zod-Schema fuer Payload-Validierung
+// - Size-Limits (max. Anzahl Messages, max. Textlaenge)
+// - Einfaches In-Memory-Rate-Limit pro User-ID (pro Instanz)
+const MAX_MESSAGES = 50
+const MAX_MESSAGE_TEXT_LENGTH = 20_000
+const MAX_BODY_BYTES = 2 * 1024 * 1024 // 2 MB (inkl. Screenshot-Base64)
+
+const ClientMessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.unknown().optional(),
+    parts: z.unknown().optional(),
+  })
+  .passthrough()
+
+const ChatRequestSchema = z.object({
+  messages: z.array(ClientMessageSchema).min(1).max(MAX_MESSAGES),
+  sessionId: z.string().max(200).optional(),
+  screenshot: z.string().nullable().optional(),
+  htmlDump: z
+    .string()
+    .max(MAX_MESSAGE_TEXT_LENGTH * 2)
+    .optional(),
+  route: z.string().max(500).optional(),
+  interactions: z.array(z.unknown()).max(200).optional(),
+  availableActions: z.array(z.unknown()).max(100).optional(),
+  model: z.string().max(200).optional(),
+  dryRun: z.boolean().optional(),
+})
+
+const CHAT_RATE_LIMIT_WINDOW_MS = 60_000
+const CHAT_RATE_LIMIT_MAX = 20
+const chatRateLimitState = new Map<string, { count: number; windowStart: number }>()
+
+function checkChatRateLimit(userKey: string): boolean {
+  const now = Date.now()
+  const entry = chatRateLimitState.get(userKey)
+  if (!entry || now - entry.windowStart > CHAT_RATE_LIMIT_WINDOW_MS) {
+    chatRateLimitState.set(userKey, { count: 1, windowStart: now })
+    return true
+  }
+  if (entry.count >= CHAT_RATE_LIMIT_MAX) {
+    return false
+  }
+  entry.count += 1
+  return true
+}
 
 /**
  * Interactions als lesbaren Text formatieren.
@@ -305,8 +356,36 @@ export async function POST(req: Request) {
       )
     }
 
-    // 3. Request parsen
-    const body: ChatRequestBody = await req.json()
+    if (!checkChatRateLimit(user.clerkUserId)) {
+      return Response.json(
+        { error: "Too Many Requests", code: "RATE_LIMITED" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      )
+    }
+
+    const rawText = await req.text()
+    if (rawText.length > MAX_BODY_BYTES) {
+      return Response.json(
+        { error: "Payload zu gross", code: "PAYLOAD_TOO_LARGE" },
+        { status: 413 }
+      )
+    }
+
+    let parsedJson: unknown
+    try {
+      parsedJson = JSON.parse(rawText)
+    } catch {
+      return Response.json({ error: "Invalid JSON", code: "INVALID_JSON" }, { status: 400 })
+    }
+
+    const parsed = ChatRequestSchema.safeParse(parsedJson)
+    if (!parsed.success) {
+      return Response.json(
+        { error: "Invalid request", code: "INVALID_PAYLOAD", issues: parsed.error.issues },
+        { status: 400 }
+      )
+    }
+    const body = parsed.data as ChatRequestBody
     const {
       messages,
       sessionId,

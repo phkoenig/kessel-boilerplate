@@ -1,14 +1,20 @@
+// AUTH: dev-only (nicht erreichbar in Production)
 /**
  * Debug API: Screenshot speichern
  *
- * Speichert Screenshots temporär für Debugging-Zwecke.
- * Nur in Development, nur für eingeloggte User.
+ * Speichert Screenshots temporaer fuer Debugging-Zwecke.
+ * Nur in Development, nur fuer eingeloggte User.
+ * Plan L-14a: Modul-Guard + redirect in next.config.ts.
  */
 
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { requireAuth } from "@/lib/auth/guards"
 import { NextResponse } from "next/server"
+
+if (process.env.NODE_ENV === "production") {
+  throw new Error("[security] /api/debug/save-screenshot darf in Production nicht geladen werden")
+}
 
 export async function POST(req: Request): Promise<NextResponse | Response> {
   if (process.env.NODE_ENV !== "development") {
