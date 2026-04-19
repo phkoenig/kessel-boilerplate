@@ -35,7 +35,7 @@
 | `/api/core/permissions`            | authenticated | `requireAuth`                           |
 | `/api/core/users/display-names`    | authenticated | `requireAuth`                           |
 | `/api/csp-report`                  | public        | – (CSP-Reports koennen unsigniert sein) |
-| `/api/debug/save-screenshot`       | dev-only      | NODE_ENV-Guard + Modul-Guard            |
+| `/api/debug/save-screenshot`       | dev-only      | NODE_ENV-Guard (Handler) + Redirect     |
 | `/api/dev/impersonate`             | dev-only      | NODE_ENV+`BOILERPLATE_AUTH_BYPASS`      |
 | `/api/dev/users`                   | dev-only      | NODE_ENV+`BOILERPLATE_AUTH_BYPASS`      |
 | `/api/generate-app-icon`           | admin         | `requireAdmin` + Audit                  |

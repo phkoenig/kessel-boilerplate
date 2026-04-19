@@ -6,13 +6,8 @@ import { createServerClient } from "@supabase/ssr"
 /**
  * Dev-Route: User-Impersonation (Magic-Link → Session).
  *
- * Strikt Dev-only. Plan H-3. Siehe `dev/users/route.ts` fuer Details.
+ * Strikt Dev-only. Plan H-3. Siehe `dev/users/route.ts` fuer Details (kein Build-Zeit-Throw).
  */
-if (process.env.NODE_ENV === "production") {
-  throw new Error(
-    "[security] Dev-Route /api/dev/impersonate darf nicht in Production existieren. Siehe Plan H-3."
-  )
-}
 
 export async function POST(request: NextRequest) {
   const isDev = process.env.NODE_ENV === "development"

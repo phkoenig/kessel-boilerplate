@@ -6,19 +6,13 @@ import { createClient } from "@supabase/supabase-js"
  * Dev-Route: Liste aller registrierten User (Supabase Auth).
  *
  * Strikt Dev-only. Plan H-3:
- * - Modul-Level-Guard: wirft **zur Build-Zeit**, wenn `NODE_ENV=production`.
- * - Runtime-Check: 403 wenn `BOILERPLATE_AUTH_BYPASS !== "true"`.
+ * - Kein Modul-`throw` bei `NODE_ENV=production` (sonst schlaegt `next build` fehl).
+ * - Runtime-Check: 403 wenn nicht Development oder `BOILERPLATE_AUTH_BYPASS !== "true"`.
  * - `next.config.ts redirects()`: leitet `/api/dev/*` in Production hart auf 404.
  *
  * Die Variable heisst **nicht** mehr `NEXT_PUBLIC_AUTH_BYPASS`, damit sie nicht
  * ins Client-Bundle laekt.
  */
-if (process.env.NODE_ENV === "production") {
-  throw new Error(
-    "[security] Dev-Route /api/dev/users darf nicht in Production existieren. Siehe Plan H-3."
-  )
-}
-
 export async function GET() {
   const isDev = process.env.NODE_ENV === "development"
   const bypassEnabled = process.env.BOILERPLATE_AUTH_BYPASS === "true"

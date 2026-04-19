@@ -4,17 +4,14 @@
  *
  * Speichert Screenshots temporaer fuer Debugging-Zwecke.
  * Nur in Development, nur fuer eingeloggte User.
- * Plan L-14a: Modul-Guard + redirect in next.config.ts.
+ * Plan L-14a: Runtime-403 + redirect in next.config.ts (kein Modul-`throw` bei
+ * `NODE_ENV=production`, sonst schlaegt `next build` fehl).
  */
 
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
 import { requireAuth } from "@/lib/auth/guards"
 import { NextResponse } from "next/server"
-
-if (process.env.NODE_ENV === "production") {
-  throw new Error("[security] /api/debug/save-screenshot darf in Production nicht geladen werden")
-}
 
 export async function POST(req: Request): Promise<NextResponse | Response> {
   if (process.env.NODE_ENV !== "development") {

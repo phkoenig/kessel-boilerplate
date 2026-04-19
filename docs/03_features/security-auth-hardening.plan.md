@@ -1,6 +1,6 @@
 # Security & Auth Hardening — Implementierungsplan
 
-> **Status:** offen · **Autor:** Security & Auth Assessment (2026-04-19) · **Owner:** Philip
+> **Status:** abgeschlossen (Implementierung) · **Autor:** Security & Auth Assessment (2026-04-19) · **Owner:** Philip
 > **Ziel:** Die im Assessment identifizierten Findings vollständig und überprüfbar beheben.
 > **Gap-Review:** Dieser Plan ist die SSoT für den Review-Prozess. Jede ID (`C-1`, `H-3`, …)
 > muss im Gap-Assessment individuell bestätigt werden ("done" + Nachweis / "offen" + Grund).
@@ -196,21 +196,18 @@ separaten Clerk-Application. Dev bleibt auf Test-Instanz.
   **und** `NEXT_PUBLIC_AUTH_BYPASS === "true"`.
 - `/api/dev/impersonate` generiert Service-Role-Magic-Links und setzt echte Supabase-Session-Cookies.
 
-**Soll-Zustand.** Dev-Endpoints existieren **nicht** im Production-Build. Flag ist
-server-only. Mehrfachabsicherung (Build-Time + Runtime).
+**Soll-Zustand.** Dev-Endpoints sind in Production **nicht nutzbar**. Flag ist
+server-only. Absicherung über **Runtime** + Redirects (`next build` lädt Route-Module
+mit `NODE_ENV=production` — ein Modul-`throw` würde den Build brechen).
 
 **Umsetzung:**
 
 1. Flag umbenennen: `NEXT_PUBLIC_AUTH_BYPASS` → `BOILERPLATE_AUTH_BYPASS` (server-only).
    Alle Referenzen in `src/**`, `scripts/pull-env.mjs`, `scripts/pull-env.manifest.json`,
    `.env.example`, `.env.local` aktualisieren.
-2. Dev-Routen zusätzlich durch Modul-Level-Guard absichern:
-   ```ts
-   if (process.env.NODE_ENV === "production") {
-     throw new Error("Dev-Route darf nicht in Production existieren")
-   }
-   ```
-   So failed **schon der Build** (nicht erst der Request), wenn versehentlich deployed.
+2. Dev-Routen: **kein** Modul-`throw` bei `NODE_ENV === "production"` (Next.js
+   wertet Route-Module beim `next build` in Production-Modus aus). Stattdessen
+   früh im Handler `403`, plus Redirects (Schritt 3).
 3. `next.config.ts` `redirects()`: In Production matcht `/api/dev/:path*` → `/404` (permanent).
 4. CI-Check (`scripts/ci/check-no-dev-routes.mjs`): Failed, wenn `BOILERPLATE_AUTH_BYPASS=true`
    in einer Vercel-Production-/Preview-Env gefunden wird. Hook via `vercel env pull --environment production`.
@@ -520,8 +517,8 @@ weitergereicht. DoS- und Exfil-Vektor.
 
 ### L-14a — `/api/debug/save-screenshot` aus Production entfernen
 
-**Umsetzung:** Wie H-3 — Modul-Level-Guard `throw` in Production, `/api/debug/*` via
-`next.config.ts` `redirects` auf 404 in Prod.
+**Umsetzung:** Wie H-3 — Runtime-`403` außerhalb von Development, `/api/debug/*` via
+`next.config.ts` `redirects` auf 404 in Prod (kein Modul-`throw`, siehe H-3).
 
 ### L-14b — Dev-Users Session-Cookie-Fallback robust
 
