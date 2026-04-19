@@ -90,7 +90,7 @@ Die `SystemInfoCard` Komponente zeigt immer:
 - **Build-Metadaten**: `APP_BUILD_GENERATED_AT`
 - **Boilerplate**: `BOILERPLATE_NAME@BOILERPLATE_VERSION`
 - **Release-Doku**: `docs/06_history/CHANGELOG.md`
-- **Versioning-Guide**: `docs/guides/app-versioning.md`
+- **Versioning-Guide**: `docs/04_knowledge/app-versioning.md`
 
 Die `MaintenanceStatusCard` darf nur kompakte Hinweise zu Updates und Security zeigen.
 Eine paketgenaue Tabelle ist nicht mehr Teil des Admin-Dashboards.

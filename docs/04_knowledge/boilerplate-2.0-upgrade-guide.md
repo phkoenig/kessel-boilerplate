@@ -23,7 +23,7 @@
 ### 2. Identity-Migration
 
 - Migrationen 032–035 ausführen (clerk_user_id, profiles FK, app.tenants.clerk_org_id)
-- Backfill: `node scripts/backfill-clerk-profiles.mjs --dry-run` dann `--apply`
+- Backfill: Das Script `scripts/backfill-clerk-profiles.mjs` wurde im Boilerplate-3.0-Cleanup entfernt; fuer Bestandsdaten siehe Git-Tag vor dem Cutover und ggf. manuelles SQL.
 - Rollback-Doku: `docs/04_knowledge/clerk-migration-rollback.md`
 
 ### 3. Realtime (optional)

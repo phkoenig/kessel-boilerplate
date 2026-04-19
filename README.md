@@ -63,32 +63,43 @@ kessel mein-projekt
 # - Dependencies installieren
 ```
 
-**Alternative: Manuelles Setup**
+**Alternative: Manuelles Setup (3-Schritt-Onboarding)**
 
 ```bash
-# Repository klonen
+# 1. Repository klonen und Dependencies installieren
 git clone https://github.com/phkoenig/kessel-boilerplate.git
 cd kessel-boilerplate
-
-# Dependencies installieren
 pnpm install
 
-# Environment-Variablen einrichten
-# 1. Bootstrap-Werte setzen (.env oder Shell-Env)
-# 2. pnpm pull-env ausführen (lädt Secrets aus 1Password → .env.local)
+# 2. Bootstrap-.env anlegen (nur einmal pro Rechner)
+cp .env.example .env
+# Optional: OP_VAULT setzen, wenn dein 1Password-Vault nicht "VAULT" heisst.
+
+# 3. Secrets aus 1Password ziehen (schreibt .env.local)
 pnpm pull-env
 
-# Dev-Server starten
+# Danach: Dev-Server starten
 pnpm dev
 ```
 
-**Wichtig - Secrets:**
+**Was `pnpm pull-env` macht:**
 
-> ⚠️ Nach `pnpm install` werden automatisch die Secrets aus 1Password geladen.
-> Falls dies fehlschlägt, führe **manuell `pnpm pull-env`** aus!
->
-> Ohne diesen Schritt fehlen API-Keys wie `OPENROUTER_API_KEY` und `FAL_KEY`.
->
+Boilerplate 3.0 speichert **alle** Runtime-Secrets in 1Password. `pnpm pull-env` liest das Manifest `scripts/pull-env.manifest.json`, ersetzt den Platzhalter `${OP_VAULT}` durch den konfigurierten Vault (default: `VAULT`) und loest jede Referenz per 1Password CLI auf. Ergebnis: eine vollstaendige, validierte `.env.local`.
+
+**Default-Mappings:**
+
+| Env-Variable                        | 1Password-Item           |
+| ----------------------------------- | ------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL/...KEY`   | `App Runtime`            |
+| `SUPABASE_SERVICE_ROLE_KEY`         | `App Runtime`            |
+| `CLERK_SECRET_KEY/PUBLISHABLE_KEY`  | `KB - Auth Runtime`      |
+| `NEXT_PUBLIC_SPACETIMEDB_*`         | `KB - Spacetime Runtime` |
+| `OPENROUTER_API_KEY`, `FAL_API_KEY` | `KB - AI Runtime`        |
+
+Die Dev-Supabase ist standardmaessig das MegaBrain-Projekt (`jpmhwyjiuodsvjowddsm.supabase.co`), weil Boilerplate 3.0 Supabase nur noch fuer App-DB und Storage nutzt (Core laeuft ueber SpacetimeDB).
+
+**Troubleshooting:**
+
 > Auf **jedem neuen Rechner** muss der 1Password-CLI-Flow einmal sauber eingerichtet werden. Der stabile Weg ist der manuelle CLI-Login mit `op account add` und `op signin --raw`, nicht eine endlose Desktop-Popup-Schleife.
 
 Kurzform fuer neue Rechner:
@@ -105,7 +116,7 @@ pnpm pull-env
 
 - **Local Dev Bypass** ist standardmäßig aktiviert - ohne eingeloggten User erfolgt ein Redirect zu `/login`, wo ein User-Selector statt der normalen Auth-Form angezeigt wird
 
-→ [kessel-cli Installation & Workflow](docs/guides/cli-workflow.md)
+→ [kessel-cli Installation & Workflow](docs/04_knowledge/cli-workflow.md)
 
 ### 3. Architektur-Setup
 
@@ -128,17 +139,9 @@ Supabase ist in Boilerplate 3.0 **nicht** mehr der Ort fuer Boilerplate-Core-Dat
 
 **Manuelles Setup** (falls CLI nicht verwendet):
 
-```bash
-# Bootstrap-Werte fuer die App-Supabase setzen
-NEXT_PUBLIC_SUPABASE_URL=https://<app-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-NEXT_PUBLIC_TENANT_SLUG=dein-projekt
+Supabase-Werte muessen nicht mehr per Hand gesetzt werden. `pnpm pull-env` zieht sie aus dem 1Password-Item `App Runtime`. Nur wenn du auf eine andere Supabase-Instanz umschalten willst, kannst du das Mapping in `scripts/pull-env.manifest.json` anpassen oder per `OP_REF_*` ueberschreiben (siehe `.env.example`).
 
-# Danach Secrets aus 1Password ziehen
-pnpm pull-env
-```
-
-Detaillierte Anleitung: [Secrets Management](docs/guides/secrets-management.md)
+Detaillierte Anleitung: [Secrets Management](docs/04_knowledge/secrets-management.md)
 
 ### 5. Standard-User (nur Entwicklung)
 
@@ -229,7 +232,7 @@ next-supabase-shadcn-template/
 ├── supabase/
 │   └── migrations/               # Datenbank-Migrationen
 └── scripts/
-    ├── pull-env.mjs              # Secrets aus Vault abrufen
+    ├── pull-env.mjs              # .env.local aus 1Password + Bootstrap
     ├── validate-docs-structure.mjs
     └── validate-layout-consistency.mjs
 ```
@@ -251,7 +254,7 @@ Das Herzstück: Ein **4-Spalten-Layout** mit flexiblen, resizable Panels:
 
 **Panel-States werden in LocalStorage persistiert.**
 
-→ [Vollständige Dokumentation](docs/specifications/neues_app_shell_konzept.md)
+→ [Vollständige Dokumentation](docs/03_features/neues_app_shell_konzept.md)
 
 ### 🎨 Design System Governance
 
@@ -276,7 +279,7 @@ import { Button } from "@/components/ui/button"
 - Keine nativen HTML-Elemente (`<button>`, `<input>`)
 - Nur semantische Tokens (`bg-primary`, `p-4`, `rounded-md`)
 
-→ [Design System Governance](docs/guides/design-system-governance.md)
+→ [Design System Governance](docs/04_knowledge/design-system-governance.md)
 
 ### 🤖 AI Chat Assist Panel
 
@@ -289,7 +292,7 @@ KI-Assistent mit **multimodalem Kontext**:
 
 **Tech:** `assistant-ui`, `modern-screenshot`, Vercel AI SDK
 
-→ [AI Chat Assist Dokumentation](docs/specifications/ai-chat-assist.md)
+→ [AI Chat Assist Dokumentation](docs/03_features/ai-chat-assist.md)
 
 ### 🎯 AI-Interactable Component System
 
@@ -323,7 +326,7 @@ KI-Assistent mit **multimodalem Kontext**:
 | `ai-component-compliance` | Prüft Manifest-Registrierung               |
 | `require-ai-wrapper`      | Erzwingt AIInteractable für UI-Komponenten |
 
-→ [AI-Interactable System Dokumentation](docs/ai-interactable-system.md)
+→ [AI-Interactable System Dokumentation](docs/03_features/ai-interactable-system.md)
 
 ### 🌈 Supabase Theme System
 
@@ -335,7 +338,7 @@ Dynamische Themes aus **Supabase Storage**:
 - FOUC Prevention durch Server-Side CSS Injection
 - Dynamisches Laden von Google Fonts
 
-→ [Supabase Themes Setup](docs/guides/supabase-themes-setup.md)
+→ [Supabase Themes Setup](docs/04_knowledge/supabase-themes-setup.md)
 
 ### 📦 Duales Versioning-System
 
@@ -351,7 +354,7 @@ Dynamische Themes aus **Supabase Storage**:
 - App-Releases: Git-Tag setzen → Vercel deployt automatisch
 - Boilerplate-Upgrades: `boilerplate.json` manuell aktualisieren
 
-→ [App-Versionierung Dokumentation](docs/guides/app-versioning.md)
+→ [App-Versionierung Dokumentation](docs/04_knowledge/app-versioning.md)
 
 ---
 
@@ -377,22 +380,20 @@ pnpm lint              # ESLint
 
 ## 🔐 Secrets Management
 
-Das Projekt verwendet **Supabase Vault** als zentralen Secrets-Store:
+Runtime-Secrets kommen aus **1Password** (CLI `op`) und werden mit **`pnpm pull-env`** in `.env.local` geschrieben (Manifest: `scripts/pull-env.manifest.json`). Siehe [ADR-002](docs/02_architecture/ADR-002-boilerplate-3-0-system-boundaries.md).
 
 ```bash
-# Secrets aus Vault abrufen
 pnpm pull-env
-
-# → Schreibt .env.local mit allen Secrets
+# → schreibt .env.local (Bootstrap-Variablen + 1Password-Felder)
 ```
 
-**Architektur:**
+**Architektur (3.0):**
 
-- `.env`: Bootstrap (Vault-Credentials, manuell)
-- `.env.local`: App-Secrets (automatisch via `pnpm pull-env`)
-- Vercel: Environment Variables aus Vault exportieren
+- Bootstrap-Variablen (z. B. `NEXT_PUBLIC_SUPABASE_URL`) aus der Shell / CI
+- Sensible Werte aus 1Password-Referenzen im Manifest
+- Optional: app-spezifische Vault-/RPC-Pfade nur noch fuer Ableitungen, nicht Boilerplate-Standard
 
-→ [Secrets Management Guide](docs/guides/secrets-management.md)
+→ [Secrets Management Guide](docs/04_knowledge/secrets-management.md)
 
 ---
 
@@ -430,7 +431,7 @@ pnpm start            # Production Server
 pnpm lint             # ESLint
 pnpm lint:fix         # ESLint + Auto-Fix
 pnpm format           # Prettier
-pnpm pull-env         # Secrets aus Vault
+pnpm pull-env         # .env.local aus 1Password + Bootstrap
 ```
 
 ### Git Workflow
@@ -476,8 +477,8 @@ git commit -m "feat: Neue Funktion"
    -- Vercel-Domain hinzufügen
    ```
 
-→ [Deployment Guide](docs/guides/deployment-guide.md)  
-→ [Deployment Checklist](docs/guides/deployment-checklist.md)
+→ [Deployment Guide](docs/04_knowledge/deployment-guide.md)  
+→ [Deployment Checklist](docs/04_knowledge/deployment-checklist.md)
 
 ---
 

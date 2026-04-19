@@ -10,32 +10,38 @@
 Die Cursor Rules sind die **Single Source of Truth** für Regeln und Konventionen.
 Die `docs/`-Ordner enthalten erweiterte Erklärungen und Kontextinformationen.
 
-## Struktur
+## Struktur (nummerierte Ebenen)
 
 ```
 docs/
-├── architecture/     # Systemdesign, Datenbank, APIs, Deployment-Architektur
-├── specifications/   # PRDs, Feature-Specs, RFCs (was gebaut werden soll)
-├── guides/           # Tech-Stack-Guides (wie man Technologien nutzt)
-└── knowledge/        # Learnings, Research, ADRs (was wir gelernt haben)
+├── 01_governance/    # Regeln, Index
+├── 02_architecture/  # ADRs, DB-, Nav-, Theme-Architektur
+├── 03_features/      # Feature-Specs, umgesetzte Systeme (inkl. ehem. specifications/)
+├── 04_knowledge/     # How-Tos, Guides, Learnings (inkl. ehem. guides/, knowledge/)
+├── 05_communication/ # Pitches, Kommunikation
+├── 06_history/       # Changelog, Baselines
+└── 07_automation/    # Automatisierung, CI-Hinweise
 ```
 
-| Ordner            | Frage die es beantwortet        | Cursor Rule Pendant                 |
-| ----------------- | ------------------------------- | ----------------------------------- |
-| `architecture/`   | "Wie ist das System aufgebaut?" | `architecture.mdc`                  |
-| `specifications/` | "Was soll gebaut werden?"       | -                                   |
-| `guides/`         | "Wie nutze ich Technologie X?"  | `supabase.mdc`, `secrets.mdc`, etc. |
-| `knowledge/`      | "Was haben wir dabei gelernt?"  | -                                   |
+| Ordner              | Frage die es beantwortet             |
+| ------------------- | ------------------------------------ |
+| `01_governance/`    | "Welche Regeln gelten?"              |
+| `02_architecture/`  | "Wie ist das System aufgebaut?"      |
+| `03_features/`      | "Was tut Feature X?"                 |
+| `04_knowledge/`     | "Wie mache ich Y?"                   |
+| `05_communication/` | "Was kommunizieren wir?"             |
+| `06_history/`       | "Was hat sich wann geändert?"        |
+| `07_automation/`    | "Welche Automatisierung nutzen wir?" |
 
-## Mapping: Cursor Rules → Guides
+## Mapping: Cursor Rules → Knowledge
 
-| Cursor Rule    | Erweiterter Guide                                                     |
-| -------------- | --------------------------------------------------------------------- |
-| `secrets.mdc`  | `guides/secrets-management.md`                                        |
-| `supabase.mdc` | `guides/supabase_auth.md`, `guides/supabase-migrationen.md`           |
-| `theming.mdc`  | `guides/supabase-themes-setup.md`, `guides/design-tokens-overview.md` |
-| `nextjs.mdc`   | `guides/deployment-guide.md`                                          |
-| `mcp.mdc`      | `guides/mcp-setup.md`                                                 |
+| Cursor Rule    | Erweiterter Guide                                                    |
+| -------------- | -------------------------------------------------------------------- |
+| `secrets.mdc`  | `04_knowledge/secrets-management.md`                                 |
+| `supabase.mdc` | `04_knowledge/supabase_auth.md`, `supabase-migrationen.md`           |
+| `theming.mdc`  | `04_knowledge/supabase-themes-setup.md`, `design-tokens-overview.md` |
+| `nextjs.mdc`   | `04_knowledge/deployment-guide.md`                                   |
+| `mcp.mdc`      | `04_knowledge/mcp-setup.md`                                          |
 
 ## Weitere Ordner (Projekt-Root)
 

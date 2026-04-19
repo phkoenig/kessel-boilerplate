@@ -6,17 +6,28 @@ alwaysApply: true
 
 # Navigation SSOT
 
-The navigation configuration (`src/lib/navigation/seed.ts`) is the **single source of truth** for page titles, breadcrumbs, and URLs.
+Die Navigation (`src/lib/navigation/seed.ts`, gespiegelt in SpacetimeDB) ist die **Single Source of Truth** für Titel, Breadcrumbs und interne Shell-URLs.
 
-## Rules
+## Pflicht-Check
 
-1. **NEVER hardcode `title` in `<PageHeader>`** — omit it so the title is derived from navigation `label`
-2. **`description` is allowed** in `<PageHeader>` for project context or additional info
-3. **Every new page** must have a corresponding entry in `NAVIGATION_SEED` with correct `href`, `label`, and `parentId`
-4. **Breadcrumbs are automatic** — they follow the `parentId` chain in the navigation tree
-5. **Dynamic routes** (e.g. `[id]`) may use explicit `title` since they represent data objects, not static pages
-6. **URL structure** must match: `href` in seed → `slugSegment` path → filesystem `(shell)/...` directory
+Vor Commit / in CI: **`pnpm nav:check`** (Lint inkl. Nav-Regeln + Parity-Test Filesystem ↔ Seed).
 
-## Extended docs
+## Do / Don’t
 
-See `docs/architecture/navigation-ssot.md` for full documentation, examples, and checklists.
+**Do**
+
+- Neuen Menüpunkt: Eintrag in `NAVIGATION_SEED` (`href` exakt wie Route), Page unter `src/app/(shell)/.../page.tsx`.
+- Links in der Shell: Typ `NavHref` / `AppShellHref` oder `navTo("…")` / `<AppLink href={…} />` aus `@/lib/navigation`.
+- Server-`metadata` für Shell-Routen: `buildNavPageMetadata(pathname)` aus `@/lib/navigation/metadata`.
+
+**Don’t**
+
+- Kein `<Link href="/irgendwas">` mit frei erfundenen Pfaden (ESLint: `local/navigation-route-consistency`).
+- Kein `router.push("/…")` / `redirect("/…")` mit Rohtext ohne Seed (ESLint: `local/no-raw-nav-href`).
+- Kein `export const metadata = { title: "Fixtext" }` unter `src/app/(shell)/` (ESLint: `local/no-hardcoded-page-title`).
+- Kein `<PageHeader title="…" />` — Titel aus Navigation (`<PageHeader />` ohne `title`).
+
+## Doku
+
+- Ausführlich: `docs/02_architecture/navigation-ssot.md`
+- API: `docs/02_architecture/api-route-classification.md` (kein Nav-Write-Endpoint)

@@ -62,7 +62,7 @@ export function SystemInfoCard(): React.ReactElement {
           </div>
           <div>
             <dt className="text-muted-foreground text-xs font-medium">Versioning-Guide</dt>
-            <dd className="mt-1 font-mono text-xs">docs/guides/app-versioning.md</dd>
+            <dd className="mt-1 font-mono text-xs">docs/04_knowledge/app-versioning.md</dd>
           </div>
           <div className="md:col-span-2">
             <dt className="text-muted-foreground text-xs font-medium">Quellen</dt>

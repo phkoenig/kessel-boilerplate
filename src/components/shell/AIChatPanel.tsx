@@ -235,8 +235,8 @@ const loadManifestComponents = async (): Promise<ManifestComponent[]> => {
  * @param sessionId - Persistenter Session-Key des aktuellen Browser-Tabs.
  * @returns Ein konfigurierte Transportinstanz fuer assistant-ui.
  */
-const createChatTransport = (sessionId: string): AssistantChatTransport =>
-  new AssistantChatTransport({
+const createChatTransport = (sessionId: string): AssistantChatTransport<UIMessage> =>
+  new AssistantChatTransport<UIMessage>({
     api: "/api/chat",
     credentials: "include",
     prepareSendMessagesRequest: async ({ messages }) => {

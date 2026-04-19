@@ -68,5 +68,5 @@ Die Secrets werden aus `vault.secrets` im KESSEL-Projekt gelesen und in `.env.lo
 ## Dokumentation
 
 → Architektur: `docs/architecture/database-architecture.md`
-→ Secrets: `docs/guides/secrets-management.md`
-→ Migrationen: `docs/guides/supabase-migrationen.md`
+→ Secrets: `docs/04_knowledge/secrets-management.md`
+→ Migrationen: `docs/04_knowledge/supabase-migrationen.md`

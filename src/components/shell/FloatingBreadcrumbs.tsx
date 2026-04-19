@@ -89,7 +89,7 @@ export function FloatingBreadcrumbs({
       >
         <ol className="flex items-center gap-1" suppressHydrationWarning>
           {displayItems.map((item, index) => (
-            <Fragment key={item.href + index}>
+            <Fragment key={`${item.href ?? "crumb"}-${index}`}>
               {index > 0 && (
                 <li aria-hidden="true">
                   <ChevronRight className="size-3 opacity-60" />

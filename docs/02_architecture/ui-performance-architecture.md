@@ -95,17 +95,17 @@ Shared Stores sollen mindestens leisten:
 
 ## Anti-Patterns (Checkliste fuer Audits)
 
-| Anti-Pattern | Symptom | Fix |
-|---|---|---|
-| Mehrfach-Fetch gleicher Daten | Network Tab zeigt 3-5x denselben Endpunkt | Shared Store + Dedupe |
-| Header/Nav fetchen separat | Jeder Routenwechsel = Waterfall an Requests | Root-Bootstrap |
-| Dialog pre-fetched Daten | Grosser Initial-Bundle, lange TTFB | Lazy Mount |
-| Mutation -> Full Reload | Seite flackert nach Save | Targeted Invalidation |
-| Alles Client Components | Riesiges JS-Bundle, langsamer FCP | Server Components First |
-| SpacetimeDB fuer alles | Unnoetige Subscription-Komplexitaet | Domain-Grenzen ziehen |
-| Teure Aggregation bei jedem Request | Langsame API-Responses | Server-Cache + Invalidation |
-| Polling statt Push | Dauerhafter Netzwerk-Traffic ohne Nutzen | Push-first fuer Live-Daten |
-| Business-Logik in Komponenten | Langsame Re-Renders, schwer testbar | In Services/Use-Cases auslagern |
+| Anti-Pattern                        | Symptom                                     | Fix                             |
+| ----------------------------------- | ------------------------------------------- | ------------------------------- |
+| Mehrfach-Fetch gleicher Daten       | Network Tab zeigt 3-5x denselben Endpunkt   | Shared Store + Dedupe           |
+| Header/Nav fetchen separat          | Jeder Routenwechsel = Waterfall an Requests | Root-Bootstrap                  |
+| Dialog pre-fetched Daten            | Grosser Initial-Bundle, lange TTFB          | Lazy Mount                      |
+| Mutation -> Full Reload             | Seite flackert nach Save                    | Targeted Invalidation           |
+| Alles Client Components             | Riesiges JS-Bundle, langsamer FCP           | Server Components First         |
+| SpacetimeDB fuer alles              | Unnoetige Subscription-Komplexitaet         | Domain-Grenzen ziehen           |
+| Teure Aggregation bei jedem Request | Langsame API-Responses                      | Server-Cache + Invalidation     |
+| Polling statt Push                  | Dauerhafter Netzwerk-Traffic ohne Nutzen    | Push-first fuer Live-Daten      |
+| Business-Logik in Komponenten       | Langsame Re-Renders, schwer testbar         | In Services/Use-Cases auslagern |
 
 ## Migrationsreihenfolge (empfohlen)
 

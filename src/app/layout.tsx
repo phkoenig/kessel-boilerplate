@@ -10,6 +10,10 @@ import { ClientProviders } from "@/components/providers/ClientProviders"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { createServiceClient } from "@/utils/supabase/service"
+import { env } from "@/env.mjs"
+
+/** CI / `SKIP_ENV_VALIDATION`: verhindert statisches Pre-Rendering von Shell-Seiten, die Supabase im Modulgraph erwarten. */
+export const dynamic = "force-dynamic"
 
 /**
  * Font-Definitionen für das Default-Theme.
@@ -90,11 +94,8 @@ async function getDefaultThemeCSS(): Promise<string> {
     }
 
     return await data.text()
-  } catch (error) {
+  } catch {
     // Netzwerk-Fehler sind nicht kritisch - Fallback-Werte werden verwendet
-    if (process.env.NODE_ENV === "development") {
-      console.debug("[Theme] Default-Theme CSS Netzwerk-Fehler:", error)
-    }
     return ""
   }
 }
@@ -159,36 +160,18 @@ export default async function RootLayout({
         )}
       </head>
       <body className="antialiased">
-        {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
-          <ClerkProvider
-            publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-            signInUrl="/login"
-            signUpUrl="/signup"
-            signInForceRedirectUrl="/"
-            signUpForceRedirectUrl="/"
-            afterSignOutUrl="/login"
-          >
-            <ThemeProvider defaultTheme={defaultThemeId}>
-              <ClientProviders>{children}</ClientProviders>
-            </ThemeProvider>
-          </ClerkProvider>
-        ) : (
+        <ClerkProvider
+          publishableKey={env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+          signInUrl="/login"
+          signUpUrl="/signup"
+          signInForceRedirectUrl="/"
+          signUpForceRedirectUrl="/"
+          afterSignOutUrl="/login"
+        >
           <ThemeProvider defaultTheme={defaultThemeId}>
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
-              <h1 className="text-2xl font-bold">Clerk nicht konfiguriert</h1>
-              <p className="text-muted-foreground max-w-md">
-                Setze NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY und CLERK_SECRET_KEY in .env.local oder
-                Supabase Vault. Fuehre dann pnpm pull-env aus.
-              </p>
-              <a
-                href="https://clerk.com/docs/quickstarts/nextjs"
-                className="text-primary hover:underline"
-              >
-                Clerk Next.js Quickstart
-              </a>
-            </div>
+            <ClientProviders>{children}</ClientProviders>
           </ThemeProvider>
-        )}
+        </ClerkProvider>
       </body>
     </html>
   )

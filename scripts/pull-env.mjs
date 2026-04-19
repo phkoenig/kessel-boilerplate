@@ -18,19 +18,36 @@ const manifestSchema = z.object({
       opReference: z.string().optional(),
       opReferenceEnvName: z.string().optional(),
       required: z.boolean().default(true),
+      vercel: z.boolean().optional(),
       description: z.string().optional(),
     })
   ),
 })
 
+/** Standard-Vault, wenn `OP_VAULT` weder in `.env` noch als ENV gesetzt ist. */
+const DEFAULT_OP_VAULT = "VAULT"
+
+/**
+ * Ersetzt `${OP_VAULT}`-Platzhalter in einer 1Password-Referenz.
+ *
+ * @param reference - 1Password-Referenz im Format `op://${OP_VAULT}/item/field`.
+ * @returns Aufgeloeste Referenz.
+ */
+function resolveVaultPlaceholder(reference) {
+  const vault = process.env.OP_VAULT?.trim() || DEFAULT_OP_VAULT
+  return reference.replace(/\$\{OP_VAULT\}/g, vault)
+}
+
 const combinedSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
   NEXT_PUBLIC_SPACETIMEDB_URI: z.string().min(1),
   NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().min(1),
   NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER: z.literal("spacetime"),
   SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  CLERK_SECRET_KEY: z.string().min(1),
 })
 
 const LOCAL_DEV_DEFAULTS = {
@@ -45,6 +62,7 @@ const PRESERVED_VAR_PREFIXES = [
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_TENANT_SLUG",
   "NEXT_PUBLIC_DEV_SUPABASE_URL",
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_SPACETIMEDB_URI",
   "NEXT_PUBLIC_SPACETIMEDB_DATABASE",
   "NEXT_PUBLIC_BOILERPLATE_CORE_DRIVER",
@@ -177,13 +195,15 @@ function resolveManifestEntry(entry) {
   }
 
   ensureOnePasswordCli()
-  const reference = process.env[entry.opReferenceEnvName ?? ""] ?? entry.opReference
-  if (!reference && entry.required) {
+  const rawReference = process.env[entry.opReferenceEnvName ?? ""] ?? entry.opReference
+  if (!rawReference && entry.required) {
     throw new Error(`1Password-Referenz fehlt fuer ${entry.envName}`)
   }
-  if (!reference) {
+  if (!rawReference) {
     return null
   }
+
+  const reference = resolveVaultPlaceholder(rawReference)
 
   let value
   try {

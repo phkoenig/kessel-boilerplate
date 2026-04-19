@@ -91,7 +91,7 @@ export interface CoreUserProvisioningInput {
    */
   clerkUserId: string
   /**
-   * Die primäre E-Mail-Adresse fuer Allowlist und Rollenzuordnung.
+   * Die primaere E-Mail-Adresse aus Clerk (Anzeige, Audit).
    */
   email: string
   /**
@@ -103,7 +103,7 @@ export interface CoreUserProvisioningInput {
    */
   avatarUrl: string | null
   /**
-   * Die auf Basis der Allowlist gemappte Rolle.
+   * Die im Core gesetzte Rolle (siehe `resolveBoilerplateProvisioningRole`).
    */
   role: string
   /**
@@ -604,6 +604,13 @@ export interface CoreStore {
    * @returns `true`, wenn der Upsert erfolgreich war.
    */
   upsertNavigationItem: (input: CoreNavigationRecord) => Promise<boolean>
+  /**
+   * Entfernt einen Navigationseintrag anhand der stabilen `nav_id`.
+   *
+   * @param id - `CoreNavigationRecord.id` (Seed-`id` / `navId` im Core).
+   * @returns `true`, wenn der Reducer ausgefuehrt wurde.
+   */
+  deleteNavigationItem: (id: string) => Promise<boolean>
   /**
    * Laedt tenant-spezifische App-Settings.
    *

@@ -74,7 +74,11 @@ export function ThemeDetailPanel(): React.ReactElement | null {
   return <ThemeDetailPanelInner context={editorContext} />
 }
 
-function ThemeDetailPanelInner({ context }: { context: ThemeEditorContextValue }): React.ReactElement {
+function ThemeDetailPanelInner({
+  context,
+}: {
+  context: ThemeEditorContextValue
+}): React.ReactElement {
   const { selectedElement, previewToken, getCurrentTokens } = context
   const { theme: colorMode, resolvedTheme } = useColorMode()
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
@@ -291,8 +295,6 @@ export function ThemeDetailPanelSaveButton({
 }): React.ReactElement | null {
   const pathname = usePathname()
   const editorCtx = useThemeEditorOptional()
-  if (!editorCtx) return null
-  const { isDirty } = editorCtx
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -303,8 +305,14 @@ export function ThemeDetailPanelSaveButton({
     return () => window.clearTimeout(timeout)
   }, [pathname])
 
+  if (!editorCtx) {
+    return null
+  }
+
+  const { isDirty } = editorCtx
+
   if (!forceVisible && !isDirty) {
-    return <></>
+    return null
   }
 
   return (

@@ -1,8 +1,8 @@
 /**
  * API Route: User Profile
  *
- * Laedt das User-Profil aus dem Boilerplate-Core.
- * Verwendet Clerk Auth - Profil wird per clerk_user_id geladen.
+ * Laedt das User-Profil aus dem Boilerplate-Core (SpacetimeDB).
+ * Verwendet Clerk Auth — Profil wird per `clerk_user_id` geladen oder on-demand provisioniert.
  *
  * GET: Gibt das Profil zurueck (401 wenn nicht eingeloggt)
  */
@@ -10,9 +10,8 @@
 import { auth, clerkClient } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import type { User } from "@/components/auth/auth-context"
-import { isAllowedEmail, resolveProvisioningRole } from "@/lib/auth/allowed-users"
+import { resolveBoilerplateProvisioningRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
-import { getKnownRoles } from "@/lib/auth/known-roles-cache"
 
 function profileRowToUser(
   row: {
@@ -95,12 +94,13 @@ async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | n
     // Clerk-Server nicht verfuegbar
   }
 
-  const mappedRole = resolveProvisioningRole(email, null, [])
-  if (!mappedRole) return null
+  const coreStore = getCoreStore()
+  const effectiveEmail = email || "unknown@clerk.local"
+  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
 
-  return getCoreStore().upsertUserFromClerk({
+  return coreStore.upsertUserFromClerk({
     clerkUserId,
-    email: email || "unknown@clerk.local",
+    email: effectiveEmail,
     displayName,
     avatarUrl,
     role: mappedRole,
@@ -109,7 +109,7 @@ async function autoProvisionProfile(clerkUserId: string, claimsEmail: string | n
 
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false })
+    const { userId, sessionClaims } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
@@ -126,12 +126,15 @@ export async function GET() {
           isNewUser: true,
         })
       }
-      return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
+      return NextResponse.json({ error: "Profil konnte nicht angelegt werden" }, { status: 500 })
     }
 
-    const knownRoles = await getKnownRoles()
-    const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
-    if (resolvedRole && resolvedRole !== profile.role) {
+    const resolvedRole = await resolveBoilerplateProvisioningRole(
+      coreStore,
+      profile.role,
+      profile.email
+    )
+    if (resolvedRole !== profile.role) {
       const reprovisioned = await coreStore.upsertUserFromClerk({
         clerkUserId: userId,
         email: profile.email,
@@ -145,10 +148,6 @@ export async function GET() {
       }
     }
 
-    if (!isAllowedEmail(profile.email ?? null)) {
-      return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
-    }
-
     return NextResponse.json({
       user: profileRowToUser(profile, userId),
       isNewUser: false,
@@ -160,7 +159,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false })
+    const { userId, sessionClaims } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Nicht eingeloggt" }, { status: 401 })
     }
@@ -179,34 +178,33 @@ export async function PUT(request: Request) {
     }
 
     const coreStore = getCoreStore()
-    const existingProfile = await coreStore.getUserByClerkId(userId)
+    let existingProfile = await coreStore.getUserByClerkId(userId)
 
     const claimsEmail = getEmailFromSessionClaims(sessionClaims)
     const effectiveEmail = claimsEmail ?? existingProfile?.email ?? null
 
-    if (!isAllowedEmail(effectiveEmail)) {
-      return NextResponse.json({ error: "Nicht freigeschalteter Benutzer" }, { status: 403 })
-    }
-
     if (!existingProfile) {
-      await autoProvisionProfile(userId, effectiveEmail)
+      const provisioned = await autoProvisionProfile(userId, effectiveEmail)
+      if (!provisioned) {
+        return NextResponse.json({ error: "Profil konnte nicht angelegt werden" }, { status: 500 })
+      }
+      existingProfile = provisioned
     }
 
-    const knownRoles = await getKnownRoles()
-    const mappedRole = resolveProvisioningRole(
-      effectiveEmail,
+    const mappedRole = await resolveBoilerplateProvisioningRole(
+      coreStore,
       existingProfile?.role ?? null,
-      knownRoles
+      effectiveEmail ?? existingProfile?.email ?? null
     )
     const shouldReprovisionRole = mappedRole && existingProfile?.role !== mappedRole
-    if (shouldReprovisionRole) {
+    if (shouldReprovisionRole && existingProfile) {
       await coreStore.upsertUserFromClerk({
         clerkUserId: userId,
-        email: effectiveEmail ?? "unknown@clerk.local",
-        displayName: existingProfile?.displayName ?? effectiveEmail?.split("@")[0] ?? "User",
-        avatarUrl: existingProfile?.avatarUrl ?? null,
+        email: effectiveEmail ?? existingProfile.email ?? "unknown@clerk.local",
+        displayName: existingProfile.displayName ?? effectiveEmail?.split("@")[0] ?? "User",
+        avatarUrl: existingProfile.avatarUrl ?? null,
         role: mappedRole,
-        tenantId: existingProfile?.tenantId ?? null,
+        tenantId: existingProfile.tenantId ?? null,
       })
     }
 

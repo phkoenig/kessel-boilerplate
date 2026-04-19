@@ -43,7 +43,7 @@ function opRead(opReference) {
       env: process.env,
     })
     return out.trim().replace(/\r\n/g, "\n").replace(/\r/g, "")
-  } catch (err) {
+  } catch {
     return null
   }
 }

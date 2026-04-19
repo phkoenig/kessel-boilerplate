@@ -33,12 +33,14 @@ const NavigationContext = createContext<NavigationContextValue | null>(null)
 let navigationCache: CoreNavigationRecord[] | null = null
 let navigationRequest: Promise<CoreNavigationRecord[]> | null = null
 
+const SEED_RECORDS: CoreNavigationRecord[] = [...NAVIGATION_SEED]
+
 const buildFallbackSections = (): {
   records: CoreNavigationRecord[]
   sidebarSections: NavigationSection[]
   userMenuSection: NavigationSection | null
 } => {
-  const records = NAVIGATION_SEED
+  const records = SEED_RECORDS
   const sidebarSections = buildNavigationSections(records, "sidebar")
   const userMenuSection = buildNavigationSections(records, "user")[0] ?? null
 
@@ -46,7 +48,7 @@ const buildFallbackSections = (): {
 }
 
 export function NavigationProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [records, setRecords] = useState<CoreNavigationRecord[]>(navigationCache ?? NAVIGATION_SEED)
+  const [records, setRecords] = useState<CoreNavigationRecord[]>(navigationCache ?? SEED_RECORDS)
   const [isLoaded, setIsLoaded] = useState<boolean>(true)
 
   const loadNavigation = useCallback(async (force = false): Promise<void> => {
@@ -72,17 +74,17 @@ export function NavigationProvider({ children }: { children: ReactNode }): React
         })
 
         if (!response.ok) {
-          navigationCache = NAVIGATION_SEED
-          return NAVIGATION_SEED
+          navigationCache = SEED_RECORDS
+          return SEED_RECORDS
         }
 
         const payload = (await response.json()) as { items?: CoreNavigationRecord[] }
-        const resolved = payload.items && payload.items.length > 0 ? payload.items : NAVIGATION_SEED
+        const resolved = payload.items && payload.items.length > 0 ? payload.items : SEED_RECORDS
         navigationCache = resolved
         return resolved
       } catch {
-        navigationCache = NAVIGATION_SEED
-        return NAVIGATION_SEED
+        navigationCache = SEED_RECORDS
+        return SEED_RECORDS
       } finally {
         navigationRequest = null
       }
@@ -99,17 +101,17 @@ export function NavigationProvider({ children }: { children: ReactNode }): React
 
   useEffect(() => {
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      window.requestIdleCallback(() => {
+      const idleId = window.requestIdleCallback(() => {
         void loadNavigation()
       })
-      return
+      return () => window.cancelIdleCallback(idleId)
     }
 
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       void loadNavigation()
     }, 0)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => clearTimeout(timeoutId)
   }, [loadNavigation])
 
   const sections = useMemo(() => {

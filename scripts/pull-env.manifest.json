@@ -2,31 +2,37 @@
   "entries": [
     {
       "envName": "NEXT_PUBLIC_SUPABASE_URL",
-      "source": "bootstrap",
-      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_URL",
+      "source": "1password",
+      "opReference": "op://${OP_VAULT}/App Runtime/NEXT_PUBLIC_SUPABASE_URL",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SUPABASE_URL",
       "required": true,
-      "description": "App-Supabase URL der aktuellen Ableitung"
+      "vercel": true,
+      "description": "Supabase URL der Dev-DB (MegaBrain Default, Projekt `jpmhwyjiuodsvjowddsm`)"
     },
     {
       "envName": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "source": "bootstrap",
-      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "source": "1password",
+      "opReference": "op://${OP_VAULT}/App Runtime/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
       "required": true,
-      "description": "Publishable/Anon Key der App-Supabase"
+      "vercel": true,
+      "description": "Publishable/Anon Key der Dev-Supabase (Browser-Client)"
     },
     {
       "envName": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      "source": "bootstrap",
-      "bootstrapEnvName": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "source": "1password",
+      "opReference": "op://${OP_VAULT}/App Runtime/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "required": false,
-      "description": "Optionale Standard-Supabase-Variable fuer Browser-Clients"
+      "vercel": true,
+      "description": "Alias auf den Publishable Key fuer Legacy-Client-Pfade"
     },
     {
       "envName": "NEXT_PUBLIC_TENANT_SLUG",
       "source": "bootstrap",
       "bootstrapEnvName": "NEXT_PUBLIC_TENANT_SLUG",
       "required": false,
-      "description": "Tenant-Slug der Ableitung"
+      "description": "Tenant-Slug der Ableitung (nur noch informativ, Boilerplate 3.0 ist single-tenant)"
     },
     {
       "envName": "NEXT_PUBLIC_APP_NAME",
@@ -38,17 +44,17 @@
     {
       "envName": "SUPABASE_SERVICE_ROLE_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReference": "op://${OP_VAULT}/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
       "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
       "required": true,
       "vercel": true,
-      "description": "Server-seitiger Service Role Key der App-Supabase"
+      "description": "Server-seitiger Service Role Key der Dev-Supabase"
     },
     {
       "envName": "SERVICE_ROLE_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - App Runtime/SUPABASE_SERVICE_ROLE_KEY",
-      "opReferenceEnvName": "OP_REF_SUPABASE_SERVICE_ROLE_KEY",
+      "opReference": "op://${OP_VAULT}/App Runtime/SUPABASE_SERVICE_ROLE_KEY",
+      "opReferenceEnvName": "OP_REF_SERVICE_ROLE_KEY",
       "required": true,
       "vercel": true,
       "description": "Legacy-Alias fuer Server-Code"
@@ -56,7 +62,7 @@
     {
       "envName": "OPENROUTER_API_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - AI Runtime/OPENROUTER_API_KEY",
+      "opReference": "op://${OP_VAULT}/KB - AI Runtime/OPENROUTER_API_KEY",
       "opReferenceEnvName": "OP_REF_OPENROUTER_API_KEY",
       "required": false,
       "vercel": true,
@@ -65,7 +71,7 @@
     {
       "envName": "FAL_API_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - AI Runtime/FAL_API_KEY",
+      "opReference": "op://${OP_VAULT}/KB - AI Runtime/FAL_API_KEY",
       "opReferenceEnvName": "OP_REF_FAL_API_KEY",
       "required": false,
       "vercel": true,
@@ -74,16 +80,16 @@
     {
       "envName": "CLERK_SECRET_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - Auth Runtime/CLERK_SECRET_KEY",
+      "opReference": "op://${OP_VAULT}/KB - Auth Runtime/CLERK_SECRET_KEY",
       "opReferenceEnvName": "OP_REF_CLERK_SECRET_KEY",
-      "required": false,
+      "required": true,
       "vercel": true,
       "description": "Clerk Server Secret"
     },
     {
       "envName": "CLERK_WEBHOOK_SIGNING_SECRET",
       "source": "1password",
-      "opReference": "op://VAULT/KB - Auth Runtime/CLERK_WEBHOOK_SIGNING_SECRET",
+      "opReference": "op://${OP_VAULT}/KB - Auth Runtime/CLERK_WEBHOOK_SIGNING_SECRET",
       "opReferenceEnvName": "OP_REF_CLERK_WEBHOOK_SIGNING_SECRET",
       "required": false,
       "vercel": true,
@@ -92,27 +98,27 @@
     {
       "envName": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "source": "1password",
-      "opReference": "op://VAULT/KB - Auth Runtime/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "opReference": "op://${OP_VAULT}/KB - Auth Runtime/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-      "required": false,
+      "required": true,
       "vercel": true,
       "description": "Clerk Publishable Key fuer den Client"
     },
     {
       "envName": "NEXT_PUBLIC_SPACETIMEDB_URI",
       "source": "1password",
-      "opReference": "op://VAULT/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_URI",
+      "opReference": "op://${OP_VAULT}/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_URI",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_URI",
-      "required": false,
+      "required": true,
       "vercel": true,
       "description": "SpacetimeDB URI fuer den Boilerplate Core"
     },
     {
       "envName": "NEXT_PUBLIC_SPACETIMEDB_DATABASE",
       "source": "1password",
-      "opReference": "op://VAULT/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_DATABASE",
+      "opReference": "op://${OP_VAULT}/KB - Spacetime Runtime/NEXT_PUBLIC_SPACETIMEDB_DATABASE",
       "opReferenceEnvName": "OP_REF_NEXT_PUBLIC_SPACETIMEDB_DATABASE",
-      "required": false,
+      "required": true,
       "vercel": true,
       "description": "SpacetimeDB Datenbankname fuer den Boilerplate Core"
     }

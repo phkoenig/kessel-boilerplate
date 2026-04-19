@@ -23,7 +23,6 @@ import { getCoreStore } from "@/lib/core"
 import { requireAuth } from "@/lib/auth/guards"
 import type { UserInteraction } from "@/lib/ai-chat/types"
 import { loadAIManifestServer } from "@/lib/ai/ai-manifest-loader"
-import { generateNavigationToolSet } from "@/lib/ai-chat/navigation-tools"
 import { getSpacetimeServerConnection } from "@/lib/spacetime/server-connection"
 
 // Streaming-Timeout erhöhen
@@ -108,6 +107,7 @@ ${emojiInstructions}
 
 ## Deine Rolle
 - Du hilfst Nutzern bei Fragen zur Anwendung
+- **Navigation (Menü, URLs, Breadcrumbs):** Du hast kein Tool dafür. Neue Einträge gehören in \`src/lib/navigation/seed.ts\` (und ggf. neue Routen) und werden per Code-Review eingepflegt – verweise den Nutzer darauf.
 - Du kannst Daten abfragen und ändern, wenn der Nutzer darum bittet
 - READ-Operationen (query_*) führst du SOFORT aus - keine Bestätigung nötig
 - INSERT/UPDATE führst du aus nachdem du kurz gezeigt hast was passiert
@@ -420,17 +420,6 @@ export async function POST(req: Request) {
         tools = uiActionTool
       }
       availableToolNames.push(...Object.keys(uiActionTool))
-    }
-
-    // 8.7. Navigation Tools: Für das Anlegen von Navigation-Einträgen (nur in Dev)
-    if (process.env.NODE_ENV === "development") {
-      const navigationToolSet = generateNavigationToolSet()
-      if (tools) {
-        Object.assign(tools, navigationToolSet)
-      } else {
-        tools = navigationToolSet
-      }
-      availableToolNames.push(...Object.keys(navigationToolSet))
     }
 
     // 9. Modell aus Router-Decision verwenden (oder explizit überschrieben)

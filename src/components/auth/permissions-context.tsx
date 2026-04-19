@@ -13,7 +13,7 @@ import type { UserRole } from "./auth-context"
 import { useAuth } from "./auth-context"
 import { useNavigation } from "@/lib/navigation"
 import type { CoreNavigationRecord } from "@/lib/core"
-import { isAdminRole } from "@/lib/auth/allowed-users"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 /** Permission für ein Modul - jetzt mit dynamischen Rollen */
 interface ModulePermission {
@@ -204,17 +204,17 @@ export function PermissionsProvider({ children }: { children: ReactNode }): Reac
 
   useEffect(() => {
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      window.requestIdleCallback(() => {
+      const idleId = window.requestIdleCallback(() => {
         void loadPermissions()
       })
-      return
+      return () => window.cancelIdleCallback(idleId)
     }
 
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       void loadPermissions()
     }, 0)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => clearTimeout(timeoutId)
   }, [loadPermissions])
 
   /**

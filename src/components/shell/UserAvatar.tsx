@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter } from "next/navigation"
-import { User, ShoppingCart, Languages, LogOut, Palette } from "lucide-react"
+import { User, ShoppingCart, Languages, LogOut } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -72,7 +72,6 @@ export function UserAvatar(): React.ReactElement {
   const iconMap: Record<string, typeof User> = {
     "user-profile": User,
     "user-cart": ShoppingCart,
-    "user-display-settings": Palette,
     "user-language": Languages,
     "user-logout": LogOut,
   }

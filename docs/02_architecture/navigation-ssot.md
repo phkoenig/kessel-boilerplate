@@ -1,5 +1,11 @@
 # Navigation als Single Source of Truth
 
+## Warum kein AI-Write
+
+Die Navigation wird **ausschliesslich im Code** gepflegt (`src/lib/navigation/seed.ts`, zugehoerige Routen unter `src/app/(shell)/`). Es gibt **keinen** API-Endpunkt und **keine** Chat-Tools, die Navigation oder Seiten anlegen – das verhindert Drift zwischen Repo, Compiler-Checks und Live-Core.
+
+Wenn Nutzer oder Agenten neue Menuepunkte wuenschen: **PR mit Seed + Page**, danach `pnpm nav:check` (siehe `package.json`).
+
 ## Grundsatz
 
 Die **Navigationskonfiguration** (`src/lib/navigation/seed.ts` bzw. SpacetimeDB im Produktivbetrieb) ist die **einzige verbindliche Quelle** fuer:

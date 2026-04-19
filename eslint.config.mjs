@@ -13,6 +13,8 @@ import noMiddlewareFile from "./eslint/rules/no-middleware-file.js"
 import aiComponentCompliance from "./eslint/rules/ai-component-compliance.js"
 import requireAiWrapper from "./eslint/rules/require-ai-wrapper.js"
 import navigationRouteConsistency from "./eslint/rules/navigation-route-consistency.js"
+import noRawNavHref from "./eslint/rules/no-raw-nav-href.js"
+import noHardcodedPageTitle from "./eslint/rules/no-hardcoded-page-title.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -34,6 +36,8 @@ const localPlugin = {
     "ai-component-compliance": aiComponentCompliance,
     "require-ai-wrapper": requireAiWrapper,
     "navigation-route-consistency": navigationRouteConsistency,
+    "no-raw-nav-href": noRawNavHref,
+    "no-hardcoded-page-title": noHardcodedPageTitle,
   },
 }
 
@@ -153,9 +157,9 @@ const eslintConfig = defineConfig([
       "local/require-ai-wrapper": "error",
     },
   },
-  // Navigation Route Consistency: Prüft Konsistenz zwischen Routen und Navigation
+  // Navigation Route Consistency: nur Shell (sonst false positives z. B. Root-Layout, APIs).
   {
-    files: ["src/app/**/*.tsx", "src/components/**/*.tsx", "src/lib/**/*.ts"],
+    files: ["src/app/(shell)/**/*.tsx", "src/components/shell/**/*.tsx"],
     ignores: [
       "src/components/ui/**",
       "**/__tests__/**",
@@ -168,7 +172,9 @@ const eslintConfig = defineConfig([
       local: localPlugin,
     },
     rules: {
-      "local/navigation-route-consistency": "warn", // Warnung für sanfte Migration
+      "local/navigation-route-consistency": "error",
+      "local/no-raw-nav-href": "error",
+      "local/no-hardcoded-page-title": "error",
     },
   },
   // ESLint-Regel-Dateien ausschließen (dürfen require() verwenden)
@@ -188,8 +194,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Archivierte Dateien ignorieren
-    "src/_archive/**",
+    "**/dist/**",
+    "spacetime/**/dist/**",
   ]),
 ])
 

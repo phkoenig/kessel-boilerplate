@@ -320,8 +320,8 @@ Vier visuell getrennte Bereiche mit Dividers:
 Folgende bestehende Strukturen werden archiviert (nicht gelöscht):
 
 ```
-src/layouts/                    → src/_archive/layouts_v1/
-src/app/(main)/                 → src/_archive/app_main_v1/
+src/layouts/                    → (historisch nach `src/_archive/layouts_v1/`; Archiv im Boilerplate-Repo entfernt — siehe Git-Historie)
+src/app/(main)/                 → (historisch nach `src/_archive/app_main_v1/`)
 ```
 
 ### Was wird NICHT archiviert (bleibt erhalten):

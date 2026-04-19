@@ -9,3 +9,6 @@ node scripts/validate-layout-consistency.mjs
 # Lint-staged ausführen (für Code-Formatierung)
 pnpm lint-staged
 
+# Navigation SSoT: Lint + Parity-Test
+pnpm nav:check
+

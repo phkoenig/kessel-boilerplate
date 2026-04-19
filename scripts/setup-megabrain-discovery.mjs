@@ -194,7 +194,7 @@ async function main() {
           if (!error) {
             tables.push({ table_schema: "public", table_name: tableName })
           }
-        } catch (e) {
+        } catch {
           // Tabelle existiert nicht
         }
       }

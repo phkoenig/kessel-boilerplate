@@ -275,13 +275,6 @@ const userMenuSection: NavSection = {
       requiredRoles: ["user", "admin"], // Kann für bestimmte Rollen deaktiviert werden
     },
     {
-      id: "user-display-settings",
-      label: "Anzeige-Einstellungen",
-      icon: Palette,
-      href: buildNavHref(SECTION_TITLES.ADMIN, "Theme Manager"), // Link zu Admin Theme Manager
-      requiredRoles: ["user", "admin"], // Alle können Theme wechseln
-    },
-    {
       id: "user-language",
       label: "Sprache",
       icon: Languages,

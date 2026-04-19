@@ -23,3 +23,7 @@ Die Migrationen 032-035 aendern FKs und Schema irreversibel. Ein vollstaendiger 
 1. Vor Migration: `pg_dump` der betroffenen Schemas
 2. Bei Problemen: Restore aus Dump
 3. Code: Git-Revert der Auth-bezogenen Commits
+
+## Boilerplate 3.0 (Stand 2026-04)
+
+Die SQL-Migrationen **032–036** liegen nicht mehr unter `supabase/migrations/`, sondern archiviert unter [`supabase/migrations/_legacy/`](../../supabase/migrations/_legacy/README.md). Der produktive Boilerplate-Core nutzt **SpacetimeDB**; Postgres-Migrationen dieser Gruppe sind nur noch fuer Bestandsdatenbanken relevant.

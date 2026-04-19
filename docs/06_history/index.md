@@ -8,7 +8,10 @@ Diese Ebene zeichnet Entwicklung und Versionen nach. Sie dokumentiert Änderunge
 
 ## Inhalt
 
-- **`CHANGELOG.md`**: Versionshistorie mit Änderungen
+- **`CHANGELOG.md`** (Projekt-Root): Versionshistorie mit Änderungen
+- **`baseline-pre-3.0-cutover.md`**: Messprotokoll vor Hard-Cutover 3.0
+- **`IMPLEMENTATION_SUMMARY.md`**: Archivierte AI-Tool-Calling-Zusammenfassung
+- **`schema_umbau.md`**: Archivierte Schema-Notizen
 - **Release Notes**: Detaillierte Release-Informationen
 
 ## Nutzung

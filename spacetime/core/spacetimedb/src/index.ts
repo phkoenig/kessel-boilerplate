@@ -196,9 +196,9 @@ export const init = boilerplateCoreSchema.init((ctx) => {
   }
 })
 
-export const onConnect = boilerplateCoreSchema.clientConnected((_ctx) => {})
+export const onConnect = boilerplateCoreSchema.clientConnected(() => {})
 
-export const onDisconnect = boilerplateCoreSchema.clientDisconnected((_ctx) => {})
+export const onDisconnect = boilerplateCoreSchema.clientDisconnected(() => {})
 
 export const get_user_by_clerk_id = boilerplateCoreSchema.procedure(
   { clerkUserId: t.string() },
@@ -714,6 +714,16 @@ export const upsert_navigation_item = boilerplateCoreSchema.reducer(
       orderIndex,
       alwaysVisible,
     })
+  }
+)
+
+export const delete_navigation_item = boilerplateCoreSchema.reducer(
+  { id: t.string() },
+  (ctx, { id }) => {
+    const row = ctx.db.coreNavigation.navId.find(id)
+    if (row) {
+      ctx.db.coreNavigation.id.delete(row.id)
+    }
   }
 )
 

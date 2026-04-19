@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 
@@ -26,7 +25,12 @@ import { useShell } from "./shell-context"
 import { useAuth, usePermissions } from "@/components/auth"
 import { AIInteractable } from "@/components/ai/AIInteractable"
 import { AppNameMenu } from "./AppNameMenu"
-import { useNavigation, type NavigationItem, type NavigationSection } from "@/lib/navigation"
+import {
+  AppLink,
+  useNavigation,
+  type NavigationItem,
+  type NavigationSection,
+} from "@/lib/navigation"
 
 /** Typ für die isVisible Funktion */
 type IsVisibleFn = (item: NavigationItem | NavigationSection) => boolean
@@ -296,7 +300,7 @@ function NavItemComponent({
               keywords={keywords}
               category="navigation"
             >
-              <Link href={item.href}>
+              <AppLink href={item.href}>
                 <Button
                   variant="ghost-no-hover-bg"
                   size="icon"
@@ -307,7 +311,7 @@ function NavItemComponent({
                 >
                   <Icon className="size-5 transition-transform duration-200" />
                 </Button>
-              </Link>
+              </AppLink>
             </AIInteractable>
           ) : item.isAction ? (
             <AIInteractable
@@ -422,7 +426,7 @@ function NavItemComponent({
         keywords={keywords}
         category="navigation"
       >
-        <Link href={item.href}>
+        <AppLink href={item.href}>
           <Button
             variant="ghost-no-hover-bg"
             className={cn(
@@ -441,7 +445,7 @@ function NavItemComponent({
               {displayLabel}
             </span>
           </Button>
-        </Link>
+        </AppLink>
       </AIInteractable>
     )
   }
@@ -559,10 +563,10 @@ function CollapsedDropdownItem({
           keywords={keywords}
           category="navigation"
         >
-          <Link href={item.href}>
+          <AppLink href={item.href}>
             <Icon className="size-4" />
             <span>{item.label}</span>
-          </Link>
+          </AppLink>
         </AIInteractable>
       </DropdownMenuItem>
     )

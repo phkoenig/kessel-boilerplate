@@ -3,8 +3,12 @@ import type { CoreNavigationRecord } from "@/lib/core"
 /**
  * Statischer Seed fuer die erste Initialisierung der Core-Navigation.
  * Danach ist SpacetimeDB die produktive Source of Truth.
+ *
+ * WICHTIG: `as const satisfies readonly CoreNavigationRecord[]` — nur so bleiben die
+ * String-Literals (`id`, `href`) fuer die TS-Gates in `hrefs.ts` erhalten
+ * (sonst kollabiert `NavHref` zu `string`).
  */
-export const NAVIGATION_SEED: CoreNavigationRecord[] = [
+export const NAVIGATION_SEED = [
   {
     id: "app-content",
     parentId: null,
@@ -454,20 +458,6 @@ export const NAVIGATION_SEED: CoreNavigationRecord[] = [
     alwaysVisible: false,
   },
   {
-    id: "user-display-settings",
-    parentId: "user-menu",
-    scope: "user",
-    nodeType: "page",
-    label: "Anzeige-Einstellungen",
-    sectionTitle: null,
-    slugSegment: "anzeige-einstellungen",
-    href: "/app-verwaltung/theme-manager",
-    iconName: "Palette",
-    requiredRoles: ["user", "admin"],
-    orderIndex: 2,
-    alwaysVisible: false,
-  },
-  {
     id: "user-language",
     parentId: "user-menu",
     scope: "user",
@@ -495,4 +485,4 @@ export const NAVIGATION_SEED: CoreNavigationRecord[] = [
     orderIndex: 4,
     alwaysVisible: true,
   },
-]
+] as const satisfies readonly CoreNavigationRecord[]

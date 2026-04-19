@@ -44,7 +44,7 @@ interface Permission {
 export default function RolesPage(): React.ReactElement {
   const { role, isLoading: authLoading } = useAuth()
   const { reload: reloadPermissions } = usePermissions()
-  const { records: navigationRecords } = useNavigation()
+  const { records: navigationRecords, sidebarSections } = useNavigation()
   const currentNavItem = useCurrentNavItem()
   const pageTitle = currentNavItem?.label ?? "Rollen & Berechtigungen"
   const [roles, setRoles] = useState<Role[]>([])
@@ -287,8 +287,6 @@ export default function RolesPage(): React.ReactElement {
     const targetModule = permissions.find((p) => p.moduleId === moduleId)
     if (!targetModule) return
 
-    const isSection = !targetModule.parentId
-
     // IMMER alle Children rekursiv finden (nicht nur für Sections!)
     const allChildrenIds = findAllChildren(moduleId)
 
@@ -397,7 +395,7 @@ export default function RolesPage(): React.ReactElement {
               const sectionModuleIds = new Set<string>([sectionId])
 
               // Finde alle direkten Items der Section
-              const section = allNavigationConfig.find((s) => s.id === sectionId)
+              const section = sidebarSections.find((s) => s.id === sectionId)
               if (section) {
                 section.items.forEach((item) => {
                   if (item.id !== "account-login") {
@@ -538,10 +536,10 @@ export default function RolesPage(): React.ReactElement {
               )
             }
 
-            // Dynamisch alle Sections aus allNavigationConfig rendern
+            // Dynamisch alle Sidebar-Sections aus Navigation-Provider rendern
             return (
               <>
-                {allNavigationConfig.map((section) => {
+                {sidebarSections.map((section) => {
                   const sectionPerms = getSectionPermissions(section.id)
                   if (sectionPerms.length === 0) return null
 

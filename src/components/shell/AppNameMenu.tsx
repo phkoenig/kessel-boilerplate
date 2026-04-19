@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ChevronDown } from "lucide-react"
 
@@ -18,8 +17,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AppIcon } from "@/components/ui/app-icon"
 import { useAuth, usePermissions } from "@/components/auth"
 import { useAppSettings } from "@/hooks/use-app-settings"
-import { useNavigation } from "@/lib/navigation"
-import { isAdminRole } from "@/lib/auth/allowed-users"
+import { AppLink, SHELL_HOME_HREF, useNavigation } from "@/lib/navigation"
+import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 /**
  * AppNameMenu Komponente
@@ -79,7 +78,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
 
   // Prüfe ob User Admin ist und Admin-Section sichtbar ist
   const isAdmin =
-    Boolean(adminSection) &&
+    adminSection != null &&
     visibleAdminItems.length > 0 &&
     isRoleAllowed(adminSection.requiredRoles)
 
@@ -88,7 +87,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link href="/">
+          <AppLink href={SHELL_HOME_HREF}>
             <Button
               variant="ghost"
               size="icon"
@@ -96,7 +95,7 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
             >
               <AppIcon size={20} className="text-sidebar-foreground" />
             </Button>
-          </Link>
+          </AppLink>
         </TooltipTrigger>
         <TooltipContent side="right">{appName}</TooltipContent>
       </Tooltip>
@@ -106,15 +105,15 @@ export function AppNameMenu({ collapsed = false }: { collapsed?: boolean }): Rea
   // Nicht-Admin: Einfacher Link ohne Dropdown
   if (!isAdmin || visibleAdminItems.length === 0) {
     return (
-      <Link
-        href="/"
+      <AppLink
+        href={SHELL_HOME_HREF}
         className="flex min-w-0 items-center gap-2 transition-opacity duration-200 hover:opacity-80"
       >
         <AppIcon size={20} className="text-sidebar-foreground shrink-0" />
         <span className="text-sidebar-foreground truncate text-lg font-bold uppercase transition-opacity duration-200">
           {appName}
         </span>
-      </Link>
+      </AppLink>
     )
   }
 

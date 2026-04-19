@@ -1,18 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 import { type NextRequest, NextResponse } from "next/server"
 
-/**
- * Clerk Session-Task-Routes (z.B. choose-organization).
- * Diese muessen IMMER durchgelassen werden, damit Clerk den
- * Task-Lifecycle korrekt abschliessen kann.
- */
-const isClerkTaskRoute = createRouteMatcher(["/login/tasks(.*)", "/signup/tasks(.*)"])
-
 const isClerkCallbackRoute = createRouteMatcher([
   "/login/sso-callback(.*)",
   "/login/factor(.*)",
   "/signup/sso-callback(.*)",
   "/signup/verify(.*)",
+  "/login/tasks(.*)",
+  "/signup/tasks(.*)",
 ])
 
 const isAuthRoute = createRouteMatcher(["/login(.*)", "/signup(.*)", "/verify(.*)"])
@@ -33,11 +28,10 @@ const isPublicRoute = createRouteMatcher([
  * Webhook-Routen brauchen keine Auth.
  */
 export function getProxyAction(
-  pathname: string,
+  _pathname: string,
   isAuthenticated: boolean,
   request: NextRequest
 ): "next" | "redirect-login" | "redirect-home" {
-  if (isClerkTaskRoute(request)) return "next"
   if (isClerkCallbackRoute(request)) return "next"
   if (isApiRoute(request)) return "next"
   if (isPublicRoute(request)) return "next"
@@ -46,40 +40,27 @@ export function getProxyAction(
 }
 
 /**
- * Next.js 16 Proxy - Clerk Auth Route Protection.
- *
- * Clerk Session-Tasks (z.B. choose-organization bei required Organizations)
- * setzen die Session in den Zustand "pending". auth() gibt dann standardmaessig
- * userId: null zurueck (treatPendingAsSignedOut default: true).
- *
- * Mit treatPendingAsSignedOut: false erkennen wir pending Sessions als
- * eingeloggt und vermeiden einen Redirect-Loop waehrend des Task-Flows.
+ * Next.js 16 Proxy — Clerk Auth und Routenschutz (Single-Tenant, ohne Organizations).
  */
 export default clerkMiddleware(async (auth, request: NextRequest) => {
-  const { pathname } = request.nextUrl
-
-  // Task-Routes und Callbacks: Clerk muss diese selbst verarbeiten
-  if (isClerkTaskRoute(request) || isClerkCallbackRoute(request)) {
+  if (isClerkCallbackRoute(request)) {
     return NextResponse.next()
   }
 
-  // API und Public: durchlassen
   if (isApiRoute(request) || isPublicRoute(request)) {
     return NextResponse.next()
   }
 
-  const authResult = await auth({ treatPendingAsSignedOut: false })
+  const authResult = await auth()
   const isAuthenticated = !!authResult.userId
 
-  // Auth-Seiten (/login, /signup): eingeloggte User nach Home
   if (isAuthRoute(request)) {
     return isAuthenticated ? NextResponse.redirect(new URL("/", request.url)) : NextResponse.next()
   }
 
-  // Geschuetzte Seiten: nicht eingeloggt -> Login
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect_url", pathname)
+    loginUrl.searchParams.set("redirect_url", request.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -88,16 +69,7 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
 
 export const config = {
   matcher: [
-    "/",
-    "/app-verwaltung/:path*",
-    "/benutzer-menue/:path*",
-    "/wiki",
-    "/llms.txt",
-    "/.well-known/:path*",
-    "/ueber-die-app/:path*",
-    "/login/:path*",
-    "/signup/:path*",
-    "/verify/:path*",
-    "/api/((?!webhooks).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)((?!.*webhooks).*)",
   ],
 }

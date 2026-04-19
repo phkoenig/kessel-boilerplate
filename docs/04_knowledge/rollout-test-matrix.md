@@ -15,7 +15,7 @@
 | Kategorie   | Beispiele                                   | Guard               |
 | ----------- | ------------------------------------------- | ------------------- |
 | Protected   | app-settings, themes/list, core/permissions | requireAuth         |
-| Admin       | admin/\*, themes/delete, navigation/update  | requireAdmin        |
+| Admin       | admin/\*, themes/delete                     | requireAdmin        |
 | Public      | content/\*, webhooks/clerk                  | Signatur/keine Auth |
 | Development | debug/_, dev/_                              | NODE_ENV + Auth     |
 

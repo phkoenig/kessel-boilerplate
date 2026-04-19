@@ -644,6 +644,12 @@ export const createSpacetimeCoreStore = (): CoreStore => ({
     return true
   },
 
+  async deleteNavigationItem(id) {
+    const connection = await getSpacetimeServerConnection()
+    await connection.reducers.deleteNavigationItem({ id })
+    return true
+  },
+
   async getUserThemeState(clerkUserId) {
     const connection = await getSpacetimeServerConnection()
     const result = await connection.procedures.getUserThemeState({ clerkUserId })

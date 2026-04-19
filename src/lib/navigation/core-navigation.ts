@@ -25,11 +25,13 @@ import {
 } from "lucide-react"
 import type { CoreNavigationRecord } from "@/lib/core"
 
+import type { NavHref } from "./hrefs"
+
 export interface NavigationItem {
   id: string
   label: string
   icon: LucideIcon
-  href?: string
+  href?: NavHref
   children?: NavigationItem[]
   requiredRoles?: string[]
   isAction?: boolean
@@ -39,7 +41,7 @@ export interface NavigationItem {
 export interface NavigationSection {
   id: string
   title?: string
-  href?: string
+  href?: NavHref
   items: NavigationItem[]
   requiredRoles?: string[]
 }
@@ -99,7 +101,7 @@ const buildItemChildren = (
         id: record.id,
         label: record.label,
         icon: resolveNavigationIcon(record.iconName),
-        href: record.href ?? undefined,
+        href: record.href ? (record.href as NavHref) : undefined,
         children: nestedChildren.length > 0 ? nestedChildren : undefined,
         requiredRoles: record.requiredRoles.length > 0 ? record.requiredRoles : undefined,
         isAction: record.nodeType === "action" ? true : undefined,
@@ -109,7 +111,7 @@ const buildItemChildren = (
 }
 
 export const buildNavigationSections = (
-  records: CoreNavigationRecord[],
+  records: readonly CoreNavigationRecord[],
   scope: CoreNavigationRecord["scope"]
 ): NavigationSection[] => {
   const scopedRecords = records.filter((record) => record.scope === scope)
@@ -128,14 +130,14 @@ export const buildNavigationSections = (
     .map((section) => ({
       id: section.id,
       title: section.sectionTitle ?? section.label,
-      href: section.href ?? undefined,
+      href: section.href ? (section.href as NavHref) : undefined,
       items: buildItemChildren(section.id, byParentId),
       requiredRoles: section.requiredRoles.length > 0 ? section.requiredRoles : undefined,
     }))
 }
 
 export const findNavigationItemByHref = (
-  records: CoreNavigationRecord[],
+  records: readonly CoreNavigationRecord[],
   href: string
 ): CoreNavigationRecord | null => {
   const matches = records.filter((record) => record.href === href && record.nodeType !== "action")
@@ -152,14 +154,14 @@ export const findNavigationItemByHref = (
 }
 
 export const findNavigationRecordById = (
-  records: CoreNavigationRecord[],
+  records: readonly CoreNavigationRecord[],
   id: string
 ): CoreNavigationRecord | null => {
   return records.find((record) => record.id === id) ?? null
 }
 
 export const buildBreadcrumbEntries = (
-  records: CoreNavigationRecord[],
+  records: readonly CoreNavigationRecord[],
   href: string
 ): BreadcrumbEntry[] => {
   const current = findNavigationItemByHref(records, href)

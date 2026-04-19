@@ -7,8 +7,8 @@ export const serverSchema = z.object({
   SERVICE_ROLE_KEY: z.string().min(1),
   OPENROUTER_API_KEY: z.string().optional(),
   FAL_API_KEY: z.string().optional(),
-  // Clerk (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
-  CLERK_SECRET_KEY: z.string().optional(),
+  // Clerk — Pflicht fuer Boilerplate 3.0 (Single-Tenant Identity)
+  CLERK_SECRET_KEY: z.string().min(1),
   CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(),
 })
 
@@ -19,8 +19,7 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   NEXT_PUBLIC_TENANT_SLUG: z.string().optional(),
   NEXT_PUBLIC_APP_NAME: z.string().optional(),
-  // Clerk Auth (optional - erforderlich wenn Clerk als Auth-Provider genutzt wird)
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
   // SpacetimeDB ist im finalen 3.0-Zustand Pflicht fuer den Boilerplate-Core.
   NEXT_PUBLIC_SPACETIMEDB_URI: z.string().min(1),
   NEXT_PUBLIC_SPACETIMEDB_DATABASE: z.string().min(1),

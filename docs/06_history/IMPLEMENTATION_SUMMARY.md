@@ -116,7 +116,7 @@ Gesamt: 46 Unit/Integration Tests, alle bestanden ✅
 
 - `scripts/test-openrouter.ts` - Connectivity-Test
 - `scripts/verify-migration-018.mjs` - Migration-Verifikation
-- `scripts/save-openrouter-key.mjs` - Vault-Script
+- ~~`scripts/save-openrouter-key.mjs`~~ (nach 3.0-Cleanup entfernt — Secrets ueber 1Password / `pnpm pull-env`)
 
 ### Dokumentation
 

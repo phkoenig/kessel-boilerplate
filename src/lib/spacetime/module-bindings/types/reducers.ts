@@ -8,6 +8,7 @@ import { type Infer as __Infer } from "spacetimedb"
 import AppendChatMessageReducer from "../append_chat_message_reducer"
 import CreateChatSessionReducer from "../create_chat_session_reducer"
 import DeleteMembershipReducer from "../delete_membership_reducer"
+import DeleteNavigationItemReducer from "../delete_navigation_item_reducer"
 import DeleteRoleReducer from "../delete_role_reducer"
 import DeleteThemeRegistryReducer from "../delete_theme_registry_reducer"
 import DeleteUserByClerkIdReducer from "../delete_user_by_clerk_id_reducer"
@@ -28,6 +29,7 @@ import UpsertWikiDocumentReducer from "../upsert_wiki_document_reducer"
 export type AppendChatMessageParams = __Infer<typeof AppendChatMessageReducer>
 export type CreateChatSessionParams = __Infer<typeof CreateChatSessionReducer>
 export type DeleteMembershipParams = __Infer<typeof DeleteMembershipReducer>
+export type DeleteNavigationItemParams = __Infer<typeof DeleteNavigationItemReducer>
 export type DeleteRoleParams = __Infer<typeof DeleteRoleReducer>
 export type DeleteThemeRegistryParams = __Infer<typeof DeleteThemeRegistryReducer>
 export type DeleteUserByClerkIdParams = __Infer<typeof DeleteUserByClerkIdReducer>

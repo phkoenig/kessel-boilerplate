@@ -1,38 +1,31 @@
 /**
- * getAuthenticatedUser - Clerk Auth + Supabase Profile
+ * getAuthenticatedUser — Clerk Auth + Boilerplate-Core-Profil
  *
- * Kombiniert Clerk Auth mit Supabase Profil-Lookup.
- * Verwende in API Routes statt supabase.auth.getUser().
+ * Kombiniert Clerk Auth mit Profil-Lookup im Spacetime-Core.
+ * Verwende in API Routes statt `supabase.auth.getUser()`.
  *
- * @returns AuthenticatedUser oder null wenn nicht eingeloggt
+ * @returns {@link AuthenticatedUser} oder `null` wenn nicht eingeloggt / kein Profil
  */
 
-import { auth } from "@clerk/nextjs/server"
-import { clerkClient } from "@clerk/nextjs/server"
+import { auth, clerkClient } from "@clerk/nextjs/server"
 import type { NextResponse } from "next/server"
-import {
-  getAllowedRoleForEmail,
-  isAdminRole,
-  isAllowedEmail,
-  resolveProvisioningRole,
-} from "@/lib/auth/allowed-users"
+import { resolveBoilerplateProvisioningRole, isAdminRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
-import { getKnownRoles } from "@/lib/auth/known-roles-cache"
 
 export interface AuthenticatedUser {
-  /** Clerk User ID (user_xxx) - fuer Anzeige/API-Responses */
+  /** Clerk User ID (`user_xxx`) — fuer Anzeige/API-Responses */
   clerkUserId: string
-  /** profiles.id (UUID) - fuer DB-Queries, tenant_id, FKs */
+  /** Profil-UUID im Core — fuer tenant_id, FKs */
   profileId: string
-  /** Rollen-Name (admin, user, superuser) */
+  /** Rollen-Name (`admin`, `user`, `superuser`) */
   role: string
   /** Schnell-Check fuer Admin-Routen */
   isAdmin: boolean
-  /** Aktive Clerk Organization ID (wenn im Org-Kontext) */
-  activeOrgId: string | null
-  /** Aufgeloester tenant_id aus app.tenants (clerk_org_id) */
+  /** Single-Tenant: immer `null` (keine Clerk Organizations im Boilerplate) */
+  activeOrgId: null
+  /** Tenant aus Core-Profil */
   tenantId: string | null
-  /** Vollstaendiges Profil aus DB (optional, bei Bedarf) */
+  /** Vollstaendiges Profil (snake_case fuer Legacy-API-Kompatibilitaet) */
   profile: {
     id: string
     clerk_user_id: string | null
@@ -42,77 +35,6 @@ export interface AuthenticatedUser {
     role: string
     role_id: string | null
     tenant_id: string | null
-  }
-}
-
-/**
- * Holt den eingeloggten User mit Profil aus Supabase.
- * Gibt null zurueck wenn nicht eingeloggt.
- *
- * Bei neuem Clerk-User ohne Profil: Auto-Provisioning via Webhook oder on-demand.
- */
-export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const { userId, sessionClaims, orgId } = await auth({ treatPendingAsSignedOut: false })
-  if (!userId) return null
-
-  const coreStore = getCoreStore()
-
-  const [tenantIdResult, profileResult, knownRoles] = await Promise.all([
-    orgId ? coreStore.getTenantIdByClerkOrgId(orgId) : Promise.resolve(null),
-    coreStore.getUserByClerkId(userId),
-    getKnownRoles(),
-  ])
-
-  let tenantId: string | null = tenantIdResult
-  let profile = profileResult
-
-  if (!profile) {
-    const provisioned = await autoProvisionProfile(userId, sessionClaims, tenantId)
-    if (!provisioned) return null
-    profile = provisioned
-  }
-  const resolvedRole = resolveProvisioningRole(profile.email, profile.role, knownRoles)
-  if (resolvedRole && resolvedRole !== profile.role) {
-    const reprovisioned = await coreStore.upsertUserFromClerk({
-      clerkUserId: userId,
-      email: profile.email,
-      displayName: profile.displayName ?? profile.email.split("@")[0] ?? "User",
-      avatarUrl: profile.avatarUrl ?? null,
-      role: resolvedRole,
-      tenantId: tenantId ?? profile.tenantId ?? null,
-    })
-    if (reprovisioned) {
-      profile = reprovisioned
-    }
-  }
-
-  const email = profile.email ?? ""
-  if (!isAllowedEmail(email)) return null
-
-  const role = profile.role ?? "user"
-  const isAdmin = isAdminRole(role)
-
-  if (!tenantId && profile.tenantId) {
-    tenantId = profile.tenantId
-  }
-
-  return {
-    clerkUserId: userId,
-    profileId: profile.id,
-    role,
-    isAdmin,
-    activeOrgId: orgId ?? null,
-    tenantId,
-    profile: {
-      id: profile.id,
-      clerk_user_id: profile.clerkUserId,
-      email: profile.email,
-      display_name: profile.displayName,
-      avatar_url: profile.avatarUrl,
-      role,
-      role_id: profile.roleId,
-      tenant_id: profile.tenantId,
-    },
   }
 }
 
@@ -150,12 +72,13 @@ async function autoProvisionProfile(
     // Clerk-Server nicht verfuegbar - mit Claims weitermachen
   }
 
-  const mappedRole = getAllowedRoleForEmail(email)
-  if (!mappedRole) return null
+  const coreStore = getCoreStore()
+  const effectiveEmail = email || "unknown@clerk.local"
+  const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
 
-  return getCoreStore().upsertUserFromClerk({
+  return coreStore.upsertUserFromClerk({
     clerkUserId,
-    email: email || "unknown@clerk.local",
+    email: effectiveEmail,
     displayName,
     avatarUrl,
     role: mappedRole,
@@ -164,7 +87,68 @@ async function autoProvisionProfile(
 }
 
 /**
- * Wie getAuthenticatedUser, aber wirft 401 Response wenn nicht eingeloggt.
+ * Holt den eingeloggten User mit Profil aus dem Core-Store.
+ * Gibt `null` zurueck wenn nicht eingeloggt oder Profil nicht provisionierbar ist.
+ */
+export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+  const { userId, sessionClaims } = await auth()
+  if (!userId) return null
+
+  const coreStore = getCoreStore()
+
+  let profile = await coreStore.getUserByClerkId(userId)
+
+  if (!profile) {
+    const provisioned = await autoProvisionProfile(userId, sessionClaims, null)
+    if (!provisioned) return null
+    profile = provisioned
+  }
+
+  const resolvedRole = await resolveBoilerplateProvisioningRole(
+    coreStore,
+    profile.role,
+    profile.email
+  )
+  if (resolvedRole && resolvedRole !== profile.role) {
+    const reprovisioned = await coreStore.upsertUserFromClerk({
+      clerkUserId: userId,
+      email: profile.email,
+      displayName: profile.displayName ?? profile.email.split("@")[0] ?? "User",
+      avatarUrl: profile.avatarUrl ?? null,
+      role: resolvedRole,
+      tenantId: profile.tenantId ?? null,
+    })
+    if (reprovisioned) {
+      profile = reprovisioned
+    }
+  }
+
+  const role = profile.role ?? "user"
+  const isAdmin = isAdminRole(role)
+  const tenantId = profile.tenantId ?? null
+
+  return {
+    clerkUserId: userId,
+    profileId: profile.id,
+    role,
+    isAdmin,
+    activeOrgId: null,
+    tenantId,
+    profile: {
+      id: profile.id,
+      clerk_user_id: profile.clerkUserId,
+      email: profile.email,
+      display_name: profile.displayName,
+      avatar_url: profile.avatarUrl,
+      role,
+      role_id: profile.roleId,
+      tenant_id: profile.tenantId,
+    },
+  }
+}
+
+/**
+ * Wie {@link getAuthenticatedUser}, aber wirft 401 Response wenn nicht eingeloggt.
  */
 export async function requireAuth(): Promise<AuthenticatedUser | NextResponse> {
   const user = await getAuthenticatedUser()

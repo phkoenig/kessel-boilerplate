@@ -11,16 +11,15 @@ Vergleich: **Aktuelles Repo** (`kessel-boilerplate`) vs. **Update-Ordner** (`kes
 
 - `.env`, `.vercel/`
 - `docs/01_governance/` … `docs/07_automation/`
-- `docs/guides/multi-database-architecture.md`, `docs/guides/navigation-trigger-system.md`
+- `docs/04_knowledge/multi-database-architecture.md`, `docs/04_knowledge/navigation-trigger-system.md`
 - `e2e/navigation-trigger.spec.ts`
 - `scripts/setup-megabrain-discovery.mjs`
 - `src/app/api/admin/databases/`
-- `src/app/api/navigation/`
+- `src/app/api/navigation/` (historisch; im aktuellen Stand kein Write-Endpoint mehr)
 - `src/app/dashboard/`
 - `src/components/admin/database-manager-dialog.tsx`
 - `src/components/app-shell/`
 - `src/lib/ai/types/`
-- `src/lib/ai-chat/navigation-tools.ts`
 - `src/lib/database/`
 - `src/lib/navigation/__tests__/code-generator.test.ts`, `src/lib/navigation/code-generator.ts`
 - `src/lib/vault/`

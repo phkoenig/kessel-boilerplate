@@ -9,7 +9,8 @@ export const syncDocumentBranding = (branding: ResolvedAppBranding): void => {
     document.title = branding.appName
   }
 
-  if (!branding.iconUrl) {
+  const iconUrl = branding.iconUrl
+  if (!iconUrl) {
     return
   }
 
@@ -35,11 +36,11 @@ export const syncDocumentBranding = (branding: ResolvedAppBranding): void => {
 
     if (existingLinks.length > 0) {
       existingLinks.forEach((link) => {
-        link.href = branding.iconUrl as string
+        link.href = iconUrl
       })
       return
     }
 
-    ensureLink(rel).href = branding.iconUrl
+    ensureLink(rel).href = iconUrl
   })
 }

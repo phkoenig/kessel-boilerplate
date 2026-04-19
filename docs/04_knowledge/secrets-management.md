@@ -1,8 +1,18 @@
 # Secrets Management
 
-## 🎯 Grundprinzip: Single Source of Truth
+## Boilerplate 3.0: 1Password-first
 
-**Alle API-Keys werden AUSSCHLIESSLICH im Supabase Vault gespeichert.**
+Fuer dieses Repository ist die **kanonische** Quelle fuer Runtime-Secrets die **1Password CLI** zusammen mit `pnpm pull-env` (Manifest: [`scripts/pull-env.manifest.json`](../../scripts/pull-env.manifest.json)). Ergebnis ist eine generierte **`.env.local`** (nicht versioniert).
+
+Bootstrap-Variablen (z. B. `NEXT_PUBLIC_SUPABASE_URL`) kommen aus der Umgebung vor dem `pull-env`-Lauf. Verbindliche Systemgrenzen: [ADR-002](../02_architecture/ADR-002-boilerplate-3-0-system-boundaries.md).
+
+Der folgende Abschnitt dokumentiert zusaetzlich **Supabase Vault** und historische Ein-Projekt-Setups fuer Bestands-Ableitungen.
+
+---
+
+## 🎯 Grundprinzip (Legacy): Single Source of Truth
+
+**Historisch:** API-Keys wurden zentral im **Supabase Vault** gehalten. Neue Ableitungen sollten auf den 1Password-Workflow oben migrieren.
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐

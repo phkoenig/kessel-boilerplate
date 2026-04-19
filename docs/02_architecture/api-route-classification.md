@@ -13,7 +13,6 @@ Einheitliche Einteilung aller API-Routen nach Schutzniveau.
 - `/api/themes/delete` – Theme löschen
 - `/api/themes/edit` – Theme bearbeiten
 - `/api/themes/import` – Theme importieren
-- `/api/navigation/update` – Navigation/Seiten erstellen (nur Development + Admin)
 
 ## Development-Only
 

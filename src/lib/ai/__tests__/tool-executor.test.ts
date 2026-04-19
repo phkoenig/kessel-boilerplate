@@ -59,13 +59,6 @@ describe("Tool Executor", () => {
         }),
       }
 
-      const mockInsertChain = {
-        insert: vi.fn().mockResolvedValue({
-          data: null,
-          error: null,
-        }),
-      }
-
       const mockSupabase = {
         from: vi.fn(() => ({
           select: vi.fn().mockReturnValue(mockQueryChain),
@@ -119,13 +112,6 @@ describe("Tool Executor", () => {
         }),
       }
 
-      const mockInsertChain = {
-        insert: vi.fn().mockResolvedValue({
-          data: null,
-          error: null,
-        }),
-      }
-
       const mockSupabase = {
         from: vi.fn(() => ({
           select: vi.fn().mockReturnValue(mockQueryChain),
@@ -171,12 +157,6 @@ describe("Tool Executor", () => {
     it("sollte Insert-Tool-Call im Dry-Run-Modus ausführen", async () => {
       // Arrange
       const { createDatabaseClient } = await import("@/lib/database/db-registry")
-      const mockInsertChain = {
-        insert: vi.fn().mockResolvedValue({
-          data: null,
-          error: null,
-        }),
-      }
 
       const mockSupabase = {
         from: vi.fn(() => ({
@@ -456,13 +436,6 @@ describe("Tool Executor", () => {
         limit: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({
           data: mockData,
-          error: null,
-        }),
-      }
-
-      const mockInsertChain = {
-        insert: vi.fn().mockResolvedValue({
-          data: null,
           error: null,
         }),
       }

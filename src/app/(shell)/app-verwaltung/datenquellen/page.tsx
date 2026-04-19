@@ -52,6 +52,8 @@ type DataSource = {
   created_at: string
   updated_at: string
   created_by: string | null
+  /** Multi-DB: Referenz auf `db_registry`; optional fuer aeltere Zeilen */
+  database_id?: string | null
 }
 
 /**
@@ -306,11 +308,7 @@ export default function DatasourcesPage(): React.ReactElement {
     setExpandedRows(newExpanded)
   }
 
-  const updateAccessLevel = async (
-    id: string,
-    accessLevel: AccessLevel,
-    _dbType: "infra" | "dev"
-  ) => {
+  const updateAccessLevel = async (id: string, accessLevel: AccessLevel) => {
     try {
       const { error } = await supabase
         .from("ai_datasources")
@@ -326,7 +324,7 @@ export default function DatasourcesPage(): React.ReactElement {
     }
   }
 
-  const toggleEnabled = async (id: string, enabled: boolean, _dbType: "infra" | "dev") => {
+  const toggleEnabled = async (id: string, enabled: boolean) => {
     try {
       const { error } = await supabase
         .from("ai_datasources")
@@ -474,9 +472,7 @@ export default function DatasourcesPage(): React.ReactElement {
                           <div className="flex items-center space-x-2">
                             <Switch
                               checked={ds.is_enabled}
-                              onCheckedChange={(checked) =>
-                                toggleEnabled(ds.id, checked, ds.database_type)
-                              }
+                              onCheckedChange={(checked) => toggleEnabled(ds.id, checked)}
                               disabled={!ds.isPersisted}
                               data-ai-exempt="true"
                             />
@@ -487,7 +483,7 @@ export default function DatasourcesPage(): React.ReactElement {
                           <Select
                             value={ds.access_level}
                             onValueChange={(value) =>
-                              updateAccessLevel(ds.id, value as AccessLevel, ds.database_type)
+                              updateAccessLevel(ds.id, value as AccessLevel)
                             }
                             disabled={!ds.isPersisted}
                             data-ai-exempt="true"

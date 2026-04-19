@@ -53,7 +53,7 @@ Bei folgenden Stichworten MUSS ZUERST die Dokumentation gelesen werden, BEVOR ir
 ### Secrets, Vault, API-Keys, Credentials, Environment Variables, .env.local
 
 - **PFLICHT:** `.cursor/rules/secrets.mdc` - Copy-Paste-Ready Befehle für Vault-Operationen
-- **PFLICHT:** `docs/guides/secrets-management.md` - Vollständige Secrets-Architektur
+- **PFLICHT:** `docs/04_knowledge/secrets-management.md` - Vollständige Secrets-Architektur
 
 **1Password**:
 - ALLE Runtime-Secrets zentral gespeichert

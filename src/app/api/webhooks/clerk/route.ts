@@ -1,17 +1,15 @@
 /**
  * Clerk Webhook Endpoint
  *
- * Syncs Clerk Lifecycle Events -> Supabase:
- * - User: profiles
- * - Organization: app.tenants (clerk_org_id)
- * - OrganizationMembership: app.user_tenants
+ * Syncs Clerk Lifecycle Events in den Boilerplate-Core (SpacetimeDB):
+ * - `user.created`, `user.updated`, `user.deleted` → User-Shadow / Profil
  *
- * Signing Secret: CLERK_WEBHOOK_SIGNING_SECRET (Vault)
+ * Signing Secret: `CLERK_WEBHOOK_SIGNING_SECRET` (1Password → `pnpm pull-env`).
  */
 
 import { verifyWebhook } from "@clerk/nextjs/webhooks"
 import { type NextRequest, NextResponse } from "next/server"
-import { resolveProvisioningRole } from "@/lib/auth/allowed-users"
+import { resolveBoilerplateProvisioningRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
 
 interface ClerkUserData {
@@ -62,15 +60,12 @@ export async function POST(request: NextRequest) {
     if (evt.type === "user.created") {
       const data = evt.data as ClerkUserData
       const email = getPrimaryEmail(data)
-      const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
-      const mappedRole = resolveProvisioningRole(email, null, knownRoles)
-      if (!mappedRole) {
-        return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })
-      }
+      const effectiveEmail = email || "unknown@clerk.local"
+      const mappedRole = await resolveBoilerplateProvisioningRole(coreStore, null, effectiveEmail)
 
       const profile = await coreStore.upsertUserFromClerk({
         clerkUserId: data.id,
-        email: email || "unknown@clerk.local",
+        email: effectiveEmail,
         displayName: getDisplayName(data),
         avatarUrl: data.image_url ?? data.imageUrl ?? null,
         role: mappedRole,
@@ -82,18 +77,20 @@ export async function POST(request: NextRequest) {
       const data = evt.data as ClerkUserData
       const email = getPrimaryEmail(data)
       const existingProfile = await coreStore.getUserByClerkId(data.id)
-      const knownRoles = (await coreStore.listUsers()).map((entry) => entry.role)
-      const mappedRole = resolveProvisioningRole(email, existingProfile?.role ?? null, knownRoles)
-      if (!mappedRole) {
-        await coreStore.deleteUserByClerkId(data.id)
-        return NextResponse.json({ received: true, ignored: "email-not-allowlisted" })
-      }
+      const effectiveEmail = email || existingProfile?.email || "unknown@clerk.local"
+      const mappedRole = await resolveBoilerplateProvisioningRole(
+        coreStore,
+        existingProfile?.role ?? null,
+        effectiveEmail
+      )
+
       const profile = await coreStore.upsertUserFromClerk({
         clerkUserId: data.id,
-        email: email || "unknown@clerk.local",
+        email: effectiveEmail,
         displayName: getDisplayName(data),
         avatarUrl: data.image_url ?? data.imageUrl ?? null,
         role: mappedRole,
+        tenantId: existingProfile?.tenantId ?? null,
       })
       if (!profile) {
         return NextResponse.json(
@@ -110,64 +107,6 @@ export async function POST(request: NextRequest) {
       const success = await coreStore.deleteUserByClerkId(clerkId)
       if (!success) {
         return NextResponse.json({ error: "Profil konnte nicht geloescht werden" }, { status: 500 })
-      }
-    } else if (evt.type === "organization.created") {
-      const data = evt.data as { id?: string; name?: string; slug?: string }
-      if (!data?.id) {
-        return NextResponse.json({ error: "Keine Org-ID im Event" }, { status: 400 })
-      }
-      const slug = (data.slug ?? data.name ?? data.id).toLowerCase().replace(/\s+/g, "_")
-      const tenantId = await coreStore.upsertTenant({
-        clerkOrgId: data.id,
-        slug,
-        name: data.name ?? data.id,
-      })
-      if (!tenantId) {
-        return NextResponse.json({ error: "Tenant konnte nicht angelegt werden" }, { status: 500 })
-      }
-    } else if (evt.type === "organizationMembership.created") {
-      const data = evt.data as {
-        organization?: { id?: string }
-        public_user_data?: { user_id?: string }
-      }
-      const orgId = data.organization?.id ?? (data as { organization_id?: string }).organization_id
-      const clerkUserId =
-        data.public_user_data?.user_id ??
-        (data as { public_user_data?: { user_id?: string } }).public_user_data?.user_id
-      if (!orgId || !clerkUserId) {
-        return NextResponse.json(
-          { error: "organization_id oder user_id fehlt im Event" },
-          { status: 400 }
-        )
-      }
-      const success = await coreStore.upsertMembership({
-        clerkOrgId: orgId,
-        clerkUserId,
-        role: "member",
-      })
-      if (!success) {
-        return NextResponse.json(
-          { error: "Membership konnte nicht gespeichert werden" },
-          { status: 500 }
-        )
-      }
-    } else if (evt.type === "organizationMembership.deleted") {
-      const data = evt.data as {
-        organization?: { id?: string }
-        public_user_data?: { user_id?: string }
-      }
-      const orgId = data.organization?.id
-      const clerkUserId = data.public_user_data?.user_id
-      if (!orgId || !clerkUserId) return NextResponse.json({ received: true })
-      const success = await coreStore.deleteMembership({
-        clerkOrgId: orgId,
-        clerkUserId,
-      })
-      if (!success) {
-        return NextResponse.json(
-          { error: "Membership konnte nicht entfernt werden" },
-          { status: 500 }
-        )
       }
     }
 

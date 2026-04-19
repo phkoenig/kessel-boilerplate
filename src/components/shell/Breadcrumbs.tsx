@@ -74,7 +74,7 @@ export function Breadcrumbs({
     <nav aria-label="Breadcrumb" className={cn("flex items-center gap-1 text-sm", className)}>
       <ol className="flex items-center gap-1">
         {displayItems.map((item, index) => (
-          <Fragment key={item.href + index}>
+          <Fragment key={`${item.href ?? "crumb"}-${index}`}>
             {index > 0 && (
               <li aria-hidden="true">
                 <ChevronRight className="text-muted-foreground size-4" />
