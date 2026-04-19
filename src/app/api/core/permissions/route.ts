@@ -2,30 +2,21 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
-
-const PERMISSIONS_CACHE_TTL_MS = 60_000
-type ModulePermissions = Awaited<
-  ReturnType<ReturnType<typeof getCoreStore>["listModulePermissions"]>
->
-
-let permissionsCache: { mode: string; permissions: ModulePermissions; expiresAt: number } | null =
-  null
-
-/**
- * Invalidiert den serverseitigen Permissions-Cache. Wird von Routen aufgerufen,
- * die `module_permissions` schreiben (z. B. `/api/admin/roles/permissions`),
- * damit die Rollen-Seite nach dem Speichern sofort den frischen Wert sieht und
- * nicht 60 s lang den alten Cache.
- */
-export function invalidateModulePermissionsCache(): void {
-  permissionsCache = null
-}
+import {
+  getCachedModulePermissions,
+  setCachedModulePermissions,
+  invalidateModulePermissionsCache,
+} from "@/lib/core/permissions-cache"
 
 /**
  * Liefert die zentrale Permissions-Matrix aus dem Boilerplate-Core.
  * Der Client greift damit nicht mehr direkt auf Legacy-Tabellen zu und
  * kann spaeter ohne weitere API-Aenderungen auf Spacetime-Core-Reads
  * umgestellt werden.
+ *
+ * Der Cache liegt bewusst im shared lib-Modul, damit Schreib-Routen
+ * (z. B. `/api/admin/roles/permissions`) ihn verlaesslich invalidieren
+ * koennen — siehe `src/lib/core/permissions-cache.ts`.
  *
  * @returns Eine flache Liste von Modulberechtigungen.
  */
@@ -36,25 +27,17 @@ export async function GET(): Promise<NextResponse> {
   }
 
   try {
-    if (permissionsCache && permissionsCache.expiresAt > Date.now()) {
-      return NextResponse.json({
-        mode: permissionsCache.mode,
-        permissions: permissionsCache.permissions,
-      })
+    const cached = getCachedModulePermissions()
+    if (cached) {
+      return NextResponse.json(cached)
     }
 
     const coreStore = getCoreStore()
     const permissions = await coreStore.listModulePermissions()
-    permissionsCache = {
-      mode: coreStore.getMode(),
-      permissions,
-      expiresAt: Date.now() + PERMISSIONS_CACHE_TTL_MS,
-    }
+    const mode = coreStore.getMode()
+    setCachedModulePermissions(mode, permissions)
 
-    return NextResponse.json({
-      mode: permissionsCache.mode,
-      permissions,
-    })
+    return NextResponse.json({ mode, permissions })
   } catch (error) {
     return NextResponse.json(
       {
@@ -65,3 +48,7 @@ export async function GET(): Promise<NextResponse> {
     )
   }
 }
+
+// Re-export fuer Konsumenten, die bislang direkt aus dieser Route importiert
+// haben. Neuer kanonischer Pfad: `@/lib/core/permissions-cache`.
+export { invalidateModulePermissionsCache }

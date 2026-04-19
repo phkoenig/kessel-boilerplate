@@ -6,7 +6,7 @@ import { parseJsonBody } from "@/lib/api/parse-body"
 import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
-import { invalidateModulePermissionsCache } from "@/app/api/core/permissions/route"
+import { invalidateModulePermissionsCache } from "@/lib/core/permissions-cache"
 
 const PermissionSchema = z.object({
   moduleId: z.string().trim().min(1).max(128),
