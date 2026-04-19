@@ -57,7 +57,10 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     // Plan H-3 + L-14a: Dev- und Debug-Routen muessen in Production hart
-    // blockiert sein. Zusaetzlich zu den Modul-Level-Guards in den Route-Files.
+    // blockiert sein. Die Route-Handler prueften zusaetzlich zur Laufzeit
+    // `NODE_ENV === "development"` bzw. `BOILERPLATE_AUTH_BYPASS=true` und
+    // antworten sonst mit 403. (Kein Modul-`throw` in Production, weil
+    // `next build` Route-Module in Production-Mode laedt.)
     if (process.env.NODE_ENV !== "production") {
       return []
     }

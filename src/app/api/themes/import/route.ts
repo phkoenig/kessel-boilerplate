@@ -1,11 +1,23 @@
 // AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
 import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { emitRealtimeEvent } from "@/lib/realtime"
+
+const MAX_CSS_BYTES = 512 * 1024
+const ImportSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  css: z
+    .string()
+    .min(1)
+    .max(MAX_CSS_BYTES, { message: `CSS darf maximal ${MAX_CSS_BYTES} Bytes gross sein` }),
+})
 
 /**
  * Import-Statistiken für detailliertes Feedback.
@@ -49,32 +61,26 @@ export async function POST(request: NextRequest) {
   const userOrErr = await requireAdmin()
   if (userOrErr instanceof Response) return userOrErr
 
+  const parsed = await parseJsonBody(request, ImportSchema)
+  if (!parsed.ok) return parsed.response
+  const { css, name } = parsed.data
+
   try {
-    const { css, name } = await request.json()
-
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json({ error: "Theme-Name ist erforderlich" }, { status: 400 })
-    }
-
-    if (!css || typeof css !== "string") {
-      return NextResponse.json({ error: "CSS-Code ist erforderlich" }, { status: 400 })
-    }
-
     const coreStore = getCoreStore()
     const supabase = createServiceClient()
 
-    // Parse CSS und extrahiere Variablen, verwende den übergebenen Namen
     const themeData = parseTweakCNCSS(css, name.trim())
 
     if (!themeData.themeId || !themeData.name) {
-      return NextResponse.json({ error: "Theme konnte nicht verarbeitet werden" }, { status: 400 })
+      return apiError("THEME_PARSE_FAILED", "Theme konnte nicht verarbeitet werden", 400)
     }
 
     const existingTheme = await coreStore.getThemeRegistryEntry(themeData.themeId)
     if (existingTheme) {
-      return NextResponse.json(
-        { error: `Theme mit ID "${themeData.themeId}" existiert bereits` },
-        { status: 400 }
+      return apiError(
+        "THEME_ALREADY_EXISTS",
+        `Theme mit ID "${themeData.themeId}" existiert bereits`,
+        409
       )
     }
 
@@ -128,10 +134,9 @@ export async function POST(request: NextRequest) {
 
     if (storageError) {
       console.error("Fehler beim Speichern des Theme-CSS:", storageError)
-      return NextResponse.json(
-        { error: `CSS-Speicherung fehlgeschlagen: ${storageError.message}` },
-        { status: 500 }
-      )
+      return apiError("STORAGE_WRITE_FAILED", "CSS-Speicherung fehlgeschlagen", 500, {
+        message: storageError.message,
+      })
     }
 
     const saved = await coreStore.upsertThemeRegistryEntry({
@@ -145,9 +150,8 @@ export async function POST(request: NextRequest) {
 
     if (!saved) {
       console.error("Fehler beim Speichern der Theme-Metadaten im Core")
-      // Rollback: CSS löschen (gleicher tenant-spezifischer Pfad)
       await supabase.storage.from("themes").remove([storagePath])
-      return NextResponse.json({ error: "Metadaten-Speicherung fehlgeschlagen" }, { status: 500 })
+      return apiError("CORE_WRITE_FAILED", "Metadaten-Speicherung fehlgeschlagen", 500)
     }
 
     // Erstelle Import-Statistiken
@@ -259,13 +263,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response)
   } catch (error) {
     console.error("Fehler beim Importieren des Themes:", error)
-    return NextResponse.json(
-      {
-        error: "Fehler beim Importieren des Themes",
-        message: error instanceof Error ? error.message : "Unbekannter Fehler",
-      },
-      { status: 500 }
-    )
+    return apiError("THEME_IMPORT_FAILED", "Fehler beim Importieren des Themes", 500, {
+      message: error instanceof Error ? error.message : "Unbekannter Fehler",
+    })
   }
 }
 

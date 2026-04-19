@@ -1,8 +1,16 @@
 // AUTH: admin
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { recordAudit } from "@/lib/auth/audit"
 import { requireAdmin } from "@/lib/auth/guards"
+
+const ResetSchema = z.object({
+  userId: z.string().trim().min(1).max(128),
+  newPassword: z.string().min(8).max(200),
+})
 
 /**
  * POST /api/admin/reset-password
@@ -11,32 +19,19 @@ import { requireAdmin } from "@/lib/auth/guards"
  * HINWEIS: Nur für Supabase-Auth-User. Clerk-User verwalten Passwort in Clerk.
  */
 export async function POST(request: Request) {
+  const userOrErr = await requireAdmin()
+  if (userOrErr instanceof Response) return userOrErr
+
+  const parsed = await parseJsonBody(request, ResetSchema)
+  if (!parsed.ok) return parsed.response
+  const { userId, newPassword } = parsed.data
+
   try {
-    const userOrErr = await requireAdmin()
-    if (userOrErr instanceof Response) return userOrErr
-
-    // Request Body lesen
-    const { userId, newPassword } = await request.json()
-
-    if (!userId || !newPassword) {
-      return NextResponse.json({ error: "userId und newPassword erforderlich" }, { status: 400 })
-    }
-
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { error: "Passwort muss mindestens 6 Zeichen haben" },
-        { status: 400 }
-      )
-    }
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY fehlen" },
-        { status: 500 }
-      )
+      return apiError("CONFIG_MISSING", "NEXT_PUBLIC_SUPABASE_URL und SERVICE_ROLE_KEY fehlen", 500)
     }
 
     const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
@@ -46,14 +41,13 @@ export async function POST(request: Request) {
       },
     })
 
-    // Passwort aktualisieren
     const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword,
     })
 
     if (updateError) {
       console.error("Fehler beim Passwort-Reset:", updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return apiError("PASSWORD_RESET_FAILED", updateError.message, 500)
     }
 
     await recordAudit(userOrErr.clerkUserId, "user.password_reset", "user", userId)
@@ -61,9 +55,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("API Error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unbekannter Fehler" },
-      { status: 500 }
-    )
+    return apiError("INTERNAL", error instanceof Error ? error.message : "Unbekannter Fehler", 500)
   }
 }

@@ -72,19 +72,32 @@ fuer Reviews und ein Referenzdokument fuer neue Features.
 ### Elevation of Privilege
 
 - **Client ruft Core-Reducer direkt** → ESLint-Rule + Client-Bindings-Barrel
-  (Plan C-1 Stufe 1).
+  (Plan C-1 Stufe 1). `src/lib/realtime/spacetime-adapter.ts` nutzt nur noch
+  `@/lib/spacetime/client-bindings` (ohne Reducer-Exports).
 - **Admin-Rollen-Escalation ueber User-Profile-PUT** → Reprovisioning aus dem
   PUT-Handler entfernt (Plan M-12).
 - **Identity-Auth in Reducern** → `service_identity`-Check (Plan C-1 Stufe 2,
-  laeuft aktuell im Shadow-Mode).
+  **hard-enforced**: jeder mutierende Reducer ruft
+  `assertRegisteredServiceIdentity(ctx)`, Ausnahmen dokumentiert in
+  `spacetime/core/spacetimedb/src/index.ts`). Bootstrap via
+  `register_service_identity` + `BOILERPLATE_SPACETIME_SERVICE_REG_SECRET`.
+
+## CSP-Status
+
+- CSP ist **Enforce** (kein `Content-Security-Policy-Report-Only` mehr).
+- `script-src` enthaelt weiterhin `'unsafe-inline'` + `'unsafe-eval'` als
+  bewusster Tradeoff fuer Clerk + Next.js Hydration; Reduktion (nonces)
+  ist optional und wird gegen Aufwand abgewogen.
+- Violations landen unter `/api/csp-report` (`report-uri`).
 
 ## Offene Risiken (Backlog)
 
-| ID  | Thema                                    | Status                             |
-| --- | ---------------------------------------- | ---------------------------------- |
-| R-1 | CSP noch Report-Only                     | Monitoring ≥ 1 Woche, dann Enforce |
-| R-2 | Identity-Auth-Hard-Enforce in Reducern   | geplant                            |
-| R-3 | Penetrationstest-Suite (`e2e/security/`) | geplant (Plan X-4)                 |
+| ID  | Thema                            | Status                                                           |
+| --- | -------------------------------- | ---------------------------------------------------------------- |
+| R-1 | CSP-Haerten ohne `unsafe-inline` | offen (Tradeoff Clerk/Next) — nur bei konkretem Bedrohungsmodell |
+| R-2 | Zod+`apiError` flaechendeckend   | in Arbeit (Plan L-14c/L-14d, schrittweise Migration)             |
+| R-3 | Spacetime-Ops nach Deploy        | Runbook/Smoke-Test fuer Service-Identity-Registrierung           |
+| R-4 | Test-Typecheck komplett gruen    | offen; Gate ist aktuell `next build` + `pnpm lint`               |
 
 ## Review-Kadenz
 

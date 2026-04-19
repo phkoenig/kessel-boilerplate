@@ -1,10 +1,23 @@
 // AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { emitRealtimeEvent } from "@/lib/realtime"
+
+const MAX_CSS_BYTES = 512 * 1024
+const EditSchema = z.object({
+  themeId: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  dynamicFonts: z.array(z.string().max(100)).max(50).optional(),
+  lightCSS: z.string().max(MAX_CSS_BYTES).optional(),
+  darkCSS: z.string().max(MAX_CSS_BYTES).optional(),
+})
 
 /**
  * API-Route zum Bearbeiten eines Themes.
@@ -15,42 +28,29 @@ export async function POST(request: NextRequest) {
   const userOrErr = await requireAdmin()
   if (userOrErr instanceof Response) return userOrErr
 
+  const parsed = await parseJsonBody(request, EditSchema)
+  if (!parsed.ok) return parsed.response
+  const { themeId, name, description, dynamicFonts, lightCSS, darkCSS } = parsed.data
+
   try {
-    const { themeId, name, description, dynamicFonts, lightCSS, darkCSS } = await request.json()
-
-    if (!themeId) {
-      return NextResponse.json({ error: "Theme-ID ist erforderlich" }, { status: 400 })
-    }
-
     if (themeId === "default") {
-      return NextResponse.json(
-        { error: "Das Default-Theme kann nicht bearbeitet werden" },
-        { status: 400 }
-      )
+      return apiError("THEME_PROTECTED", "Das Default-Theme kann nicht bearbeitet werden", 400)
     }
 
     const coreStore = getCoreStore()
     const existingTheme = await coreStore.getThemeRegistryEntry(themeId)
     if (!existingTheme) {
-      return NextResponse.json(
-        { error: `Theme mit ID "${themeId}" nicht gefunden` },
-        { status: 404 }
-      )
+      return apiError("THEME_NOT_FOUND", `Theme mit ID "${themeId}" nicht gefunden`, 404)
     }
 
     if (existingTheme.isBuiltin) {
-      return NextResponse.json(
-        { error: "Builtin-Themes können nicht bearbeitet werden" },
-        { status: 400 }
-      )
+      return apiError("THEME_BUILTIN", "Builtin-Themes können nicht bearbeitet werden", 400)
     }
 
-    const nextName = typeof name === "string" && name.trim() ? name.trim() : existingTheme.name
+    const nextName = name ?? existingTheme.name
     const nextDescription =
-      description === undefined ? existingTheme.description : String(description || "").trim()
-    const nextDynamicFonts = Array.isArray(dynamicFonts)
-      ? dynamicFonts.filter((entry): entry is string => typeof entry === "string")
-      : existingTheme.dynamicFonts
+      description === undefined ? existingTheme.description : description.trim()
+    const nextDynamicFonts = dynamicFonts ?? existingTheme.dynamicFonts
 
     let cssAssetPath = existingTheme.cssAssetPath
     if (typeof lightCSS === "string" && typeof darkCSS === "string") {
@@ -65,25 +65,20 @@ export async function POST(request: NextRequest) {
         })
 
       if (storageError) {
-        return NextResponse.json(
-          { error: `CSS-Update fehlgeschlagen: ${storageError.message}` },
-          { status: 500 }
-        )
+        return apiError("STORAGE_WRITE_FAILED", "CSS-Update fehlgeschlagen", 500, {
+          message: storageError.message,
+        })
       }
 
-      // Post-Save-Verifikation (Plan E2 / C5 / Assessment 10.1):
-      // Nach Overwrite re-fetch und mit erwartetem Content vergleichen.
       const { data: verifyBlob, error: verifyError } = await supabase.storage
         .from("themes")
         .download(storagePath)
       const verifiedText = verifyBlob ? await verifyBlob.text() : null
       if (verifyError || verifiedText !== cssContent) {
-        return NextResponse.json(
-          {
-            error:
-              "Theme-Persistenz-Verifikation fehlgeschlagen — CSS wurde nicht korrekt abgelegt",
-          },
-          { status: 500 }
+        return apiError(
+          "STORAGE_VERIFY_FAILED",
+          "Theme-Persistenz-Verifikation fehlgeschlagen — CSS wurde nicht korrekt abgelegt",
+          500
         )
       }
 
@@ -100,7 +95,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!updated) {
-      return NextResponse.json({ error: "Aktualisierung fehlgeschlagen" }, { status: 500 })
+      return apiError("CORE_WRITE_FAILED", "Aktualisierung fehlgeschlagen", 500)
     }
 
     emitRealtimeEvent("themes:updated", "db-modified", {})
@@ -114,12 +109,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Fehler beim Bearbeiten des Themes:", error)
-    return NextResponse.json(
-      {
-        error: "Fehler beim Bearbeiten des Themes",
-        message: error instanceof Error ? error.message : "Unbekannter Fehler",
-      },
-      { status: 500 }
-    )
+    return apiError("THEME_EDIT_FAILED", "Fehler beim Bearbeiten des Themes", 500, {
+      message: error instanceof Error ? error.message : "Unbekannter Fehler",
+    })
   }
 }

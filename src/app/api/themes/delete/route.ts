@@ -1,10 +1,17 @@
 // AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { emitRealtimeEvent } from "@/lib/realtime"
+
+const DeleteSchema = z.object({
+  themeId: z.string().trim().min(1).max(100),
+})
 
 /**
  * API-Route zum Löschen eines Themes.
@@ -15,49 +22,34 @@ export async function POST(request: NextRequest) {
   const userOrErr = await requireAdmin()
   if (userOrErr instanceof Response) return userOrErr
 
+  const parsed = await parseJsonBody(request, DeleteSchema)
+  if (!parsed.ok) return parsed.response
+  const { themeId } = parsed.data
+
   try {
-    const { themeId } = await request.json()
-
-    if (!themeId) {
-      return NextResponse.json({ error: "Theme-ID ist erforderlich" }, { status: 400 })
-    }
-
     if (themeId === "default") {
-      return NextResponse.json(
-        { error: "Das Default-Theme kann nicht gelöscht werden" },
-        { status: 400 }
-      )
+      return apiError("THEME_PROTECTED", "Das Default-Theme kann nicht gelöscht werden", 400)
     }
 
     const coreStore = getCoreStore()
     const theme = await coreStore.getThemeRegistryEntry(themeId)
     if (!theme) {
-      return NextResponse.json(
-        { error: `Theme mit ID "${themeId}" nicht gefunden` },
-        { status: 404 }
-      )
+      return apiError("THEME_NOT_FOUND", `Theme mit ID "${themeId}" nicht gefunden`, 404)
     }
 
     if (theme.isBuiltin) {
-      return NextResponse.json(
-        { error: "Builtin-Themes können nicht gelöscht werden" },
-        { status: 400 }
-      )
+      return apiError("THEME_BUILTIN", "Builtin-Themes können nicht gelöscht werden", 400)
     }
 
     const dynamicFontsToCheck = theme.dynamicFonts
 
     const supabase = createServiceClient()
     const storagePath = theme.cssAssetPath ?? getTenantStoragePath(`${themeId}.css`)
-    const { error: storageError } = await supabase.storage.from("themes").remove([storagePath])
-
-    if (storageError) {
-      // CSS-Datei existiert möglicherweise nicht – fortfahren
-    }
+    await supabase.storage.from("themes").remove([storagePath])
 
     const deleted = await coreStore.deleteThemeRegistryEntry(themeId)
     if (!deleted) {
-      return NextResponse.json({ error: "Löschen fehlgeschlagen" }, { status: 500 })
+      return apiError("CORE_WRITE_FAILED", "Löschen fehlgeschlagen", 500)
     }
 
     const remainingDynamicFonts = new Set<string>()
@@ -66,12 +58,10 @@ export async function POST(request: NextRequest) {
       entry.dynamicFonts.forEach((font) => remainingDynamicFonts.add(font))
     })
 
-    // Identifiziere nicht mehr verwendete Fonts
     const unusedFonts = dynamicFontsToCheck.filter(
       (font: string) => !remainingDynamicFonts.has(font)
     )
 
-    // Erstelle Response mit Informationen über bereinigte Ressourcen
     const response: {
       success: boolean
       message: string
@@ -83,7 +73,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `Theme "${theme.name}" wurde erfolgreich gelöscht`,
       cleaned: {
-        cssBlocks: 1, // CSS-Datei im Storage
+        cssBlocks: 1,
       },
     }
 
@@ -96,12 +86,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response)
   } catch (error) {
     console.error("Fehler beim Löschen des Themes:", error)
-    return NextResponse.json(
-      {
-        error: "Fehler beim Löschen des Themes",
-        message: error instanceof Error ? error.message : "Unbekannter Fehler",
-      },
-      { status: 500 }
-    )
+    return apiError("THEME_DELETE_FAILED", "Fehler beim Löschen des Themes", 500, {
+      message: error instanceof Error ? error.message : "Unbekannter Fehler",
+    })
   }
 }

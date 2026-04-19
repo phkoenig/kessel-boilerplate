@@ -11,10 +11,24 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 import { getCachedAppSettings, invalidateAppSettingsCache } from "@/lib/core/server-cache"
 import { resolveAppBranding } from "@/lib/branding"
+
+const PatchSchema = z.object({
+  app_name: z.string().max(200).optional(),
+  app_description: z.string().max(1000).optional(),
+  icon_url: z.string().url().max(2048).optional(),
+  icon_variants: z
+    .array(z.object({ url: z.string().url().max(2048) }))
+    .max(20)
+    .optional(),
+  icon_provider: z.string().max(100).optional(),
+})
 
 /**
  * Tenant-Slug aus Environment - identifiziert die App eindeutig
@@ -75,23 +89,23 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const userOrErr = await requireAuth()
   if (userOrErr instanceof Response) return userOrErr
 
+  const parsed = await parseJsonBody(request, PatchSchema)
+  if (!parsed.ok) return parsed.response
+
   try {
     const tenantSlug = getTenantSlug()
     invalidateAppSettingsCache(tenantSlug)
-    const body = await request.json()
+    const body = parsed.data
     const data = await getCoreStore().upsertAppSettings(tenantSlug, {
-      appName: typeof body.app_name === "string" ? body.app_name : undefined,
-      appDescription: typeof body.app_description === "string" ? body.app_description : undefined,
-      iconUrl: typeof body.icon_url === "string" ? body.icon_url : undefined,
-      iconVariants: Array.isArray(body.icon_variants) ? body.icon_variants : undefined,
-      iconProvider: typeof body.icon_provider === "string" ? body.icon_provider : undefined,
+      appName: body.app_name,
+      appDescription: body.app_description,
+      iconUrl: body.icon_url,
+      iconVariants: body.icon_variants,
+      iconProvider: body.icon_provider,
     })
 
     if (!data) {
-      return NextResponse.json(
-        { error: "App-Settings konnten nicht gespeichert werden" },
-        { status: 500 }
-      )
+      return apiError("CORE_WRITE_FAILED", "App-Settings konnten nicht gespeichert werden", 500)
     }
 
     return NextResponse.json({
@@ -105,12 +119,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     })
   } catch (error) {
     console.error("[App Settings API] PATCH Error:", error)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    )
+    return apiError("INTERNAL", "Internal server error", 500, {
+      message: error instanceof Error ? error.message : String(error),
+    })
   }
 }

@@ -295,8 +295,8 @@ export async function updateEffectiveThemeSelection(updates: {
     const snapshot = { ...data } as Record<string, unknown>
     delete snapshot.success
     delete snapshot.error
-    themeSnapshotCache = snapshot as ThemeSnapshot
-    return { success: true, snapshot: snapshot as ThemeSnapshot }
+    themeSnapshotCache = snapshot as unknown as ThemeSnapshot
+    return { success: true, snapshot: snapshot as unknown as ThemeSnapshot }
   } catch (err) {
     return {
       success: false,

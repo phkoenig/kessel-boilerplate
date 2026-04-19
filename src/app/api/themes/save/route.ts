@@ -1,55 +1,45 @@
 // AUTH: admin
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { apiError } from "@/lib/api/errors"
+import { parseJsonBody } from "@/lib/api/parse-body"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import { createServiceClient } from "@/utils/supabase/service"
 import { emitRealtimeEvent } from "@/lib/realtime"
 
+const MAX_CSS_BYTES = 512 * 1024
+const SaveSchema = z.object({
+  themeId: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
+  description: z.string().max(500).optional(),
+  dynamicFonts: z.array(z.string().max(100)).max(50).optional(),
+  lightCSS: z.string().min(1).max(MAX_CSS_BYTES),
+  darkCSS: z.string().min(1).max(MAX_CSS_BYTES),
+})
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const userOrError = await requireAdmin()
-  if (userOrError instanceof Response) {
-    return userOrError
-  }
+  if (userOrError instanceof Response) return userOrError
+
+  const parsed = await parseJsonBody(request, SaveSchema)
+  if (!parsed.ok) return parsed.response
+  const { themeId, name, description, dynamicFonts, lightCSS, darkCSS } = parsed.data
 
   try {
-    const body = (await request.json()) as {
-      themeId?: string
-      name?: string
-      description?: string
-      dynamicFonts?: string[]
-      lightCSS?: string
-      darkCSS?: string
-    }
-
-    const themeId = body.themeId?.trim()
-    const name = body.name?.trim()
-    if (!themeId || !name) {
-      return NextResponse.json({ error: "Theme-ID und Name sind erforderlich" }, { status: 400 })
-    }
-
     if (themeId === "default") {
-      return NextResponse.json(
-        { error: "Das Default-Theme kann nicht überschrieben werden" },
-        { status: 400 }
-      )
-    }
-
-    if (typeof body.lightCSS !== "string" || typeof body.darkCSS !== "string") {
-      return NextResponse.json({ error: "Light- und Dark-CSS sind erforderlich" }, { status: 400 })
+      return apiError("THEME_PROTECTED", "Das Default-Theme kann nicht überschrieben werden", 400)
     }
 
     const coreStore = getCoreStore()
     const existingTheme = await coreStore.getThemeRegistryEntry(themeId)
     if (existingTheme) {
-      return NextResponse.json(
-        { error: `Theme mit ID "${themeId}" existiert bereits` },
-        { status: 400 }
-      )
+      return apiError("THEME_ALREADY_EXISTS", `Theme mit ID "${themeId}" existiert bereits`, 409)
     }
 
     const storagePath = getTenantStoragePath(`${themeId}.css`)
-    const cssContent = `/* Theme: ${name} */\n\n/* Light Mode */\n${body.lightCSS}\n\n/* Dark Mode */\n${body.darkCSS}`
+    const cssContent = `/* Theme: ${name} */\n\n/* Light Mode */\n${lightCSS}\n\n/* Dark Mode */\n${darkCSS}`
 
     // Clerk-Auth liefert kein Supabase-JWT (nur anon) -> Storage-RLS blockiert INSERT.
     // Nach requireAdmin: Service-Role nur serverseitig fuer diesen Bucket.
@@ -62,15 +52,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })
 
     if (storageError) {
-      return NextResponse.json(
-        { error: `CSS-Speicherung fehlgeschlagen: ${storageError.message}` },
-        { status: 500 }
-      )
+      return apiError("STORAGE_WRITE_FAILED", "CSS-Speicherung fehlgeschlagen", 500, {
+        message: storageError.message,
+      })
     }
 
-    // Post-Save-Verifikation (Plan E2 / C5 / Assessment 10.1):
-    // Re-Fetch und String-Vergleich absichern, dass der Storage tatsaechlich den
-    // erwarteten Inhalt haelt (Schutz gegen stille Upload-Fehler / CDN-Staleness).
     const { data: verifyBlob, error: verifyError } = await supabase.storage
       .from("themes")
       .download(storagePath)
@@ -80,19 +66,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .from("themes")
         .remove([storagePath])
         .catch(() => {})
-      return NextResponse.json(
-        { error: "Theme-Persistenz-Verifikation fehlgeschlagen — Save wurde zurueckgerollt" },
-        { status: 500 }
+      return apiError(
+        "STORAGE_VERIFY_FAILED",
+        "Theme-Persistenz-Verifikation fehlgeschlagen — Save wurde zurueckgerollt",
+        500
       )
     }
 
     const saved = await coreStore.upsertThemeRegistryEntry({
       themeId,
       name,
-      description: body.description?.trim() || "Benutzerdefiniertes Theme",
-      dynamicFonts: Array.isArray(body.dynamicFonts)
-        ? body.dynamicFonts.filter((entry): entry is string => typeof entry === "string")
-        : [],
+      description: description?.trim() || "Benutzerdefiniertes Theme",
+      dynamicFonts: dynamicFonts ?? [],
       isBuiltin: false,
       cssAssetPath: storagePath,
     })
@@ -102,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .from("themes")
         .remove([storagePath])
         .catch(() => {})
-      return NextResponse.json({ error: "Metadaten-Speicherung fehlgeschlagen" }, { status: 500 })
+      return apiError("CORE_WRITE_FAILED", "Metadaten-Speicherung fehlgeschlagen", 500)
     }
 
     emitRealtimeEvent("themes:updated", "db-modified", {})
@@ -111,16 +96,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       theme: {
         id: themeId,
         name,
-        description: body.description?.trim() || "Benutzerdefiniertes Theme",
+        description: description?.trim() || "Benutzerdefiniertes Theme",
       },
     })
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Fehler beim Speichern des Themes",
-        message: error instanceof Error ? error.message : "Unbekannter Fehler",
-      },
-      { status: 500 }
-    )
+    return apiError("THEME_SAVE_FAILED", "Fehler beim Speichern des Themes", 500, {
+      message: error instanceof Error ? error.message : "Unbekannter Fehler",
+    })
   }
 }
