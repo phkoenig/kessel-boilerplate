@@ -1,3 +1,5 @@
+// BOILERPLATE: example-feature (depends on Supabase)
+// Siehe docs/12_plans/260419-boilerplate-db-agnostik.md (Plan I1/J4).
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { createClient as createKesselClient } from "@/utils/supabase/server"
 import type { DatabaseConfig, TableInfo, DatabaseClient } from "./types"

@@ -1,3 +1,5 @@
+// BOILERPLATE: example-feature (depends on Supabase)
+// Siehe docs/12_plans/260419-boilerplate-db-agnostik.md (Plan I1/J4).
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"

@@ -18,6 +18,7 @@ import noHardcodedPageTitle from "./eslint/rules/no-hardcoded-page-title.js"
 import noSpacetimeReducersInClient from "./eslint/rules/no-spacetime-reducers-in-client.js"
 import requireApiAuthClassification from "./eslint/rules/require-api-auth-classification.js"
 import noRawRoleComparison from "./eslint/rules/no-raw-role-comparison.js"
+import noSupabaseInCore from "./eslint/rules/no-supabase-in-core.js"
 
 /**
  * Lokales Plugin für projektspezifische Regeln.
@@ -44,6 +45,7 @@ const localPlugin = {
     "no-spacetime-reducers-in-client": noSpacetimeReducersInClient,
     "require-api-auth-classification": requireApiAuthClassification,
     "no-raw-role-comparison": noRawRoleComparison,
+    "no-supabase-in-core": noSupabaseInCore,
   },
 }
 
@@ -171,6 +173,19 @@ const eslintConfig = defineConfig([
     },
     rules: {
       "local/no-spacetime-reducers-in-client": "error",
+    },
+  },
+  // Plan J4: Boilerplate-Kern bleibt Supabase-frei.
+  // Erlaubte Ausnahmen sind in der Regel selbst kodiert (utils/supabase,
+  // storage/supabase-blob-storage, (examples)/**, scripts/**, Dateien mit
+  // `// BOILERPLATE: example-feature`-Marker).
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+    plugins: {
+      local: localPlugin,
+    },
+    rules: {
+      "local/no-supabase-in-core": "error",
     },
   },
   // H-9: Jede API-Route muss eine // AUTH:-Annotation tragen

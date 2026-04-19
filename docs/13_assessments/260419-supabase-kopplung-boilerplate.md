@@ -5,6 +5,12 @@
 **Scope:** Alle Supabase-Touchpoints im Repo, getrennt nach Boilerplate-Kern und Beispiel-Features
 **Leitfrage:** Ist die Boilerplate so gebaut, dass Supabase als App-DB komplett austauschbar ist — inklusive der Möglichkeit, während der Entwicklung die Dev-DB zu wechseln, ohne dass Theme/Assets/User-Login brechen?
 
+> **Status (Close-Out 2026-04-19):** ✅ **Resolved** via Plan
+> [`260419-boilerplate-db-agnostik.md`](../12_plans/260419-boilerplate-db-agnostik.md)
+> und ADR
+> [`ADR-003-db-agnostic-boilerplate-core.md`](../02_architecture/ADR-003-db-agnostic-boilerplate-core.md).
+> Details siehe Abschnitt **„Close-Out"** am Ende dieses Dokuments.
+
 ## TL;DR
 
 **Nein, aktuell nicht.** Die Boilerplate koppelt mehrere **Kern-Boilerplate-Pfade** hart an Supabase, obwohl das Design-Dokument (README) SpacetimeDB als „Boilerplate-Core" positioniert und Supabase eigentlich nur die **App-DB** sein sollte.
@@ -360,3 +366,69 @@ Alle heutigen `supabase.storage.from("themes")`-Aufrufe im Kern werden durch `bl
 - Keine Multi-Tenant-Isolation.
 - Keine Persistenz auf Vercel (ephemerer Filesystem-Write).
 - Keine Realtime-Propagation.
+
+---
+
+## Close-Out (2026-04-19)
+
+**Status:** ✅ Resolved. Umsetzung ueber Plan
+[`docs/12_plans/260419-boilerplate-db-agnostik.md`](../12_plans/260419-boilerplate-db-agnostik.md)
+in den Phasen A–K. Die Leitfrage wird jetzt mit **Ja** beantwortet: der Boilerplate-Kern
+(Themes, App-Icons, Profile, Rollen, Navigation, App-Settings, Admin-Tools) laeuft
+vollstaendig ohne Supabase. Supabase ist nur noch die App-DB fuer die optionalen
+**Beispiel-Features** (Bug-Report, Feature-Wishlist, Datenquellen-Explorer).
+
+### Massnahmen pro Ebene
+
+**Ebene A — Boilerplate-Kern (ehemals kritisch):**
+
+- `A1/A4` Theme-CSS + App-Icons: neue `BlobStorage`-Abstraktion
+  (`src/lib/storage/blob-storage.ts`) mit Default-Adapter `SpacetimeBlobStorage`
+  (`blob_asset`-Tabelle + Reducer in `spacetime/modules/boilerplate-core`).
+  `SupabaseBlobStorage` bleibt als Legacy-Fallback, wird aber im Kern nicht mehr
+  angezogen. — Plan-Phasen A, B, D, E.
+- `A2` Profil-Credentials: neue Route `/api/user/credentials` nutzt Clerk
+  (`clerkClient.users.updateUser`, `emailAddresses.createEmailAddress`). Die Profil-
+  Seite ruft ausschliesslich die API. — Plan-Phase G1.
+- `A3` Admin-Reset-Password: `/api/admin/reset-password` auf Clerk umgestellt. — G2.
+
+**Ebene B — Boilerplate-Utilities:**
+
+- `B1` Dev-Users: liest jetzt aus `coreStore.listUsers()` (SpacetimeDB). — G4a.
+- `B2` Dev-Impersonate: verwendet `clerkClient.signInTokens.createSignInToken` und
+  leitet ueber Clerks Ticket-Flow zurueck. — G4b.
+
+**Ebene C — Beispiel-Features (absichtlich Supabase):**
+
+- Marker-Kommentar `// BOILERPLATE: example-feature (depends on Supabase)` auf
+  allen betroffenen Dateien.
+- Feature-Flag `isSupabaseExamplesEnabled()` + `SUPABASE_EXAMPLE_NAV_IDS`
+  (`src/lib/config/features.ts`) blendet UI & Nav aus, wenn Supabase nicht konfiguriert
+  ist; betroffene API-Routen antworten mit `503 SUPABASE_NOT_CONFIGURED`. — H3, I1–I3.
+
+### Guardrails (damit es so bleibt)
+
+- Boot-Check (`src/lib/config/boot-check.ts`) prueft beim App-Start Clerk + SpacetimeDB
+  als Pflicht und loggt Supabase neutral als optional. — H2.
+- ESLint-Regel `local/no-supabase-in-core`
+  (`eslint/rules/no-supabase-in-core.js`) verbietet Supabase-Imports ausserhalb
+  definierter Ausnahmen (utils/supabase, storage/supabase-blob-storage,
+  `(examples)/**`, `scripts/**`, Dateien mit Marker-Kommentar). — J4.
+- `.cursor/rules/prohibitions.mdc` enthaelt den Abschnitt
+  **„BOILERPLATE-KERN VS. BEISPIEL-FEATURES"**. — J3.
+- ADR [`ADR-003-db-agnostic-boilerplate-core.md`](../02_architecture/ADR-003-db-agnostic-boilerplate-core.md). — K1.
+- Migrations-Guide
+  [`migrations-supabase-to-spacetime.md`](../04_knowledge/migrations-supabase-to-spacetime.md)
+  - Script `scripts/migrate-supabase-to-spacetime.ts`. — F, K2.
+
+### Offene Punkte fuer den Folge-Check
+
+- **Daten-Migration live nachgezogen?** Das Close-Out wurde inhaltlich abgeschlossen,
+  die _tatsaechliche_ Uebernahme bestehender Custom-Themes aus Supabase in die neue
+  Spacetime-Welt ist im jeweiligen Projekt noch manuell anzustossen (Script steht).
+- **End-to-End-Test "Boilerplate ohne Supabase":** Empfohlen ist ein Lauf mit leerem
+  `NEXT_PUBLIC_SUPABASE_URL`, um Boot-Check, Nav-Filter und 503-Antworten live zu
+  verifizieren.
+- **Routing-Group `(examples)/`:** Strukturell noch nicht eingefuehrt; Marker-Kommentare
+  decken die Grenze heute bereits hart genug ab, eine spaetere Umgruppierung ist ein
+  reiner Move.

@@ -1,3 +1,7 @@
+// BOILERPLATE: example-feature (depends on Supabase)
+// Siehe docs/12_plans/260419-boilerplate-db-agnostik.md (Plan I1/J4).
+// Die AI-Tool-Registry generiert Tools aus der Supabase-Datenquellen-Registry
+// (ai_datasources). Gehoert fachlich zum Datenquellen-Beispiel-Feature.
 /**
  * AI Tool Registry
  *

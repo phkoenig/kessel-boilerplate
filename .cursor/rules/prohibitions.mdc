@@ -28,7 +28,28 @@ Du bist ein KI-Assistent, der strikten, nicht verhandelbaren Regeln unterliegt. 
 - **VERBOTEN:** Committe NIEMALS ohne explizite Aufforderung des Users. Code-Änderungen sind Vorschläge, keine automatischen Commits.
 - **VERBOTEN:** Keine globalen Singletons für Supabase/Clients außerhalb der vorgesehenen Utils (`src/utils/supabase/`).
 
-## SUPABASE-SPEZIFIKA
+## BOILERPLATE-KERN VS. BEISPIEL-FEATURES
+
+> Ersetzt die alte Regel „DB: Supabase ist Single Source of Truth" (siehe Plan A-K,
+> `docs/12_plans/260419-boilerplate-db-agnostik.md`, ADR-003).
+
+- **Kern-Daten** (Themes, Theme-CSS, App-Icons, User-Profile, Rollen, Navigation,
+  App-Settings) liegen ausschließlich auf **SpacetimeDB-Core** (`src/lib/core`) bzw.
+  im **SpacetimeDB-Blob-Storage** (`src/lib/storage`).
+- **Identity** läuft ausschließlich über **Clerk** (`@clerk/nextjs`). Kein
+  `supabase.auth.*` im Kern.
+- **App-Beispiel-Features** (Bug-Report, Feature-Wishlist, Datenquellen) nutzen
+  **Supabase als optionale App-DB**. Diese Dateien tragen den Marker-Kommentar
+  `// BOILERPLATE: example-feature (depends on Supabase)`.
+- **VERBOTEN:** Neue Kern-Features (alles ausserhalb der markierten Beispiele) dürfen
+  keine Supabase-Imports enthalten. Erlaubte Ausnahmen sind ausschließlich:
+  - `src/utils/supabase/**` (Factories mit klaren Fehlerpfaden)
+  - `src/lib/storage/supabase-blob-storage.ts` (Legacy-Adapter)
+  - `src/app/(shell)/(examples)/**` / Dateien mit dem Marker-Kommentar
+  - `scripts/migrate-supabase-to-spacetime.ts` (Einmal-Migration)
+- Die ESLint-Regel `boilerplate/no-supabase-in-core` erzwingt diese Grenze.
+
+## SUPABASE-SPEZIFIKA (für Beispiel-Features)
 
 - **VERBOTEN:** Verwende NIEMALS `SERVICE_ROLE_KEY` im Client-Code. Nur serverseitig (API-Routes, Scripts).
 - **VERBOTEN:** Erstelle NIEMALS Vault-Funktionen ohne anschließende REVOKE-Statements.
