@@ -80,6 +80,11 @@ export async function POST(request: NextRequest) {
           { message: verification.reason }
         )
       }
+      if (verification.warning) {
+        console.warn(
+          `[themes/edit] Verifikation mit Warnung fuer ${storagePath}: ${verification.warning}`
+        )
+      }
 
       cssAssetPath = storagePath
     }

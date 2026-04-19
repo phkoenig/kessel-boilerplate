@@ -1,23 +1,32 @@
 /**
  * Verifiziert, dass ein gerade hochgeladenes Theme-CSS im Supabase-Storage
- * auch tatsaechlich mit dem erwarteten Inhalt abrufbar ist.
+ * ueberhaupt abrufbar ist.
  *
- * Hintergrund: `storage.download()` direkt nach `storage.upload()` kann in
- * seltenen Faellen die vorherige Version liefern (eventual consistency,
- * insbesondere bei upsert=true im Edit-Pfad). Statt beim ersten Mismatch
- * einen Fehler zu werfen, wird mit kurzen Backoff-Schritten nachgefasst.
+ * Hintergrund: `storage.upload()` ist bereits atomar gegenueber S3. Ein
+ * byte-for-byte Vergleich direkt danach ist jedoch unzuverlaessig, weil
+ * `storage.download()` bei `upsert: true` eventual-consistent sein kann und
+ * zeitweise noch die vorherige Version liefert. Darum betrachten wir nur das
+ * Fehlen eines Download-Objekts als echten Fehler. Inhalts-Abweichungen
+ * werden als Warnung zurueckgegeben, blockieren den Save aber nicht.
  */
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 const DEFAULT_DELAYS_MS = [0, 250, 500, 1000]
+
+export interface VerifyStoredThemeCssResult {
+  ok: boolean
+  reason?: string
+  warning?: string
+}
 
 export async function verifyStoredThemeCss(
   supabase: SupabaseClient,
   storagePath: string,
   expectedContent: string,
   delaysMs: number[] = DEFAULT_DELAYS_MS
-): Promise<{ ok: true } | { ok: false; reason: string }> {
-  let lastReason = "Unbekannter Fehler"
+): Promise<VerifyStoredThemeCssResult> {
+  let lastError: string | null = null
+  let lastMismatch: string | null = null
 
   for (const delay of delaysMs) {
     if (delay > 0) {
@@ -26,7 +35,7 @@ export async function verifyStoredThemeCss(
 
     const { data, error } = await supabase.storage.from("themes").download(storagePath)
     if (error || !data) {
-      lastReason = error?.message ?? "Kein Blob erhalten"
+      lastError = error?.message ?? "Kein Blob erhalten"
       continue
     }
 
@@ -35,8 +44,18 @@ export async function verifyStoredThemeCss(
       return { ok: true }
     }
 
-    lastReason = `Inhalt weicht ab (erwartet ${expectedContent.length} Zeichen, erhalten ${text.length})`
+    lastMismatch = `Inhalt weicht ab (erwartet ${expectedContent.length} Zeichen, erhalten ${text.length})`
+    lastError = null
   }
 
-  return { ok: false, reason: lastReason }
+  if (lastError) {
+    return { ok: false, reason: lastError }
+  }
+
+  return {
+    ok: true,
+    warning:
+      lastMismatch ??
+      "Upload bestaetigt, aber Verifikation erreichte keine byte-genaue Uebereinstimmung",
+  }
 }

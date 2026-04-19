@@ -71,6 +71,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { message: verification.reason }
       )
     }
+    if (verification.warning) {
+      console.warn(
+        `[themes/save] Verifikation mit Warnung fuer ${storagePath}: ${verification.warning}`
+      )
+    }
 
     const saved = await coreStore.upsertThemeRegistryEntry({
       themeId,
