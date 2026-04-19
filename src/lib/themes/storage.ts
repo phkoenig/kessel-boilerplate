@@ -1,15 +1,14 @@
 /**
  * Theme Storage Service
  * =====================
- * Verwaltet Theme-CSS im Storage und Theme-Metadaten ueber Core-APIs.
+ * Verwaltet Theme-CSS ueber den Blob-Proxy und Theme-Metadaten ueber Core-APIs.
  *
  * Architektur:
- * - Theme-Metadaten: Boilerplate-Core (Spacetime / Legacy-Adapter)
- * - Theme-CSS: Supabase Storage `themes` Bucket
- * - Lokale Themes: Fallback aus `src/themes/` (builtin)
+ * - Theme-Metadaten: Boilerplate-Core (Spacetime)
+ * - Theme-CSS:       {@link getBlobStorage} via `/api/blob/theme_css/<key>`
+ * - Lokale Themes:   Fallback aus `src/themes/` (builtin)
  */
 
-import { createClient } from "@/utils/supabase/client"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import type { ThemeColorScheme, ThemeSnapshot } from "@/lib/themes/types"
 
@@ -91,17 +90,18 @@ export async function fetchTheme(themeId: string): Promise<ThemeRecord | null> {
  * Bei Tenant-Erstellung wird automatisch ein Default-Theme kopiert.
  */
 export async function fetchThemeCSS(themeId: string): Promise<string | null> {
-  const supabase = createClient()
-  const storagePath = getTenantStoragePath(`${themeId}.css`)
-
-  const { data, error } = await supabase.storage.from("themes").download(storagePath)
-
-  if (error) {
-    // Kein Fehler loggen - Theme könnte builtin sein
+  try {
+    const response = await fetch(getThemeCSSUrl(themeId), {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+    if (!response.ok) {
+      return null
+    }
+    return await response.text()
+  } catch {
     return null
   }
-
-  return await data.text()
 }
 
 /**
@@ -197,14 +197,21 @@ export async function themeExists(themeId: string): Promise<boolean> {
 }
 
 /**
- * Generiert die URL für das Theme-CSS im Storage.
+ * Generiert die URL fuer das Theme-CSS.
  *
- * Multi-Tenant: Themes liegen im tenant-spezifischen Ordner.
+ * Multi-Tenant: Themes liegen im tenant-spezifischen Key. Der Pfad wird ueber
+ * den internen Blob-Proxy (`/api/blob/theme_css/<key>`) ausgeliefert, damit
+ * das gewaehlte Storage-Backend (Spacetime default, Supabase optional) fuer
+ * Konsumenten unsichtbar bleibt.
  */
 export function getThemeCSSUrl(themeId: string): string {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const storagePath = getTenantStoragePath(`${themeId}.css`)
-  return `${supabaseUrl}/storage/v1/object/public/themes/${storagePath}`
+  const encoded = storagePath
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")
+  return `/api/blob/theme_css/${encoded}`
 }
 
 /**

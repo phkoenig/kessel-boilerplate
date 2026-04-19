@@ -5,10 +5,10 @@ import { apiError } from "@/lib/api/errors"
 import { parseJsonBody } from "@/lib/api/parse-body"
 import { requireAdmin } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
+import { getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createServiceClient } from "@/utils/supabase/service"
 import { emitRealtimeEvent } from "@/lib/realtime"
-import { verifyStoredThemeCss } from "@/lib/themes/verify-storage"
+import { verifyStoredBlob } from "@/lib/themes/verify-storage"
 
 const MAX_CSS_BYTES = 512 * 1024
 const SaveSchema = z.object({
@@ -41,29 +41,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const storagePath = getTenantStoragePath(`${themeId}.css`)
     const cssContent = `/* Theme: ${name} */\n\n/* Light Mode */\n${lightCSS}\n\n/* Dark Mode */\n${darkCSS}`
+    const blobStorage = getBlobStorage()
 
-    // Clerk-Auth liefert kein Supabase-JWT (nur anon) -> Storage-RLS blockiert INSERT.
-    // Nach requireAdmin: Service-Role nur serverseitig fuer diesen Bucket.
-    const supabase = createServiceClient()
-    const { error: storageError } = await supabase.storage
-      .from("themes")
-      .upload(storagePath, cssContent, {
+    try {
+      await blobStorage.put("theme_css", storagePath, {
         contentType: "text/css",
-        upsert: false,
+        data: cssContent,
+        updatedByClerkUserId: userOrError.clerkUserId,
       })
-
-    if (storageError) {
+    } catch (err) {
       return apiError("STORAGE_WRITE_FAILED", "CSS-Speicherung fehlgeschlagen", 500, {
-        message: storageError.message,
+        message: err instanceof Error ? err.message : String(err),
       })
     }
 
-    const verification = await verifyStoredThemeCss(supabase, storagePath, cssContent)
+    const verification = await verifyStoredBlob("theme_css", storagePath, cssContent)
     if (!verification.ok) {
-      await supabase.storage
-        .from("themes")
-        .remove([storagePath])
-        .catch(() => {})
+      await blobStorage.remove("theme_css", storagePath).catch(() => {})
       return apiError(
         "STORAGE_VERIFY_FAILED",
         "Theme-Persistenz-Verifikation fehlgeschlagen — Save wurde zurueckgerollt",
@@ -87,10 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
 
     if (!saved) {
-      await supabase.storage
-        .from("themes")
-        .remove([storagePath])
-        .catch(() => {})
+      await blobStorage.remove("theme_css", storagePath).catch(() => {})
       return apiError("CORE_WRITE_FAILED", "Metadaten-Speicherung fehlgeschlagen", 500)
     }
 

@@ -1,6 +1,5 @@
 // AUTH: authenticated
 import { NextRequest, NextResponse } from "next/server"
-import { createServiceClient } from "@/utils/supabase/service"
 import { requireAuth } from "@/lib/auth/guards"
 import { resolveThemeCss } from "@/lib/themes/css"
 
@@ -27,8 +26,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "id erforderlich" }, { status: 400 })
     }
 
-    const supabase = createServiceClient()
-    const css = await resolveThemeCss(supabase, id)
+    const css = await resolveThemeCss(id)
 
     if (!css) {
       return NextResponse.json(

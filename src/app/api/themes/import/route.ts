@@ -4,7 +4,7 @@ import { z } from "zod"
 import { apiError } from "@/lib/api/errors"
 import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
-import { createServiceClient } from "@/utils/supabase/service"
+import { getBlobStorage } from "@/lib/storage"
 import { requireAdmin } from "@/lib/auth/guards"
 import { mapRawFontToVariable, validateFontNames } from "@/lib/fonts"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const coreStore = getCoreStore()
-    const supabase = createServiceClient()
+    const blobStorage = getBlobStorage()
 
     const themeData = parseTweakCNCSS(css, name.trim())
 
@@ -123,19 +123,18 @@ export async function POST(request: NextRequest) {
 
     warnings.push(...fontValidationWarnings)
 
-    // 1. CSS in Supabase Storage speichern (Multi-Tenant: tenant-spezifischer Ordner)
+    // 1. CSS im Blob-Storage speichern (Multi-Tenant: tenant-spezifischer Key)
     const storagePath = getTenantStoragePath(`${themeData.themeId}.css`)
-    const { error: storageError } = await supabase.storage
-      .from("themes")
-      .upload(storagePath, fullCSS, {
+    try {
+      await blobStorage.put("theme_css", storagePath, {
         contentType: "text/css",
-        upsert: false,
+        data: fullCSS,
+        updatedByClerkUserId: userOrErr.clerkUserId,
       })
-
-    if (storageError) {
-      console.error("Fehler beim Speichern des Theme-CSS:", storageError)
+    } catch (err) {
+      console.error("Fehler beim Speichern des Theme-CSS:", err)
       return apiError("STORAGE_WRITE_FAILED", "CSS-Speicherung fehlgeschlagen", 500, {
-        message: storageError.message,
+        message: err instanceof Error ? err.message : String(err),
       })
     }
 
@@ -150,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     if (!saved) {
       console.error("Fehler beim Speichern der Theme-Metadaten im Core")
-      await supabase.storage.from("themes").remove([storagePath])
+      await blobStorage.remove("theme_css", storagePath).catch(() => {})
       return apiError("CORE_WRITE_FAILED", "Metadaten-Speicherung fehlgeschlagen", 500)
     }
 

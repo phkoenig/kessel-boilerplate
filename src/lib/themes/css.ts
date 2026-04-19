@@ -1,75 +1,62 @@
 /**
  * Gehaerteter CSS-Parser fuer Theme-Storage.
  *
- * Liest CSS-Text aus dem Supabase-`themes`-Bucket und extrahiert die Token-Bloecke
- * fuer ein bestimmtes Theme (Light- und Dark-Block getrennt).
+ * Liest CSS-Text ueber die konfigurierte {@link BlobStorage}-Abstraktion
+ * (Namespace `theme_css`) und extrahiert die Token-Bloecke fuer ein
+ * bestimmtes Theme (Light- und Dark-Block getrennt).
  *
- * Aus iryse portiert. Schutz gegen zerstoererisches Speichern ueber
- * `assertParsedThemeTokens` und `verifySavedThemeMatchesPending` in theme-save-merge.ts.
+ * Schutz gegen zerstoererisches Speichern ueber `assertParsedThemeTokens`
+ * und `verifySavedThemeMatchesPending` in theme-save-merge.ts.
  */
 
-import { createServiceClient } from "@/utils/supabase/service"
+import { blobStorageDecode, getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
 import type { CornerStyle } from "./types"
-
-type ThemeStorageClient = ReturnType<typeof createServiceClient>
 
 interface ThemeTokenBlocks {
   light: Record<string, string>
   dark: Record<string, string>
 }
 
-async function downloadThemeCss(
-  supabase: ThemeStorageClient,
-  storagePath: string
-): Promise<string | null> {
-  const { data, error } = await supabase.storage.from("themes").download(storagePath)
-
-  if (error || !data) {
+async function downloadThemeCss(storagePath: string): Promise<string | null> {
+  try {
+    const asset = await getBlobStorage().get("theme_css", storagePath)
+    if (!asset) return null
+    const css = blobStorageDecode(asset.data)
+    return css.trim() ? css : null
+  } catch {
     return null
   }
-
-  const css = await data.text()
-  return css.trim() ? css : null
 }
 
 /**
- * Laedt das CSS fuer ein Theme aus dem Storage.
- * Probiert zuerst den Tenant-Pfad, dann den Root-Pfad, dann alle Unter-Ordner.
+ * Laedt das CSS fuer ein Theme aus dem Blob-Storage.
+ * Probiert zuerst den Tenant-Pfad, dann den Root-Pfad, dann alle Unter-Ordner
+ * (fuer Legacy-Layouts, in denen CSS in Tenant-fremden Ordnern liegt).
  */
-export async function resolveThemeCss(
-  supabase: ThemeStorageClient,
-  themeId: string
-): Promise<string | null> {
+export async function resolveThemeCss(themeId: string): Promise<string | null> {
   const directCandidates = Array.from(
     new Set([getTenantStoragePath(`${themeId}.css`), `${themeId}.css`])
   )
 
   for (const storagePath of directCandidates) {
-    const css = await downloadThemeCss(supabase, storagePath)
+    const css = await downloadThemeCss(storagePath)
     if (css) {
       return css
     }
   }
 
-  const { data: rootEntries, error: listError } = await supabase.storage.from("themes").list("", {
-    limit: 100,
-  })
-
-  if (listError || !rootEntries) {
-    return null
-  }
-
-  for (const entry of rootEntries) {
-    const isDirectory = entry.id == null && entry.metadata == null && !entry.name.endsWith(".css")
-    if (!isDirectory) {
-      continue
+  // Fallback: Theme liegt in einem anderen Tenant-Ordner. Wir listen alle
+  // Blobs im Namespace und suchen nach einem passenden Key-Suffix.
+  try {
+    const metas = await getBlobStorage().list("theme_css")
+    const candidate = metas.find((meta) => meta.key.endsWith(`/${themeId}.css`))
+    if (candidate) {
+      const css = await downloadThemeCss(candidate.key)
+      if (css) return css
     }
-
-    const css = await downloadThemeCss(supabase, `${entry.name}/${themeId}.css`)
-    if (css) {
-      return css
-    }
+  } catch {
+    // Listing kann bei Supabase RLS-blockiert sein; das ist kein Fehler.
   }
 
   return null

@@ -4,8 +4,8 @@ import { z } from "zod"
 import { apiError } from "@/lib/api/errors"
 import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
+import { getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { emitRealtimeEvent } from "@/lib/realtime"
 
@@ -43,9 +43,10 @@ export async function POST(request: NextRequest) {
 
     const dynamicFontsToCheck = theme.dynamicFonts
 
-    const supabase = createServiceClient()
     const storagePath = theme.cssAssetPath ?? getTenantStoragePath(`${themeId}.css`)
-    await supabase.storage.from("themes").remove([storagePath])
+    await getBlobStorage()
+      .remove("theme_css", storagePath)
+      .catch(() => {})
 
     const deleted = await coreStore.deleteThemeRegistryEntry(themeId)
     if (!deleted) {

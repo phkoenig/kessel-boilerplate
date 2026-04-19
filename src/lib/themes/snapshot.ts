@@ -7,15 +7,13 @@
  *   synchronisiert Aenderungen auf alle Admin-Profile, damit der Snapshot unabhaengig
  *   von der DB-Iterationsreihenfolge konsistent ist.
  *
- * Diese Funktion ist Server-only (nutzt unstable_noStore, Clerk-auth und den
- * Supabase-Service-Client).
+ * Diese Funktion ist Server-only (nutzt unstable_noStore und Clerk-auth).
  */
 
 import { unstable_noStore } from "next/cache"
 import { auth } from "@clerk/nextjs/server"
 import { isAdminRole } from "@/lib/auth/provisioning-role"
 import { getCoreStore } from "@/lib/core"
-import { createServiceClient } from "@/utils/supabase/service"
 import { resolveThemeCss, extractCornerStyleFromCss } from "./css"
 import { DEFAULT_THEME_ID } from "./constants"
 import type { ThemeColorScheme, ThemeMeta, ThemeSnapshot } from "./types"
@@ -83,8 +81,7 @@ export async function getEffectiveThemeSnapshot(): Promise<ThemeSnapshot> {
     activeThemeId = DEFAULT_THEME_ID
   }
 
-  const supabase = createServiceClient()
-  const cssText = await resolveThemeCss(supabase, activeThemeId)
+  const cssText = await resolveThemeCss(activeThemeId)
   const cornerStyle = extractCornerStyleFromCss(activeThemeId, cssText)
 
   return {

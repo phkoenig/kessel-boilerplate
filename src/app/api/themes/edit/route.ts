@@ -4,11 +4,11 @@ import { z } from "zod"
 import { apiError } from "@/lib/api/errors"
 import { parseJsonBody } from "@/lib/api/parse-body"
 import { getCoreStore } from "@/lib/core"
+import { getBlobStorage } from "@/lib/storage"
 import { getTenantStoragePath } from "@/lib/utils/tenant"
-import { createServiceClient } from "@/utils/supabase/service"
 import { requireAdmin } from "@/lib/auth/guards"
 import { emitRealtimeEvent } from "@/lib/realtime"
-import { verifyStoredThemeCss } from "@/lib/themes/verify-storage"
+import { verifyStoredBlob } from "@/lib/themes/verify-storage"
 
 const MAX_CSS_BYTES = 512 * 1024
 const EditSchema = z.object({
@@ -55,23 +55,23 @@ export async function POST(request: NextRequest) {
 
     let cssAssetPath = existingTheme.cssAssetPath
     if (typeof lightCSS === "string" && typeof darkCSS === "string") {
-      const supabase = createServiceClient()
       const storagePath = getTenantStoragePath(`${themeId}.css`)
       const cssContent = `/* Theme: ${nextName} */\n\n/* Light Mode */\n${lightCSS}\n\n/* Dark Mode */\n${darkCSS}`
-      const { error: storageError } = await supabase.storage
-        .from("themes")
-        .upload(storagePath, cssContent, {
-          contentType: "text/css",
-          upsert: true,
-        })
+      const blobStorage = getBlobStorage()
 
-      if (storageError) {
+      try {
+        await blobStorage.put("theme_css", storagePath, {
+          contentType: "text/css",
+          data: cssContent,
+          updatedByClerkUserId: userOrErr.clerkUserId,
+        })
+      } catch (err) {
         return apiError("STORAGE_WRITE_FAILED", "CSS-Update fehlgeschlagen", 500, {
-          message: storageError.message,
+          message: err instanceof Error ? err.message : String(err),
         })
       }
 
-      const verification = await verifyStoredThemeCss(supabase, storagePath, cssContent)
+      const verification = await verifyStoredBlob("theme_css", storagePath, cssContent)
       if (!verification.ok) {
         return apiError(
           "STORAGE_VERIFY_FAILED",
