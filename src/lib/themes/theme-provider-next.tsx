@@ -1,24 +1,7 @@
 "use client"
 
 /**
- * Neuer ThemeProvider nach iryse-Vorlage.
- *
- * Unterschied zum Legacy-Provider (`theme-provider.tsx`):
- *   - Kein lokaler `useState` fuer Theme/Themes — Quelle ist der ThemeStore
- *     (useSyncExternalStore) der vom Server-Snapshot geprimed wird.
- *   - Kein localStorage-basiertes per-User-Theme. Admin setzt global, Rest liest.
- *   - Corner-Style bleibt lokal (per Device), wie vorher.
- *   - Fonts werden geladen sobald der Store ein Theme mit dynamicFonts meldet.
- *
- * API:
- *   - Exportiert denselben `useTheme()`-Hook und denselben `ThemeContextValue`
- *     wie der Legacy-Provider, damit Konsumenten-Code (theme-editor-context,
- *     Theme-Manager, CornerStyleSwitch, FontSelect, SaveThemeDialog) unveraendert
- *     bleibt.
- *
- * Aktivierung:
- *   - `src/lib/themes/index.ts` exportiert bedingt diesen Provider statt des
- *     Legacy-Providers wenn `IS_NEW_THEME_SYSTEM_ENABLED=true`.
+ * ThemeProvider (iryse): ThemeStore + Server-Snapshot; kein localStorage fuer Brand-Theme.
  */
 
 import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from "next-themes"
@@ -44,7 +27,7 @@ import {
 import { applyActiveThemeCss } from "@/lib/themes/apply-active-theme-css"
 import { THEME_SNAPSHOT_TOPIC } from "@/lib/themes/constants"
 import type { ThemeSnapshot } from "@/lib/themes/types"
-import type { CornerStyle, ThemeContextValue, ThemeMeta } from "./theme-provider"
+import type { CornerStyle, ThemeContextValue, ThemeMeta } from "./types"
 import { getRealtimeAdapter } from "@/lib/realtime"
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -126,14 +109,7 @@ function CustomNextThemeProvider({
     setNextTheme(snapshot.colorScheme)
   }, [snapshot.colorScheme, colorModeValue, setNextTheme])
 
-  const themesForContext: ThemeMeta[] = useMemo(() => {
-    return snapshot.themes.map((t) => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      dynamicFonts: t.dynamicFonts,
-    }))
-  }, [snapshot.themes])
+  const themesForContext: ThemeMeta[] = useMemo(() => snapshot.themes, [snapshot.themes])
 
   const setTheme = useCallback(
     (id: string, { skipValidation = false }: { skipValidation?: boolean } = {}): void => {

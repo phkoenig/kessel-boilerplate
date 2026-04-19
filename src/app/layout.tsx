@@ -4,7 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { cache } from "react"
 
 import "./globals.css"
-import { ThemeProvider, IS_NEW_THEME_SYSTEM_ENABLED } from "@/lib/themes"
+import { ThemeProvider } from "@/lib/themes"
 import { getEffectiveThemeSnapshot } from "@/lib/themes/snapshot"
 import { getTenantSlug, resolveAppBranding } from "@/lib/branding"
 import { ClientProviders } from "@/components/providers/ClientProviders"
@@ -112,13 +112,10 @@ export default async function RootLayout({
   const defaultThemeCSS = await getCachedDefaultThemeCSS()
   const defaultThemeId = process.env.NEXT_PUBLIC_DEFAULT_THEME || "default"
 
-  // iryse: Server-Snapshot nur holen, wenn der neue Pfad aktiv ist
-  const themeSnapshot = IS_NEW_THEME_SYSTEM_ENABLED
-    ? await getEffectiveThemeSnapshot().catch((err) => {
-        console.error("[layout] getEffectiveThemeSnapshot fehlgeschlagen:", err)
-        return null
-      })
-    : null
+  const themeSnapshot = await getEffectiveThemeSnapshot().catch((err) => {
+    console.error("[layout] getEffectiveThemeSnapshot fehlgeschlagen:", err)
+    return null
+  })
   const initialThemeId = themeSnapshot?.activeThemeId ?? defaultThemeId
   const initialCornerStyle = themeSnapshot?.cornerStyle ?? "rounded"
   const appMetadata = await loadCachedAppMetadata()
@@ -156,32 +153,20 @@ export default async function RootLayout({
           </>
         )}
         {/*
-          FOUC Prevention:
-          - Im Legacy-Pfad liest das Script das Theme aus localStorage.
-          - Im neuen Pfad ist initialThemeId bereits das serverseitig ermittelte
-            Admin-Theme; das Script raeumt nur noch die alten tweakcn-Keys weg
-            (Plan F3 Legacy-Cleanup).
+          Corner-Style aus localStorage; alter tweakcn-theme-Key wird entfernt.
+          data-theme setzt der Server-Snapshot auf <html>.
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: IS_NEW_THEME_SYSTEM_ENABLED
-              ? `
+            __html: `
               (function() {
                 try {
                   var cornerStyle = localStorage.getItem('corner-style');
                   if (cornerStyle === 'rounded' || cornerStyle === 'squircle') {
                     document.documentElement.setAttribute('data-corner-style', cornerStyle);
                   }
-                  // Legacy-Cleanup: alte Keys der per-User-Persistenz entfernen.
                   localStorage.removeItem('tweakcn-theme');
                 } catch (e) {}
-              })();
-            `
-              : `
-              (function() {
-                var defaultTheme = '${defaultThemeId}';
-                var theme = localStorage.getItem('tweakcn-theme') || defaultTheme;
-                document.documentElement.setAttribute('data-theme', theme);
               })();
             `,
           }}
@@ -190,13 +175,7 @@ export default async function RootLayout({
         {defaultThemeCSS && (
           <style id="default-theme-css" dangerouslySetInnerHTML={{ __html: defaultThemeCSS }} />
         )}
-        {/*
-          Aktives Theme-CSS (neuer Pfad): direkt vom Server-Snapshot gerendert.
-          Verhindert FOUC beim Hard-Reload, weil das richtige Theme vor dem ersten
-          Paint angewendet wird. ThemeProvider-Next uebernimmt danach per
-          applyActiveThemeCss() die weiteren Updates.
-        */}
-        {IS_NEW_THEME_SYSTEM_ENABLED && themeSnapshot?.cssText && (
+        {themeSnapshot?.cssText && (
           <style
             id="active-theme-css"
             dangerouslySetInnerHTML={{ __html: themeSnapshot.cssText }}
@@ -212,7 +191,7 @@ export default async function RootLayout({
           signUpForceRedirectUrl="/"
           afterSignOutUrl="/login"
         >
-          <ThemeProvider defaultTheme={defaultThemeId} initialSnapshot={themeSnapshot}>
+          <ThemeProvider initialSnapshot={themeSnapshot}>
             <ClientProviders>{children}</ClientProviders>
           </ThemeProvider>
         </ClerkProvider>

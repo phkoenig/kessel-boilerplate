@@ -236,7 +236,7 @@ Die Regel `local/no-next-font-classname-on-root` erzwingt:
 |-------|-------|
 | `src/app/globals.css` | CSS-Variablen, @theme Block |
 | `src/app/layout.tsx` | Font-Registrierung (next/font) |
-| `src/lib/themes/theme-provider.tsx` | Theme-Switching |
+| `src/lib/themes/theme-provider-next.tsx`, `src/lib/themes/index.tsx` | Theme-Switching (ThemeStore + Snapshot) |
 | `src/lib/themes/storage.ts` | Supabase Theme Storage |
 | `src/lib/fonts/` | Dynamische Font-Loader |
 

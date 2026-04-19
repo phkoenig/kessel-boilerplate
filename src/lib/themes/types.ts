@@ -20,6 +20,21 @@ export interface ThemeMeta {
   isBuiltin: boolean
 }
 
+/** React-Context fuer `useTheme()` (ThemeStore / ThemeProviderNext). */
+export interface ThemeContextValue {
+  theme: string
+  setTheme: (id: string, options?: { skipValidation?: boolean }) => void
+  themes: ThemeMeta[]
+  colorMode: string
+  setColorMode: (mode: "light" | "dark" | "system") => void
+  refreshThemes: () => Promise<ThemeMeta[]>
+  isLoading: boolean
+  cornerStyle: CornerStyle
+  setCornerStyle: (style: CornerStyle) => void
+  supportsSquircle: boolean
+  refreshThemeCSS: () => Promise<boolean>
+}
+
 /**
  * Server-Snapshot des effektiven Theme-Zustands.
  *

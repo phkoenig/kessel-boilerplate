@@ -1,6 +1,6 @@
 "use client"
 
-import { useTheme, type CornerStyle } from "@/lib/themes/theme-provider"
+import { useTheme, type CornerStyle } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"

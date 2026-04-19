@@ -6,8 +6,7 @@
  * Alle Themes werden aus Supabase geladen.
  */
 
-// Re-export from theme-provider
-export { type ThemeMeta } from "@/lib/themes/theme-provider"
+export { type ThemeMeta } from "@/lib/themes/types"
 
 /**
  * Default Theme ID (Fallback).
