@@ -277,37 +277,41 @@ export default function RolesPage(): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPermissions wird absichtlich über role/navigation-Änderungen getriggert
   }, [navigationRecords, role])
 
-  // Speichere Berechtigungen in DB (Junction-Tabelle)
-  async function savePermissions(updatedPermissions: Permission[]) {
-    try {
-      const upserts: Array<{ moduleId: string; roleName: string; hasAccess: boolean }> = []
+  /**
+   * Speichert nur die tatsaechlich geaenderten Permissions in der DB.
+   *
+   * Frueher hat die Seite bei jedem Klick die KOMPLETTE Matrix (~100+ Rows)
+   * an den Server gesendet. Das fuehrt auf Spacetime-Seite zu 100+
+   * parallelen Reducer-Calls via Promise.all — und wenn auch nur einer
+   * fehlschlaegt (Service-Identity-Race, Netzwerk-Hickup, etc.), wird der
+   * komplette POST als 500 abgelehnt. Der Rollen-Seite-Reload ueberschreibt
+   * dann die Optimistic-UI mit Fallback-Werten → Klick springt zurueck.
+   *
+   * Delta-only + sauberes Error-Handling macht das deterministisch.
+   *
+   * @throws wenn der POST fehlschlaegt (damit der Caller die Optimistic-UI
+   *         revertieren kann, statt sie mit Fallback-Daten zu ueberschreiben).
+   */
+  async function saveChangedPermissions(
+    changed: Array<{ moduleId: string; roleName: string; hasAccess: boolean }>
+  ): Promise<void> {
+    if (changed.length === 0) return
 
-      updatedPermissions.forEach((perm) => {
-        perm.roleAccess.forEach((hasAccess, roleName) => {
-          upserts.push({
-            moduleId: perm.moduleId,
-            roleName,
-            hasAccess,
-          })
-        })
-      })
+    const response = await fetch("/api/admin/roles/permissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ permissions: changed }),
+    })
 
-      if (upserts.length > 0) {
-        const response = await fetch("/api/admin/roles/permissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ permissions: upserts }),
-        })
-
-        if (!response.ok) {
-          const payload = (await response.json()) as { error?: string }
-          throw new Error(payload.error || "Fehler beim Speichern der Berechtigungen")
-        }
+    if (!response.ok) {
+      let message = "Fehler beim Speichern der Berechtigungen"
+      try {
+        const payload = (await response.json()) as { error?: string }
+        if (payload.error) message = payload.error
+      } catch {
+        // ignore non-JSON error bodies
       }
-
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Speichern")
+      throw new Error(message)
     }
   }
 
@@ -335,38 +339,55 @@ export default function RolesPage(): React.ReactElement {
     targetRoleName: string,
     checked: boolean
   ) {
-    // Prüfe ob es eine Section ist (kein parentId)
     const targetModule = permissions.find((p) => p.moduleId === moduleId)
     if (!targetModule) return
 
-    // IMMER alle Children rekursiv finden (nicht nur für Sections!)
-    const allChildrenIds = findAllChildren(moduleId)
+    // Snapshot VOR der Aenderung — wird fuer Revert auf Save-Fehler gebraucht.
+    const previousPermissions = permissions
 
-    // Optimistic Update: UI sofort aktualisieren
-    // 1. Das geklickte Modul selbst aktualisieren
-    // 2. ALLE Children rekursiv aktualisieren
-    const updatedPermissions = permissions.map((perm) => {
-      if (perm.moduleId === moduleId || allChildrenIds.includes(perm.moduleId)) {
-        const newRoleAccess = new Map(perm.roleAccess)
-        newRoleAccess.set(targetRoleName, checked)
-        return { ...perm, roleAccess: newRoleAccess }
+    // Alle betroffenen Modul-IDs ermitteln: geklicktes Modul + alle Kinder
+    // rekursiv (Section-Klick kaskadiert auf Items und Sub-Items).
+    const affectedIds = new Set<string>([moduleId, ...findAllChildren(moduleId)])
+
+    // Delta berechnen: nur Zeilen, deren hasAccess sich tatsaechlich aendert.
+    // Verhindert 100+ unnoetige Upserts pro Klick (vgl. saveChangedPermissions).
+    const changedRows: Array<{ moduleId: string; roleName: string; hasAccess: boolean }> = []
+    for (const perm of permissions) {
+      if (!affectedIds.has(perm.moduleId)) continue
+      const current = perm.roleAccess.get(targetRoleName) ?? false
+      if (current !== checked) {
+        changedRows.push({ moduleId: perm.moduleId, roleName: targetRoleName, hasAccess: checked })
       }
-      return perm
-    })
+    }
 
-    // Optimistic Update: UI sofort aktualisieren
+    if (changedRows.length === 0) {
+      // Kein echter Unterschied (z. B. Double-Click) — nichts zu tun.
+      return
+    }
+
+    // Optimistic Update
+    const updatedPermissions = permissions.map((perm) => {
+      if (!affectedIds.has(perm.moduleId)) return perm
+      const newRoleAccess = new Map(perm.roleAccess)
+      newRoleAccess.set(targetRoleName, checked)
+      return { ...perm, roleAccess: newRoleAccess }
+    })
     setPermissions(updatedPermissions)
 
-    // Speichern in DB
     setSavingModuleId(moduleId)
     try {
-      await savePermissions(updatedPermissions)
+      await saveChangedPermissions(changedRows)
+      setError(null)
 
-      // Nach erfolgreichem Speichern: PermissionsProvider neu laden
+      // Nur bei erfolgreichem Save den PermissionsProvider-Cache refreshen,
+      // damit andere Komponenten (z. B. FloatingChatButton) sofort reagieren.
+      // KEIN lokales `loadPermissions` mehr — unsere Optimistic-UI ist bereits
+      // korrekt, und ein Reload wuerde bei Cache-Race wieder alte Werte ziehen.
       await reloadPermissions()
-
-      // Lokale Permissions neu laden OHNE Loader (Scroll-Position bleibt erhalten)
-      await loadPermissions(false)
+    } catch (err) {
+      // Save fehlgeschlagen: Optimistic-UI zurueckrollen und Fehler zeigen.
+      setPermissions(previousPermissions)
+      setError(err instanceof Error ? err.message : "Fehler beim Speichern")
     } finally {
       setSavingModuleId(null)
     }

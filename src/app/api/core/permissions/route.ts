@@ -2,23 +2,16 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/guards"
 import { getCoreStore } from "@/lib/core"
-import {
-  getCachedModulePermissions,
-  setCachedModulePermissions,
-  invalidateModulePermissionsCache,
-} from "@/lib/core/permissions-cache"
 
 /**
  * Liefert die zentrale Permissions-Matrix aus dem Boilerplate-Core.
- * Der Client greift damit nicht mehr direkt auf Legacy-Tabellen zu und
- * kann spaeter ohne weitere API-Aenderungen auf Spacetime-Core-Reads
- * umgestellt werden.
  *
- * Der Cache liegt bewusst im shared lib-Modul, damit Schreib-Routen
- * (z. B. `/api/admin/roles/permissions`) ihn verlaesslich invalidieren
- * koennen — siehe `src/lib/core/permissions-cache.ts`.
+ * Bewusst OHNE serverseitigen TTL-Cache: Cache + Next-App-Router-Module-
+ * Instanzierung + Cross-Route-Invalidierung haben in der Vergangenheit
+ * sporadische Revert-Bugs auf der Rollen-Seite verursacht. Die Procedure
+ * ist schnell genug, und Korrektheit schlaegt Mikro-Latenz.
  *
- * @returns Eine flache Liste von Modulberechtigungen.
+ * @returns Flache Liste von Modul-Berechtigungen.
  */
 export async function GET(): Promise<NextResponse> {
   const userOrError = await requireAuth()
@@ -27,17 +20,13 @@ export async function GET(): Promise<NextResponse> {
   }
 
   try {
-    const cached = getCachedModulePermissions()
-    if (cached) {
-      return NextResponse.json(cached)
-    }
-
     const coreStore = getCoreStore()
     const permissions = await coreStore.listModulePermissions()
     const mode = coreStore.getMode()
-    setCachedModulePermissions(mode, permissions)
 
-    return NextResponse.json({ mode, permissions })
+    // Keine HTTP-Cache-Header → Browser/CDN cachen nicht. Der Endpoint ist
+    // authentifiziert (pro User), deshalb sowieso nicht CDN-cachebar.
+    return NextResponse.json({ mode, permissions }, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     return NextResponse.json(
       {
@@ -48,7 +37,3 @@ export async function GET(): Promise<NextResponse> {
     )
   }
 }
-
-// Re-export fuer Konsumenten, die bislang direkt aus dieser Route importiert
-// haben. Neuer kanonischer Pfad: `@/lib/core/permissions-cache`.
-export { invalidateModulePermissionsCache }
