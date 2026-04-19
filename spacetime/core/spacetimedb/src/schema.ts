@@ -145,6 +145,33 @@ export const themeRegistry = table(
   }
 )
 
+/**
+ * Generic binary/text asset store for boilerplate resources that previously
+ * lived in Supabase Storage (theme CSS, app icons, user avatars, ...). Inline
+ * storage is explicitly recommended by SpacetimeDB 2.0 for payloads up to
+ * ~100 MB and for data that clients need via subscriptions.
+ *
+ * `namespace`: logical bucket (`"theme_css" | "app_icon" | "user_avatar" | ...`)
+ * `key`:        unique path within the namespace (includes tenant prefix)
+ * `data`:       raw bytes. Text assets are UTF-8 encoded.
+ */
+export const blobAsset = table(
+  {
+    public: false,
+    indexes: [{ accessor: "blobAssetNamespace", algorithm: "btree", columns: ["namespace"] }],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    namespace: t.string(),
+    key: t.string().unique(),
+    contentType: t.string(),
+    data: t.array(t.u8()),
+    sizeBytes: t.u32(),
+    updatedAt: t.timestamp(),
+    updatedByClerkUserId: t.string().optional(),
+  }
+)
+
 export const chatSession = table(
   {
     public: false,
@@ -293,6 +320,7 @@ export const webhookEventLog = table(
 
 export const boilerplateCoreSchema = schema({
   appSetting,
+  blobAsset,
   chatMessage,
   chatSession,
   chatSessionAlias,

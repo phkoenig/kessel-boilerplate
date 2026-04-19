@@ -1102,6 +1102,121 @@ export const delete_theme_registry = boilerplateCoreSchema.reducer(
   }
 )
 
+const blobAssetValue = t.object("BlobAssetValue", {
+  namespace: t.string(),
+  key: t.string(),
+  contentType: t.string(),
+  data: t.array(t.u8()),
+  sizeBytes: t.u32(),
+  updatedAtMicros: t.string(),
+  updatedByClerkUserId: t.string().optional(),
+})
+
+const blobAssetMetaValue = t.object("BlobAssetMetaValue", {
+  namespace: t.string(),
+  key: t.string(),
+  contentType: t.string(),
+  sizeBytes: t.u32(),
+  updatedAtMicros: t.string(),
+  updatedByClerkUserId: t.string().optional(),
+})
+
+export const upsert_blob_asset = boilerplateCoreSchema.reducer(
+  {
+    namespace: t.string(),
+    key: t.string(),
+    contentType: t.string(),
+    data: t.array(t.u8()),
+    updatedByClerkUserId: t.string().optional(),
+  },
+  (ctx, { namespace, key, contentType, data, updatedByClerkUserId }) => {
+    assertRegisteredServiceIdentity(ctx)
+
+    const normalizedNamespace = namespace.trim()
+    const normalizedKey = key.trim()
+    if (normalizedNamespace.length === 0 || normalizedKey.length === 0) {
+      throw new SenderError("blob asset requires non-empty namespace and key")
+    }
+
+    const sizeBytes = data.length
+    const existing = ctx.db.blobAsset.key.find(normalizedKey)
+    if (existing) {
+      ctx.db.blobAsset.id.update({
+        ...existing,
+        namespace: normalizedNamespace,
+        contentType,
+        data,
+        sizeBytes,
+        updatedAt: ctx.timestamp,
+        updatedByClerkUserId: normalizeOptionalString(updatedByClerkUserId),
+      })
+      return
+    }
+
+    ctx.db.blobAsset.insert({
+      id: 0n,
+      namespace: normalizedNamespace,
+      key: normalizedKey,
+      contentType,
+      data,
+      sizeBytes,
+      updatedAt: ctx.timestamp,
+      updatedByClerkUserId: normalizeOptionalString(updatedByClerkUserId),
+    })
+  }
+)
+
+export const delete_blob_asset = boilerplateCoreSchema.reducer(
+  {
+    key: t.string(),
+  },
+  (ctx, { key }) => {
+    assertRegisteredServiceIdentity(ctx)
+    const existing = ctx.db.blobAsset.key.find(key)
+    if (!existing) {
+      return
+    }
+    ctx.db.blobAsset.id.delete(existing.id)
+  }
+)
+
+export const get_blob_asset = boilerplateCoreSchema.procedure(
+  { key: t.string() },
+  blobAssetValue.optional(),
+  (ctx, { key }) =>
+    ctx.withTx((tx) => {
+      const row = tx.db.blobAsset.key.find(key)
+      if (!row) {
+        return undefined
+      }
+      return {
+        namespace: row.namespace,
+        key: row.key,
+        contentType: row.contentType,
+        data: row.data,
+        sizeBytes: row.sizeBytes,
+        updatedAtMicros: row.updatedAt.microsSinceUnixEpoch.toString(),
+        updatedByClerkUserId: row.updatedByClerkUserId,
+      }
+    })
+)
+
+export const list_blob_assets_by_namespace = boilerplateCoreSchema.procedure(
+  { namespace: t.string() },
+  t.array(blobAssetMetaValue),
+  (ctx, { namespace }) =>
+    ctx.withTx((tx) =>
+      [...tx.db.blobAsset.blobAssetNamespace.filter(namespace)].map((row) => ({
+        namespace: row.namespace,
+        key: row.key,
+        contentType: row.contentType,
+        sizeBytes: row.sizeBytes,
+        updatedAtMicros: row.updatedAt.microsSinceUnixEpoch.toString(),
+        updatedByClerkUserId: row.updatedByClerkUserId,
+      }))
+    )
+)
+
 export const update_user_theme_state = boilerplateCoreSchema.reducer(
   {
     clerkUserId: t.string(),
