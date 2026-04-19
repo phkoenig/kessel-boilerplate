@@ -65,11 +65,7 @@ const NAV_HREFS = new Set<string>(
 )
 
 /** Seiten unter `(shell)` ohne Seed-`href` (Absicht / Legacy). */
-const ROUTES_WITHOUT_SEED_HREF: readonly string[] = [
-  "/",
-  "/benutzer-menue/theme",
-  "/benutzer-menue/app-status",
-]
+const ROUTES_WITHOUT_SEED_HREF: readonly string[] = ["/", "/benutzer-menue/app-status"]
 
 /**
  * Seed-`href` ohne eigene `page.tsx` auf exakt diesem Pfad (Sektions-„Landing“-URLs;
