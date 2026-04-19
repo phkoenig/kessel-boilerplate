@@ -74,7 +74,9 @@ export async function getEffectiveThemeSnapshot(): Promise<ThemeSnapshot> {
     : null
 
   let activeThemeId = adminThemeState?.theme || themeState?.theme || DEFAULT_THEME_ID
-  const colorScheme = normalizeColorScheme(adminThemeState?.colorScheme ?? themeState?.colorScheme)
+  // Color-Scheme (Dark/Light/System) ist eine persoenliche User-Praeferenz und wird
+  // nicht vom Admin vererbt. Nicht eingeloggte User fallen auf "system" zurueck.
+  const colorScheme = normalizeColorScheme(themeState?.colorScheme)
 
   const themeExists = themes.some((t) => t.id === activeThemeId)
   if (!themeExists) {

@@ -99,19 +99,16 @@ export async function PUT(request: Request) {
       if (user.isAdmin) {
         adminClerkIds.add(user.clerkUserId)
       }
-      const payload = {
-        theme,
-        ...(user.isAdmin && colorScheme !== undefined ? { colorScheme } : {}),
-      }
       await Promise.all(
         [...adminClerkIds].map((clerkUserId) =>
-          coreStore.updateUserThemeState(clerkUserId, payload)
+          coreStore.updateUserThemeState(clerkUserId, { theme })
         )
       )
     }
 
-    // Color-Scheme immer im eigenen Profil persistieren (auch fuer Non-Admins).
-    if (colorScheme !== undefined && (theme === undefined || !user.isAdmin)) {
+    // Color-Scheme ist eine persoenliche Praeferenz und wird NIE auf andere
+    // Admin-Profile synchronisiert — immer nur ins eigene Profil schreiben.
+    if (colorScheme !== undefined) {
       await coreStore.updateUserThemeState(user.clerkUserId, { colorScheme })
     }
 
