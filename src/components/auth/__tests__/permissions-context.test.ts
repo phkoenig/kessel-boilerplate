@@ -1,4 +1,15 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// Permissions-Context importiert ueber auth-context Clerk-Pakete, die im
+// Vitest-Node-Env nicht aufloesbar sind. Wir mocken die Auth-Bridge weg, da
+// dieser Test nur den Cache-Helper exerciert.
+vi.mock("../auth-context", () => ({
+  useAuth: () => ({ isAuthenticated: false, isLoading: false, user: null }),
+}))
+vi.mock("@/lib/navigation", () => ({
+  useNavigation: () => ({ records: [] }),
+}))
+
 import { invalidatePermissionsCache } from "../permissions-context"
 
 /**

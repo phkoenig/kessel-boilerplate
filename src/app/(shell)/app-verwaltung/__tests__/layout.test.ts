@@ -1,4 +1,15 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// Clerk transitively pulls @clerk/react in test env; fuer den Layout-Smoke-Test
+// reicht ein leichter Stub.
+vi.mock("@/lib/auth/get-authenticated-user", () => ({
+  getAuthenticatedUser: vi.fn(async () => null),
+}))
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(() => {
+    throw new Error("REDIRECT")
+  }),
+}))
 
 /**
  * Plan C-2: Sicherstellen, dass das Server-Guard-Layout fuer

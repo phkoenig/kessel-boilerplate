@@ -18,7 +18,6 @@ import { NextResponse } from "next/server"
 import { getEffectiveThemeSnapshot } from "@/lib/themes/snapshot"
 import { THEME_SNAPSHOT_TOPIC, DEFAULT_THEME_ID } from "@/lib/themes/constants"
 import { emitRealtimeEvent } from "@/lib/realtime"
-import { isAdminRole } from "@/lib/auth/provisioning-role"
 
 /**
  * GET /api/user/theme

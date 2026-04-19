@@ -638,4 +638,56 @@ LOW dürfen optional auf einen Folge-Plan verschoben werden.
 
 ---
 
-**Letzte Aktualisierung:** 2026-04-19 (initiale Version)
+**Letzte Aktualisierung:** 2026-04-19 (Gap-Review nach erster Implementierung)
+
+---
+
+## 10. Gap-Review-Log 2026-04-19
+
+Nachweis nach präziser Gap-Analyse, Spalte „Gefixt?" beschreibt das
+Re-Work in dieser Session. Risk-Accept-Punkte sind explizit benannt.
+
+| ID    | Akzeptanz-Lücke                                                                                  | Gefixt?                                                                                                               |
+| ----- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| C-1   | Hard-Enforce `ctx.sender`-Check in Reducern + Pen-Test                                           | RISK-ACCEPT — als Stufe 2 dokumentiert; `e2e/security/spacetime-reducer-attack.spec.ts` als skipped Skeleton angelegt |
+| C-2   | E2E `app-verwaltung-guard.spec.ts` + Layout-Modul-Test                                           | ✅ `e2e/security/app-verwaltung-guard.spec.ts` + `src/app/(shell)/app-verwaltung/__tests__/layout.test.ts`            |
+| C-3   | Verweis auf `clerk-production.md` in `clerk-setup.md`                                            | ✅ Sektion „Production vs. Test-Instanz" + Link                                                                       |
+| H-3   | `check-no-dev-routes.mjs` im CI-Gate                                                             | ✅ via `RUN_FULL_SECURITY_CHECK=true` in `security:check`                                                             |
+| H-4   | JWT-Template-Doku                                                                                | ✅ Sektion „JWT-Template" in `clerk-setup.md`                                                                         |
+| H-5   | Doku-Tabelle Rollen-Auflösungs-Matrix                                                            | ✅ `docs/02_architecture/role-resolution-matrix.md`                                                                   |
+| H-9   | 26 Routes ohne `// AUTH:`-Annotation + ESLint-Rule + Doku-Matrix                                 | ✅ Alle 40 Routes annotiert; ESLint `local/require-api-auth-classification`; Matrix in `api-route-classification.md`  |
+| H-9   | `tech-stack/audit` + `tech-stack/updates` ohne Guard                                             | ✅ `requireAdmin` ergänzt                                                                                             |
+| H-10  | Audit in `admin/roles/*` + `admin/roles/permissions` + `generate-app-icon`                       | ✅ `recordAudit` integriert                                                                                           |
+| H-10  | Mock-Core Audit-Test                                                                             | ✅ `src/lib/auth/__tests__/audit.test.ts`                                                                             |
+| H-10  | Doku Retention-Policy                                                                            | ✅ `docs/02_architecture/audit-log.md`                                                                                |
+| H-10  | Admin-UI `app-verwaltung/audit`                                                                  | RISK-ACCEPT — UI-Folgefeature; Backlog                                                                                |
+| M-6   | Verbleibende rohe Vergleiche `role === "admin"` (3 Stellen)                                      | ✅ alle auf `isAdminRole(...)` migriert                                                                               |
+| M-6   | ESLint-Rule `local/no-raw-role-comparison`                                                       | ✅ implementiert + aktiv                                                                                              |
+| M-7   | Cache nach `clerkUserId` scopen + Helper-Export + Test                                           | ✅ `invalidatePermissionsCache` + per-User-Cache + Vitest                                                             |
+| M-11  | `details: String(err)` aus 401-Body entfernen                                                    | ✅ Stack-Frame-Leak entfernt                                                                                          |
+| M-11  | E2E Webhook-Dedup                                                                                | ✅ `e2e/security/webhook-dedup.spec.ts`                                                                               |
+| M-11  | Unit-Test „2× user.created → 1 Profil"                                                           | RISK-ACCEPT — DB-seitig idempotent (`externalEventId`-Index); Mock-Setup unverhältnismäßig                            |
+| M-12  | Test PUT `/api/user/profile` schreibt nur avatar                                                 | RISK-ACCEPT — Code verifiziert; existierende Mocks haben Pre-Existing-TS-Fehler                                       |
+| M-13  | `htmlDump` Limit 50 KB statt 2 MB                                                                | ✅ `MAX_HTML_DUMP_BYTES = 50 * 1024`                                                                                  |
+| M-13  | `<script>`-Strip im `htmlDump`                                                                   | ✅ `sanitizeHtmlDump()` (script/iframe/on\*-Stripping)                                                                |
+| L-14b | Cookie-Fallback deterministisch                                                                  | ✅ verifiziert — bereits via `@supabase/ssr`-Helper, kein Hardcode                                                    |
+| L-14c | Zod auf **alle** API-Payloads                                                                    | RISK-ACCEPT — Folge-Plan; Helper + Admin-Routen + Chat fertig                                                         |
+| L-14d | `apiError()` überall                                                                             | RISK-ACCEPT — schrittweise Migration; Helper bereit                                                                   |
+| X-1   | `security:check` umfasst lint/tsc/test/nav/csp                                                   | ✅ via Opt-in `RUN_FULL_SECURITY_CHECK=true`                                                                          |
+| X-4   | Spec-Files: admin-demotion, dev-routes, webhook-dedup, api-auth-matrix, spacetime-reducer-attack | ✅ alle 5 Specs angelegt (spacetime als skipped Skeleton)                                                             |
+
+### Neue Dateien dieser Session
+
+- `eslint/rules/require-api-auth-classification.js`
+- `eslint/rules/no-raw-role-comparison.js`
+- `docs/02_architecture/role-resolution-matrix.md`
+- `docs/02_architecture/audit-log.md`
+- `src/lib/auth/__tests__/audit.test.ts`
+- `src/components/auth/__tests__/permissions-context.test.ts`
+- `src/app/(shell)/app-verwaltung/__tests__/layout.test.ts`
+- `e2e/security/app-verwaltung-guard.spec.ts`
+- `e2e/security/dev-routes-404.spec.ts`
+- `e2e/security/api-auth-matrix.spec.ts`
+- `e2e/security/webhook-dedup.spec.ts`
+- `e2e/security/admin-demotion.spec.ts`
+- `e2e/security/spacetime-reducer-attack.spec.ts`

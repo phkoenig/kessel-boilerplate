@@ -8,7 +8,10 @@ import { expect, test } from "@playwright/test"
  * ist, fuer anonyme Aufrufer 401/403 liefert.
  */
 
-const AUTHENTICATED = [
+type Method = "GET" | "POST"
+type Endpoint = readonly [Method, string]
+
+const AUTHENTICATED: Endpoint[] = [
   ["GET", "/api/app-settings"],
   ["GET", "/api/chat/history"],
   ["GET", "/api/core/navigation"],
@@ -19,9 +22,9 @@ const AUTHENTICATED = [
   ["GET", "/api/themes/list"],
   ["GET", "/api/user/profile"],
   ["GET", "/api/user/theme"],
-] as const
+]
 
-const ADMIN = [
+const ADMIN: Endpoint[] = [
   ["GET", "/api/admin/users"],
   ["GET", "/api/admin/databases"],
   ["GET", "/api/admin/memberships"],
@@ -38,7 +41,7 @@ const ADMIN = [
   ["POST", "/api/themes/edit"],
   ["POST", "/api/themes/import"],
   ["POST", "/api/generate-app-icon"],
-] as const
+]
 
 test.describe("Auth-Matrix: authenticated routes (Plan H-9)", () => {
   for (const [method, path] of AUTHENTICATED) {

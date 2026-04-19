@@ -9,9 +9,13 @@
  * Geprueft wird:
  * 1. Keine Referenzen auf `NEXT_PUBLIC_AUTH_BYPASS` mehr im Code.
  * 2. `BOILERPLATE_AUTH_BYPASS` nicht in production/preview gesetzt.
- * 3. Admin-Allowlist-Audit gruen (`audit:allowlist`).
+ * 3. Admin-Allowlist-Audit gruen (`audit:allowlist`, nur in CI / mit FORCE-Flag).
  * 4. Keine direkten SpacetimeDB-Reducer-Imports in Client-Code (approximativ
  *    via Text-Suche, als zusaetzliche Leitplanke zur ESLint-Rule).
+ * 5. Jede `route.ts` unter `src/app/api/**` traegt eine `// AUTH:`-Annotation
+ *    mit gueltigem Level (Plan H-9).
+ * 6. Optional via `RUN_FULL_SECURITY_CHECK=true`: lint, tsc, test:run und
+ *    nav:check (Plan X-1 — wird im CI-Pipeline-Job aufgerufen).
  *
  * Keine Exit-Codes werden fuer Warnungen gesetzt; harte Fehler brechen ab.
  */
@@ -114,6 +118,41 @@ if (process.env.CI === "true" || process.env.FORCE_ALLOWLIST_AUDIT === "true") {
       // ignore missing dirs
     }
   }
+}
+
+// 5. Plan H-9: Jede API-Route muss eine // AUTH:-Annotation mit gueltigem Level haben.
+{
+  const ALLOWED = new Set(["public", "authenticated", "admin", "webhook", "dev-only"])
+  const apiRoot = join(ROOT, "src/app/api")
+  const files = []
+  try {
+    walk(apiRoot, (f) => /route\.(ts|js)$/.test(f), files)
+  } catch {
+    // ignore if api dir missing
+  }
+  for (const file of files) {
+    const head = readFileSync(file, "utf8").slice(0, 400)
+    const match = head.match(/^\/\/\s*AUTH:\s*([a-z-]+)/m)
+    if (!match) {
+      failures.push(
+        `Route ${file} hat keine // AUTH:-Annotation. Plan H-9: erlaubt sind ${[...ALLOWED].join("|")}.`
+      )
+      continue
+    }
+    if (!ALLOWED.has(match[1])) {
+      failures.push(
+        `Route ${file} hat ungueltigen AUTH-Level "${match[1]}". Erlaubt: ${[...ALLOWED].join("|")}.`
+      )
+    }
+  }
+}
+
+// 6. Optional: Vollstaendiger CI-Lauf (Plan X-1).
+if (process.env.RUN_FULL_SECURITY_CHECK === "true") {
+  runStep("lint", "pnpm", ["lint", "--max-warnings=0"])
+  runStep("tsc", "pnpm", ["tsc", "--noEmit"])
+  runStep("nav:check", "pnpm", ["nav:check"])
+  runStep("test:run", "pnpm", ["test:run"])
 }
 
 if (warnings.length > 0) {
