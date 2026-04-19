@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useTheme, type CornerStyle } from "@/lib/themes"
 import { useThemeEditor } from "@/hooks/use-theme-editor"
 import { Label } from "@/components/ui/label"
@@ -23,6 +24,18 @@ export function CornerStyleSwitch(): React.ReactElement {
   const { cornerStyle, setCornerStyle, supportsSquircle } = useTheme()
   const { previewToken } = useThemeEditor()
 
+  // Hydration-Guard: cornerStyle kommt aus localStorage und supportsSquircle
+  // aus CSS.supports — beides liefert auf Server vs. Client unterschiedliche
+  // Werte und erzeugt sonst einen Hydration-Mismatch am ToggleGroup.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusst: Hydration-Guard, nach Mount echte Werte freischalten.
+    setMounted(true)
+  }, [])
+
+  const effectiveCornerStyle: CornerStyle = mounted ? cornerStyle : "rounded"
+  const effectiveSupportsSquircle = mounted ? supportsSquircle : false
+
   const handleCornerStyleChange = (value: string | undefined) => {
     if (!value) return
     const style = value as CornerStyle
@@ -37,7 +50,7 @@ export function CornerStyleSwitch(): React.ReactElement {
       <Label className="text-sm font-medium">Ecken-Stil</Label>
       <ToggleGroup
         type="single"
-        value={cornerStyle}
+        value={effectiveCornerStyle}
         onValueChange={handleCornerStyleChange}
         variant="outline"
         spacing={0}
@@ -53,16 +66,16 @@ export function CornerStyleSwitch(): React.ReactElement {
           value="squircle"
           className={cn(
             "data-[state=on]:bg-primary data-[state=on]:text-primary-foreground flex-1",
-            !supportsSquircle && "opacity-60"
+            !effectiveSupportsSquircle && "opacity-60"
           )}
         >
           Squircle
         </ToggleGroupItem>
       </ToggleGroup>
       <p className="text-muted-foreground text-xs">
-        {cornerStyle === "squircle" && !supportsSquircle
+        {effectiveCornerStyle === "squircle" && !effectiveSupportsSquircle
           ? "Wird aktiviert sobald dein Browser es unterstützt (Chrome 139+)."
-          : cornerStyle === "squircle"
+          : effectiveCornerStyle === "squircle"
             ? "iOS-style weiche Ecken"
             : "Standard abgerundete Ecken"}
       </p>

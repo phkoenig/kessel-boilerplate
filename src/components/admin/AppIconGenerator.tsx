@@ -412,14 +412,32 @@ export function AppIconGenerator(): React.ReactElement {
       const responseData = await response.json()
 
       if (!response.ok) {
-        // Spezifische Fehlermeldungen
         if (responseData.error?.includes("permission")) {
           throw new Error(
             "Keine Berechtigung zum Speichern. Bitte stelle sicher, dass du als Admin eingeloggt bist."
           )
         }
 
-        throw new Error(`Fehler beim Speichern: ${responseData.error || "Unbekannter Fehler"}`)
+        // Zod-Validation-Details ausweisen, damit nicht nur "Ungueltige Eingabe"
+        // erscheint, wenn z. B. eine URL zu lang ist oder ein Feld das Format
+        // verletzt. details kommen aus parseJsonBody (Zod issues array).
+        let detailSuffix = ""
+        if (Array.isArray(responseData.details)) {
+          const issues = responseData.details
+            .map((issue: { path?: unknown[]; message?: string }) => {
+              const path =
+                Array.isArray(issue.path) && issue.path.length > 0
+                  ? issue.path.join(".")
+                  : "payload"
+              return `${path}: ${issue.message ?? "invalid"}`
+            })
+            .join("; ")
+          if (issues) detailSuffix = ` (${issues})`
+        }
+
+        throw new Error(
+          `Fehler beim Speichern: ${responseData.error || "Unbekannter Fehler"}${detailSuffix}`
+        )
       }
 
       setCurrentIconUrl(selectedVariant.url)

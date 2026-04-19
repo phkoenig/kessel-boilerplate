@@ -19,12 +19,15 @@ import { getCoreStore } from "@/lib/core"
 import { getCachedAppSettings, invalidateAppSettingsCache } from "@/lib/core/server-cache"
 import { resolveAppBranding } from "@/lib/branding"
 
+// URL-Limit bewusst großzügig: Supabase-Storage-URLs enthalten Tenant-Prefix,
+// Bucket, langen Objekt-Pfad und ggf. Query-Params — 2048 Zeichen waren in
+// der Praxis zu knapp und haben App-Icon-Saves gekippt.
 const PatchSchema = z.object({
   app_name: z.string().max(200).optional(),
   app_description: z.string().max(1000).optional(),
-  icon_url: z.string().url().max(2048).optional(),
+  icon_url: z.string().url().max(8192).optional(),
   icon_variants: z
-    .array(z.object({ url: z.string().url().max(2048) }))
+    .array(z.object({ url: z.string().url().max(8192) }))
     .max(20)
     .optional(),
   icon_provider: z.string().max(100).optional(),
