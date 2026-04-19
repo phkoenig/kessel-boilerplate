@@ -22,12 +22,9 @@ interface ColorPairSwatchProps {
  */
 function anyColorToOklch(cssColor: string): string {
   if (!cssColor || typeof document === "undefined") return "oklch(0.5 0 0)"
-
-  // Bereits OKLCH? Direkt zurückgeben
   if (cssColor.startsWith("oklch(")) return cssColor
 
   try {
-    // Canvas nutzen um beliebige CSS-Farbe zu RGB zu konvertieren
     const canvas = document.createElement("canvas")
     canvas.width = 1
     canvas.height = 1
@@ -38,7 +35,6 @@ function anyColorToOklch(cssColor: string): string {
     ctx.fillRect(0, 0, 1, 1)
     const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
 
-    // sRGB zu Linear RGB
     const toLinear = (c: number) => {
       const v = c / 255
       return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
@@ -48,12 +44,10 @@ function anyColorToOklch(cssColor: string): string {
     const lg = toLinear(g)
     const lb = toLinear(b)
 
-    // Linear RGB zu XYZ (D65)
     const x = 0.4124564 * lr + 0.3575761 * lg + 0.1804375 * lb
     const y = 0.2126729 * lr + 0.7151522 * lg + 0.072175 * lb
     const z = 0.0193339 * lr + 0.119192 * lg + 0.9503041 * lb
 
-    // XYZ zu OKLab
     const l_ = Math.cbrt(0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z)
     const m_ = Math.cbrt(0.0329845436 * x + 0.9293118715 * y + 0.0361456387 * z)
     const s_ = Math.cbrt(0.0482003018 * x + 0.2643662691 * y + 0.633851707 * z)
@@ -62,7 +56,6 @@ function anyColorToOklch(cssColor: string): string {
     const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
     const okb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
 
-    // OKLab zu OKLCH
     const C = Math.sqrt(a * a + okb * okb)
     let H = Math.atan2(okb, a) * (180 / Math.PI)
     if (H < 0) H += 360
@@ -73,9 +66,6 @@ function anyColorToOklch(cssColor: string): string {
   }
 }
 
-/**
- * Konvertiert eine beliebige CSS-Farbe zu Hex.
- */
 function anyColorToHex(cssColor: string): string {
   if (!cssColor || typeof document === "undefined") return "#808080"
   if (cssColor.startsWith("#") && cssColor.length === 7) return cssColor
@@ -99,10 +89,12 @@ function anyColorToHex(cssColor: string): string {
 /**
  * ColorPairSwatch - Zeigt ein Farbpaar als breites Rechteck (256×64)
  *
- * Layout: Rechteck LINKS, Beschreibung RECHTS (3 Zeilen)
- *
- * Bei Klick wird das Element im Detail-Panel ausgewählt.
- * Zeigt immer OKLCH-Werte an und aktualisiert sich in Real-Time.
+ * Layout (TweakCN-Style):
+ *   - Aeusseres Rechteck in Background-Farbe
+ *   - Inneres, eingerueckt platziertes Rechteck in Foreground-Farbe
+ *   - Beide Rechtecke sind separat klickbar und selektieren das entsprechende
+ *     Token im Theme-Editor
+ *   - Rechts Name + Beschreibung + OKLCH/Hex Werte (BG und FG)
  */
 export function ColorPairSwatch({
   tokenName,
@@ -115,43 +107,40 @@ export function ColorPairSwatch({
 
   const isDarkMode = colorMode === "dark" || (colorMode === "system" && resolvedTheme === "dark")
 
-  // Prüfe ob dieses Element ausgewählt ist
   const isSelected =
     selectedElement?.type === "colorPair" &&
     selectedElement.tokenName === tokenName &&
     selectedElement.foregroundTokenName === foregroundTokenName
+  const isBgSelected = isSelected && selectedElement?.subType === "background"
+  const isFgSelected = isSelected && selectedElement?.subType === "foreground"
 
-  // Original-Werte (für Selection)
   const originalBgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
+  const originalFgRef = useRef<{ light: string; dark: string }>({ light: "", dark: "" })
 
-  // Anzeige-Werte - OKLCH Format
   const [bgOklch, setBgOklch] = useState("")
   const [bgHex, setBgHex] = useState("#808080")
+  const [fgOklch, setFgOklch] = useState("")
+  const [fgHex, setFgHex] = useState("#808080")
 
-  // Track ob wir die Originalwerte schon geladen haben
   const hasLoadedOriginals = useRef(false)
 
-  /**
-   * Liest den aktuellen computed CSS-Wert und konvertiert zu OKLCH.
-   * Das stellt sicher, dass Real-Time Updates funktionieren.
-   */
   const updateDisplayValues = useCallback(() => {
     if (typeof window === "undefined") return
 
-    // Computed style lesen - das ist immer der aktuelle Wert
     const computedStyle = getComputedStyle(document.documentElement)
     const computedBg = computedStyle.getPropertyValue(tokenName).trim()
+    const computedFg = computedStyle.getPropertyValue(foregroundTokenName).trim()
 
     if (computedBg) {
-      // Konvertiere zu OKLCH für einheitliche Anzeige
-      const oklch = anyColorToOklch(computedBg)
-      const hex = anyColorToHex(computedBg)
-      setBgOklch(oklch)
-      setBgHex(hex)
+      setBgOklch(anyColorToOklch(computedBg))
+      setBgHex(anyColorToHex(computedBg))
     }
-  }, [tokenName])
+    if (computedFg) {
+      setFgOklch(anyColorToOklch(computedFg))
+      setFgHex(anyColorToHex(computedFg))
+    }
+  }, [tokenName, foregroundTokenName])
 
-  // Lade Originalwerte einmal beim Mount
   useEffect(() => {
     if (typeof window === "undefined") return
     if (hasLoadedOriginals.current) return
@@ -159,11 +148,12 @@ export function ColorPairSwatch({
     const loadOriginals = () => {
       const tokens = getCurrentTokens()
       const bgToken = tokens[tokenName] || { light: "", dark: "" }
+      const fgToken = tokens[foregroundTokenName] || { light: "", dark: "" }
 
       originalBgRef.current = { light: bgToken.light, dark: bgToken.dark }
+      originalFgRef.current = { light: fgToken.light, dark: fgToken.dark }
       hasLoadedOriginals.current = true
 
-      // Initial display values laden
       updateDisplayValues()
     }
 
@@ -202,36 +192,79 @@ export function ColorPairSwatch({
     })
   }, [tokenName, foregroundTokenName, setSelectedElement, isDarkMode, getCurrentTokens])
 
+  const handleFgClick = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation()
+      const tokens = getCurrentTokens()
+      const fgToken = tokens[foregroundTokenName] || { light: "", dark: "" }
+      const currentFgValue = isDarkMode ? fgToken.dark : fgToken.light
+      const originalFgValue = isDarkMode ? originalFgRef.current.dark : originalFgRef.current.light
+
+      setSelectedElement({
+        type: "colorPair",
+        tokenName,
+        foregroundTokenName,
+        subType: "foreground",
+        originalValue: originalFgValue || currentFgValue || "",
+        originalDarkValue: originalFgRef.current.dark || "",
+      })
+    },
+    [tokenName, foregroundTokenName, setSelectedElement, isDarkMode, getCurrentTokens]
+  )
+
   return (
     <div className="flex items-start gap-6" data-swatch>
-      {/* Swatch Container - LINKS (nur Background-Farbe) */}
+      {/* Swatch Container - LINKS: Background-Rechteck mit inneren Foreground-Rechteck (TweakCN) */}
       <div className="group relative h-16 w-64 shrink-0">
         <div
           className={cn(
-            "absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all hover:ring-2",
-            isSelected && selectedElement?.subType === "background"
-              ? "ring-ring ring-2"
-              : "hover:ring-ring"
+            "absolute inset-0 cursor-pointer rounded-lg border shadow-sm transition-all",
+            isBgSelected ? "ring-ring ring-2" : "hover:ring-ring hover:ring-2"
           )}
           style={{
             backgroundColor: `var(${tokenName})`,
             borderRadius: "var(--radius)",
           }}
           onClick={handleBgClick}
+          role="button"
+          aria-label={`${name} Background auswaehlen`}
+        />
+        <div
+          className={cn(
+            "absolute inset-y-2 right-2 w-20 cursor-pointer rounded-md border shadow-sm transition-all",
+            isFgSelected ? "ring-ring ring-2" : "hover:ring-ring hover:ring-2"
+          )}
+          style={{
+            backgroundColor: `var(${foregroundTokenName})`,
+            borderRadius: "calc(var(--radius) - 2px)",
+          }}
+          onClick={handleFgClick}
+          role="button"
+          aria-label={`${name} Foreground auswaehlen`}
         />
       </div>
 
-      {/* Beschreibung - RECHTS (3 Zeilen) */}
+      {/* Beschreibung - RECHTS */}
       <div className="flex min-w-0 flex-1 flex-col py-1">
-        {/* Zeile 1: Name */}
         <span className="text-foreground text-sm font-medium">{name}</span>
-        {/* Zeile 2: Beschreibung */}
         <span className="text-muted-foreground truncate text-xs">{description}</span>
-        {/* Zeile 3: Farbwerte - immer OKLCH + Hex */}
-        <div className="text-muted-foreground flex gap-4 font-mono text-xs">
-          <span title={bgOklch}>{bgOklch || "oklch(0.5 0 0)"}</span>
-          <span className="opacity-50">|</span>
-          <span>{bgHex}</span>
+        <div className="text-muted-foreground mt-0.5 flex flex-col gap-0.5 font-mono text-xs">
+          <div className="flex gap-2">
+            <span className="text-foreground/70 w-3 shrink-0">BG</span>
+            <span title={bgOklch} className="truncate">
+              {bgOklch || "oklch(0.5 0 0)"}
+            </span>
+            <span className="opacity-50">|</span>
+            <span>{bgHex}</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-foreground/70 w-3 shrink-0">FG</span>
+            <span title={fgOklch} className="truncate">
+              {fgOklch || "oklch(0.5 0 0)"}
+            </span>
+            <span className="opacity-50">|</span>
+            <span>{fgHex}</span>
+          </div>
         </div>
       </div>
     </div>
