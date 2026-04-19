@@ -169,19 +169,6 @@ const CATEGORIES: Record<string, CategoryMapping> = {
   "@t3-oss/env-nextjs": { category: "build", description: "Env Validation" },
   chalk: { category: "build", description: "Terminal Colors" },
   dotenv: { category: "build", description: "Env Variables" },
-  storybook: {
-    category: "build",
-    description: "Component Dev",
-    docsUrl: "https://storybook.js.org",
-  },
-  "@storybook/react": { category: "build", description: "Storybook React" },
-  "@storybook/react-vite": { category: "build", description: "Storybook Vite" },
-  "@storybook/nextjs-vite": { category: "build", description: "Storybook Next.js" },
-  "@storybook/addon-a11y": { category: "build", description: "Storybook A11y" },
-  "@storybook/addon-docs": { category: "build", description: "Storybook Docs" },
-  "@storybook/addon-links": { category: "build", description: "Storybook Links" },
-  "@storybook/addon-onboarding": { category: "build", description: "Storybook Onboarding" },
-  "eslint-plugin-storybook": { category: "build", description: "Storybook Plugin" },
 
   // Other
   "date-fns": { category: "other", description: "Date Utilities" },
@@ -196,7 +183,6 @@ const WILDCARD_PATTERNS: Array<{ pattern: RegExp; mapping: CategoryMapping }> = 
   { pattern: /^@supabase\//, mapping: { category: "database", description: "Supabase" } },
   { pattern: /^@types\//, mapping: { category: "build", description: "TypeScript Types" } },
   { pattern: /^@ai-sdk\//, mapping: { category: "ai", description: "AI SDK" } },
-  { pattern: /^@storybook\//, mapping: { category: "build", description: "Storybook" } },
 ]
 
 function getMapping(pkgName: string): CategoryMapping | null {
