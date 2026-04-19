@@ -282,14 +282,21 @@ export async function updateEffectiveThemeSelection(updates: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     })
-    const data = await res.json()
+    const data = (await res.json()) as Record<string, unknown>
     if (!res.ok) {
-      return { success: false, error: data.error ?? "Fehler beim Aktualisieren des Themes" }
+      const msg =
+        typeof data.error === "string" && data.error.length > 0
+          ? data.error
+          : "Fehler beim Aktualisieren des Themes"
+      return { success: false, error: msg }
     }
 
-    const snapshot = data as ThemeSnapshot & { success?: boolean }
-    themeSnapshotCache = snapshot
-    return { success: true, snapshot }
+    // API liefert { success: true, ...ThemeSnapshot } — Metadaten nicht im Snapshot cachen.
+    const snapshot = { ...data } as Record<string, unknown>
+    delete snapshot.success
+    delete snapshot.error
+    themeSnapshotCache = snapshot as ThemeSnapshot
+    return { success: true, snapshot: snapshot as ThemeSnapshot }
   } catch (err) {
     return {
       success: false,

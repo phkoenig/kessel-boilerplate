@@ -96,15 +96,24 @@ export async function PUT(request: Request) {
 
     // Admin-only Global-Theme: auf alle Admin-Profile synchronisieren, damit der
     // Snapshot unabhaengig von der DB-Iterationsreihenfolge konsistent bleibt.
+    // WICHTIG: listUsers() kann den aktuellen Admin aus Timing-/Sync-Gruenden fehlen —
+    // ohne Eintraege schlaegt die Persistenz fehl (leeres Promise.all). Daher immer
+    // die Clerk-ID des eingeloggten Admins in die Sync-Menge aufnehmen.
     if (theme !== undefined) {
       const allUsers = await coreStore.listUsers()
-      const adminUsers = allUsers.filter((u) => isAdminRole(u.role))
+      const adminClerkIds = new Set(
+        allUsers.filter((u) => isAdminRole(u.role)).map((u) => u.clerkUserId)
+      )
+      if (user.isAdmin) {
+        adminClerkIds.add(user.clerkUserId)
+      }
+      const payload = {
+        theme,
+        ...(user.isAdmin && colorScheme !== undefined ? { colorScheme } : {}),
+      }
       await Promise.all(
-        adminUsers.map((admin) =>
-          coreStore.updateUserThemeState(admin.clerkUserId, {
-            theme,
-            ...(user.isAdmin && colorScheme !== undefined ? { colorScheme } : {}),
-          })
+        [...adminClerkIds].map((clerkUserId) =>
+          coreStore.updateUserThemeState(clerkUserId, payload)
         )
       )
     }
@@ -114,11 +123,15 @@ export async function PUT(request: Request) {
       await coreStore.updateUserThemeState(user.clerkUserId, { colorScheme })
     }
 
-    emitRealtimeEvent(THEME_SNAPSHOT_TOPIC, "theme-updated", {
-      profileId: user.profileId,
-      theme: theme ?? null,
-      colorScheme: colorScheme ?? null,
-    })
+    try {
+      emitRealtimeEvent(THEME_SNAPSHOT_TOPIC, "theme-updated", {
+        profileId: user.profileId,
+        theme: theme ?? null,
+        colorScheme: colorScheme ?? null,
+      })
+    } catch (emitErr) {
+      console.warn("[User Theme API] Realtime-Emit optional fehlgeschlagen:", emitErr)
+    }
 
     const snapshot = await getEffectiveThemeSnapshot()
 
@@ -127,7 +140,9 @@ export async function PUT(request: Request) {
       ...snapshot,
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Server-Fehler"
     console.error("[User Theme API] PUT Fehler:", error)
-    return NextResponse.json({ error: "Server-Fehler" }, { status: 500 })
+    const clientMessage = process.env.NODE_ENV === "production" ? "Server-Fehler" : message
+    return NextResponse.json({ error: clientMessage }, { status: 500 })
   }
 }
