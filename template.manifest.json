@@ -17,6 +17,12 @@
   ],
   "optionalEnv": ["CLERK_WEBHOOK_SIGNING_SECRET"],
   "postSetupHooks": ["pnpm pull-env", "pnpm install"],
+  "optionalSetupHooks": [
+    {
+      "command": "pnpm dev:setup-tunnel",
+      "description": "HTTPS-Dev-Subdomain via Cloudflare Tunnel (empfohlen fuer Clerk/OAuth/Webhooks). Doku: docs/02_architecture/dev-https-subdomain.md"
+    }
+  ],
   "architecture": {
     "identity": "clerk",
     "coreDb": "spacetime",

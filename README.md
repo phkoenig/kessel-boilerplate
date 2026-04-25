@@ -85,6 +85,26 @@ pnpm pull-env
 pnpm dev
 ```
 
+**Optional aber empfohlen — HTTPS-Dev-Subdomain (Clerk/OAuth/Webhooks-tauglich):**
+
+```bash
+# Einmalig pro Maschine
+winget install --id Cloudflare.cloudflared
+cloudflared tunnel login
+
+# Einmalig pro Projekt
+pnpm dev:setup-tunnel        # interaktiver Wizard
+                              # legt Tunnel + DNS an, fuellt scripts/dev-public-origin.json,
+                              # pinnt den Dev-Port
+
+# Ab jetzt
+pnpm dev:domain               # Next + Cloudflare Tunnel -> https://<projekt>-dev.megabrain.cloud
+```
+
+Warum: Clerk, OAuth, Webhooks und Embedded-Previews funktionieren auf `localhost`
+unzuverlaessig. Master-Doku + Allokationsliste:
+[`docs/02_architecture/dev-https-subdomain.md`](docs/02_architecture/dev-https-subdomain.md).
+
 **Was `pnpm pull-env` macht:**
 
 Boilerplate 3.0 speichert **alle** Runtime-Secrets in 1Password. `pnpm pull-env` liest das Manifest `scripts/pull-env.manifest.json`, ersetzt den Platzhalter `${OP_VAULT}` durch den konfigurierten Vault (default: `VAULT`) und loest jede Referenz per 1Password CLI auf. Ergebnis: eine vollstaendige, validierte `.env.local`.

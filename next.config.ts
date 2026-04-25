@@ -1,4 +1,35 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import type { NextConfig } from "next"
+
+/**
+ * Erlaubt Dev-Requests von der oeffentlichen HTTPS-Dev-Subdomain (Cloudflare Tunnel).
+ * Defensive: wenn `pnpm dev:setup-tunnel` noch nicht gelaufen ist, bleibt die Liste
+ * leer (Boilerplate ist weiter auf localhost lauffaehig).
+ *
+ * Doku: docs/02_architecture/dev-https-subdomain.md
+ */
+function readAllowedDevOrigins(): string[] {
+  try {
+    const raw = readFileSync(join(process.cwd(), "scripts", "dev-public-origin.json"), "utf-8")
+    const parsed = JSON.parse(raw) as {
+      _status?: string
+      publicHostname?: string
+    }
+    if (parsed._status !== "ready" || typeof parsed.publicHostname !== "string") {
+      if (process.env.NODE_ENV !== "production") {
+        process.stdout.write(
+          "[dev] HTTPS-Subdomain noch nicht eingerichtet — pnpm dev:setup-tunnel (oder localhost weiterverwenden).\n"
+        )
+      }
+      return []
+    }
+    return [parsed.publicHostname]
+  } catch {
+    return []
+  }
+}
 
 /**
  * Security-Header (Plan H-8).
@@ -46,6 +77,7 @@ const SECURITY_HEADERS = [
 ]
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: readAllowedDevOrigins(),
   async headers() {
     return [
       {

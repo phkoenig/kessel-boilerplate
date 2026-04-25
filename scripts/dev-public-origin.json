@@ -1,0 +1,9 @@
+{
+  "_status": "uninitialized",
+  "_doc": "Mit `pnpm dev:setup-tunnel` initialisieren. Manuell-Anleitung: docs/02_architecture/dev-https-subdomain.md",
+  "publicHostname": "PROJECT_SLUG-dev.megabrain.cloud",
+  "publicHttpsOrigin": "https://PROJECT_SLUG-dev.megabrain.cloud",
+  "localDevPort": 3000,
+  "cloudflaredTunnelName": "PROJECT_SLUG-dev",
+  "cloudflaredTunnelId": "REPLACE_WITH_UUID_FROM_CLOUDFLARED"
+}

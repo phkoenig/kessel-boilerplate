@@ -70,6 +70,13 @@ Living Docs (`08_research/`, `11_specs/`) bleiben **ohne** Datum im Dateinamen.
 
 - **Sprache:** Deutsch (der User heisst Philip, Du-Form).
 - **Philosophie:** KISS, Refaktorisierung vor Neubau, Dateien < 300 LOC.
+- **Dev-Origin:** Kanonisch ist die HTTPS-Subdomain `<projekt>-dev.megabrain.cloud`,
+  nicht `localhost`. Erst-Setup pro Projekt: `pnpm dev:setup-tunnel`. Daily:
+  `pnpm dev:domain`. Master-Doku + Allokationsliste (SSOT):
+  [`docs/02_architecture/dev-https-subdomain.md`](docs/02_architecture/dev-https-subdomain.md).
+  Wenn ein neues Projekt aus dieser Boilerplate ableitet wird, MUSS die
+  Allokationstabelle dort um Slug + Port + Subdomain + Tunnel-UUID ergaenzt
+  werden — andere Repos spiegeln nur, dieses Repo ist die Wahrheit.
 - **Dev-Server:** Vor `npm run dev` IMMER Ports pruefen und alte Prozesse killen.
 - **Secrets:** Ausschliesslich in Supabase Vault. `.env` nur fuer Bootstrap.
 - **DB:** Supabase ist Single Source of Truth. Keine parallelen Backends.
